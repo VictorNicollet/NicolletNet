@@ -1,4 +1,6 @@
 @title Code Template Parameters
+@date 2008-12-11
+@tags imperative cpp
 @draft
 
 One cannot provide a function pointer as a template argument. This means that cases in which polymorphism is desirable for compile-time reasons (such as using one set of operations when testing and another set of operations when running the code), or where the behavior of code depends on a compile-time element and should be able to evolve in an <a href="http://en.wikipedia.org/wiki/Open/closed_principle" target="_blank">open-closed</a> fashion, cannot be handled by passing the correct function pointer.

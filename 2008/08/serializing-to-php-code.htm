@@ -1,4 +1,6 @@
 @title Serializing to PHP Code
+@date 2008-08-26
+@tags dynamic php
 @draft
 
 For performance purposes, it can sometimes be interesting to have PHP code automatically generate other pieces of PHP code. In order to insert non-constant data into those pieces of code, the most elementary solution is to serialize everything as a string, and the unserialize them on the fly. While slow, this has the advantage of being very simple.

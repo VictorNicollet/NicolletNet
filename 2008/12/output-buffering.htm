@@ -1,4 +1,6 @@
 @title Output Buffering
+@date 2008-12-23
+@tags dynamic php
 @draft
 
 A program has an object, which it needs to convert to a string. On the one hand, converting to a string is often more efficient by appending the individual sub-strings to an output channel, because the output channel is optimized precisely for that (it allocates a large memory buffer which is gradually filled) whereas string concatenation cannot reuse the memory space of one operand nor over-allocate memory for it. On the other hand, writing the string to an output channel means there will be no means of retrieving that string, because it has been output and therefore left the program.

@@ -1,4 +1,6 @@
 @title That DOM removal thing, again
+@date 2010-01-22
+@tags dynamic js jquery bugs
 @draft
 
 Earlier this month, I pondered what looked like <a href="http://www.nicollet.net/2010/01/dom-removal-and-events/" target="_blank">a bug in JavaScript/DOM/jQuery</a>: removing an element from the DOM with jQuery (either manually with remove() or by setting the html() of its parent to something else) kept most of the data bound to the element around, but removed all event handlers from it. You could then re-insert the element, but its event handlers would be lost.

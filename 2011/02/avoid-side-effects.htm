@@ -1,4 +1,6 @@
 @title Avoid Side Effects
+@date 2011-02-23
+@tags functional ocaml language-design architecture bugs
 @draft
 
 Perhaps one of the single most useful aspects of functional programming is the absence of side-effects. In a pure functional language, there is no assignment — once created, you cannot change the members of an object or the value of a variable. All you can do is create new values based on old values. Advocates of these so called <em>immutable values</em> argue that there are many benefits related to what you can do with them: you can keep around both the new version <em>and</em> the old version (implementing an "undo" feature of sorts), often at a reduced memory cost due to sharing of sub-elements between the two versions.

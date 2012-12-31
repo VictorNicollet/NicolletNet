@@ -1,4 +1,6 @@
 @title Lazy and Threads
+@date 2009-02-19
+@tags functional threads
 @draft
 
 A nice thing about pure functional programming is that it's inherently thread-safe. Since your code never actually modifies anything, atomicity of operations ceases to be an issue. At the hardware level, every modification operation is performed by a single thread (since it happens while a value is created, but before the high-level semantics can manipulate it) so no error can arise from multiple threads. Every value is basically written by one thread then read by everyone else until it dies.

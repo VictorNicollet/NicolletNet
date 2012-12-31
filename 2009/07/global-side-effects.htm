@@ -1,4 +1,6 @@
 @title Global side-effects
+@date 2009-07-20
+@tags functional language-design
 @draft
 
 Functional programming languages do not allow global state—they don't really allow any kind of state, but at least local state can be simulated by function arguments. The only way to handle "global" state would be to pass the global variable as an additional parameter (and additional return value) to every function. And it wouldn't play nice with exceptions either, so every exception would have to carry the values of all global variables.

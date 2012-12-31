@@ -1,4 +1,6 @@
 @title Find the bug!
+@date 2009-08-13
+@tags dynamic php bugs unicode
 @draft
 
 This code summarizes some text by removing anything past 255 characters. It's done before inserting things into a database, so that the brutal cut of a VARCHAR(255) doesn't leave a truncated string but rather three nice dots.

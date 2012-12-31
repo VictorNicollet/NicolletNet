@@ -1,4 +1,6 @@
 @title Algebraic types, dangerous?
+@date 2008-12-01
+@tags functional ocaml
 @draft
 
 n static languages, algebraic data types allow the creation of complex data types without going through the tedious task of defining a type beforehand. Consider, for example, a grammar description: every rule in a grammar describes how a certain non-terminal symbol can be obtained from a list of terminal and non-terminal symbols, associated to some code that is executed when the rule is matched by the input. As such, one could describe this using the following type:

@@ -1,4 +1,6 @@
 @title Javascript Tips, Part 1
+@date 2009-12-21
+@tags functional js
 @draft
 
 It is advised, when deploying a live website, to <a href="http://developer.yahoo.com/performance/rules.html#num_http" target="_blank">group</a> all your Javascript files into a single one, and <a href="http://developer.yahoo.com/performance/rules.html#minify" target="_blank">reduce its size</a> by removal of all unnecessary clutter. You obviously get a few nasty surprises the first time you do this, such as dead code (or debug-only code) being included or two incompatible files being included together. The usual answer to this, like with any integration-related issue, is to perform <strong>continuous integration</strong>, and generally make sure during development that the final product works as it should.

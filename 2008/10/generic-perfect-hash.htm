@@ -1,4 +1,6 @@
 @title Generic Perfect Hash
+@date 2008-10-27
+@tags functional ocaml
 @draft
 
 A hash function is a pure function: when called on the same argument twice, it returns the same value. A real-world hash function is also expected to return a useful key: a small value (in terms of memory footprint) with a trivial comparison operator, and such that the probability of collision (two different arguments having the same key) is small.

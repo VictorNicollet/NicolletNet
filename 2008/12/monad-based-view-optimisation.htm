@@ -1,4 +1,6 @@
 @title Monad-Based View Optimisation
+@date 2008-12-16
+@tags dynamic ocaml
 @draft
 
 There are two main execution models for web scripts. One model is to have the web server (apache, IIS) start a new instance of the script when a request for that script is found. The script then executes from beginning to end, performing its entire initialization, response and shutdown cycle. Caching may occur at both the bytecode level (to avoid parsing the source file several times) and explicitly in the code (querying a cache system for existing data). The other model is to have the web scripts run as a process in cooperation with the web server.

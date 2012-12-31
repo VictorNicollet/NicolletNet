@@ -1,4 +1,6 @@
 @title Destroy After Use
+@date 2008-12-22
+@tags functional patterns ocaml
 @draft
 
 Exceptions make the control flow of a program quite complex, since any call could possibly create an exception and thus leave the currently executing function. Even with a garbage collector, certain resources (such as files) have to be manually released. Some languages use destructors and RAII (for instance, C++) to handle scope-based release, others use an explicit using(){} or finally {} block to also add a scope to such resources.
