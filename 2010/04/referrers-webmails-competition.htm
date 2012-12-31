@@ -1,0 +1,19 @@
+@title Referrers, Webmails and Competition
+@draft
+
+When you visit a web site, that web site remembers your request, along with some information about that request. Here's some data that the Apache web server remembers:
+<ul>
+	<li>217.111.148.194 : your IP address</li>
+	<li>[26/Apr/2010:13:02:15 +0200] : when you visited</li>
+	<li>GET <a href="http://www.youtube.com/watch?v=T-TA57L0kuc">/ladies/naughty.avi</a> : what you asked for.</li>
+	<li>https://www.facebook.com : the page where you found the link to the current page</li>
+	<li>Mozilla/5.0 : your browser</li>
+	<li>Windows NT 6.0 : your operating system</li>
+</ul>
+It is of course possible to eliminate most of that information (only the first three are required). It is the fourth, however, that can cause havoc: people know where you come from.
+
+Consider now what would happen if your corporation uses some kind of webmail. Something like <code>http://mail.google.com/a/<strong>myCompany</strong></code><strong> </strong>or <code>http://intranet.<strong>myCompany</strong>.com/zimbra</code>. Suppose that one of your co-workers send you an e-mail about a new feature from your competitor that you absolutely have to see. In that e-mail is a link. You click on the link.
+
+Since the e-mail was displayed as a web page in your web browser, its address will be sent to your competitor's server. Now your competitor knows that your company is exchanging mails about their latest feature.
+
+Some web mailers protect you against this. Check it out.

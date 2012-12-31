@@ -1,0 +1,14 @@
+@title jQuery Datepicker - the Instance Data bug
+@draft
+
+<img class="aligncenter size-full wp-image-2539" title="error" src="http://www.nicollet.net/wp-content/uploads/2011/09/error.png" alt="" width="675" height="100" />The jQuery UI datepicker does <em>strange</em> things with the DOM, which causes undocumented brittleness. For instance, consider the following operations on a page that contains a single input element:
+<pre style="padding-left: 30px;">$('input').datepicker().attr('id','the-input');</pre>
+This will cause no error, and clicking on the input will correctly summon the date picking dialog, but clicking on a date in that dialog will fail with the following error:
+<pre style="padding-left: 30px;">missing instance data for this datepicker</pre>
+The diagnosis is quite simple: the jQuery UI datepicker stores additional "instance data" based on the id attribute of the element, so changing the id attribute manually causes that instance data to be lost. This unexpected brittleness forced me to spend some time hacking my code so that the identifier is attributed <em>before</em> the datepicker is enabled, but at least this solved the problem.
+
+Two related problems would be:
+<ul>
+	<li>If you have several input elements with the same identifier, and apply the datepicker on the second element, the search-by-id will return the first element and cause the same error as above.</li>
+	<li>If you apply the <code>hasDatepicker</code> CSS class on an element, and then apply the datepicker plugin, it will assume that the instance data has already been initialized, and will fail.</li>
+</ul>

@@ -1,0 +1,19 @@
+@title Contraceptive-Oriented Design
+@draft
+
+People often say that one’s design should be modular.  Sadly, many people take this as meaning “use modules.”  Having modules in a program does not mean that the program is modular.  This is generally the point where I whip out the <em>strong coupling</em> and <em>zero-dependency</em> diagrams and beat your brain into submission, but my code has been behaving pretty well lately, so I’ll try a nicer approach today.
+
+You know what’s modular in the real world?  <strong>Condoms</strong>.  They can be used as a contraceptive, to prevent STDs, as a barrel plug on paintball guns, to protect a live gun barrel from moisture when wading through rivers, to smuggle liquids or powders in the human body, <a href="http://en.wikipedia.org/wiki/Condom#Other_uses">and so on</a>.  But what makes condoms so modular in the first place?
+<ul>
+	<li><em>Easy to set up</em>.  Rip open the pack of condoms, unfold, install, and perform task.  You shouldn’t have to go through a dozen hoops and fill out ten forms to get a working object.</li>
+	<li><em>Simple and general concept</em>.  A condom is an elastic, impermeable and transparent pocket.  Although its primary use (the one it’s optimized for) is prevention of insemination, a condom is not restricted to doing just that.  In the same way, when you design a portion of your software, you should determine if the code you are writing is not overly restrictive.  Perhaps you could use it to perform similar tasks in other places?</li>
+	<li><em>High availability</em>.  Condoms are extremely cheap and easy to get your hands on, which proves they have not been designed by your average software engineer.  I can see it now:
+
+«The user will only need one condom to get his thing on, right?
+— Right. Singleton?
+— Deal.»
+
+The fundamental point to condoms is that you can get as many as you need.  If you design your objects in terms of “you only need one,” then by design you are restricting reuse.</li>
+	<li><em>Standalone.</em> A condom doesn’t require other things to make it work.  You don’t have to plug it in.  You don’t have to use an Adapter pattern to fill it with distilled vodka.  You don’t have to set up a render-target window, and you don’t have to run a network thread in the background.  Have your objects work on their own, like a condom: a condom needs itself and an object to be placed around.  Your modules should need themselves, and a target task to be placed around.</li>
+</ul>
+This article was originally a <a href="http://www.gamedev.net/community/forums/viewreply.asp?ID=3144238" target="_blank">forum post</a>.

@@ -1,0 +1,51 @@
+@title Invalid Assumption
+@draft
+
+Yesterday, I stumbled across a <a href="http://thedailywtf.com/Articles/Theres-Gotta-Be-A-Catch.aspx" target="_blank">DailyWTF article</a> that showed overlooked errors, unsual bugs and other incorrect statements. At the bottom, a screenshot of a <a href="http://etax.dor.ga.gov/inctax/2007_forms/TSD_Estimated_Tax_for_Individuals_and_Fiduciaries_500ES_2007.pdf" target="_self">PDF</a> containing a State of Georgia Department of Revenue form, with detailed instructions explaining how to download Adobe Reader. The irony of a document containing instructions on how to open it (something which would have already happened by the time the user read the instructions) is the reason for including that document on the DailyWTF website.
+
+Is it really that obvious?
+<h2>The Portable Document Format</h2>
+Suppose for a moment that you're not the Windows-using experienced developer you are (or you might be, if you read this blog or the DailyWTF). Perhaps you're a hardcore Linux user who opens his Portable Document Format with xpdf instead of Adobe Reader (the document being portable is quite the point of the format). Or you might be using OS X. Or perhaps you're running some older version of Adobe Reader than the 8.0 in the document.
+
+This is where the real irony begins—despite being an open standard, advertised as being portable, PDF is not really that portable. Sure, you can open old PDF documents on any operating system with a large variety of readers from Adobe's own to xpdf to evince to flash-based readers (courtesy of <a href="http://www.swftools.org/" target="_blank">pdf2swf</a>), not including the various conversion tools (to PostScript, to a bunch of PNG images, to HTML, to plain text).
+
+But later versions of the PDF standard have introduced many features that few readers (aside from Adobe Reader) manage to support.
+
+Taking a look at the <a href="http://www.iso.org/iso/iso_catalogue/catalogue_tc/catalogue_detail.htm?csnumber=51502" target="_blank">standard</a> (there's a <a href="http://www.adobe.com/devnet/acrobat/pdfs/PDF32000_2008.pdf" target="_blank">free version</a> on Adobe's web site) is an enlightening experience: what used to be a simplification of PostScript (mostly, removing the turing-complete parts of the language) has now included the ability to carry SWF, javascript for manipulating a DOM-like construct, user-entered data, digital signatures, and many other elements.
+
+Consider, for instance, the ability to fill in a form in a PDF document. Chapter 12 in the PDF 1.7 standard tells us that this feature exists since PDF 1.2 (released in 1996 with Adobe Acrobat Reader 3.0). Obviously, most non-interactive renderers (such as converters) don't support interactive features in PDF documents, of which forms are a part. But that's also the case for some interactive viewers: xpdf, kpdf and evince users will see the form, but will not be able to fill it in.
+
+Of particular interest is the way in which Adobe benefits from the wide distribution of its Adobe Reader, even though it is provided free of charge to anyone who wishes to download it. Aside from the elementary document-displaying functionality, which is reasonably well duplicated by other readers (including those from the Open Source world), Adobe Reader provides several pieces of locked functionality. Among these:
+<ul>
+	<li>Saving a modified PDF file to the disk (including form field contents).</li>
+	<li>Applying a digital signature to a PDF file using the reader.</li>
+	<li>Sending a PDF file by e-mail from the reader (again, including form field contents).</li>
+	<li>...</li>
+</ul>
+The reader provides this functionality whenever it reads an "enabled" PDF file. One way of enabling files is to use the <a href="http://www.adobe.com/products/livecycle/readerextensions/features.html" target="_blank">Livecycle Reader Extensions</a> service (that tends to cost quite a lot), another is the smaller-scale <a href="http://www.adobe.com/products/acrobatpro/features/">Adobe Pro</a> (a bit cheaper, but limited to 500 readers).
+
+<em>But wait</em>, you think, <em>if the format is open and the enabled/disabled status is part of the file, surely an open source PDF writer could enable files for free?</em> Sadly, no, they couldn't. While some features (such as <a href="http://www.cediti.be/fileadmin/content/digital_signature_en_viewlet_swf.html" target="_blank">signing a document</a> outside of Adobe Reader) can be performed by anyone, enabling files cannot. To check if a file is enabled, Adobe Reader will determine whether the creator has signed the file with an appropriate private key—the details are a bit more complex, but that's the idea—and so to enable a file you need that private key.
+
+In short, Adobe is using a shareware-like model for distributing the Adobe Reader: you get a basic version for free, but to access the advanced features you have to pay. The difference with the standard shareware model is that "you", in the above sentence, is not the user of the Adobe Reader software, but rather the author of the PDF that is read by that software.
+<h2>What Does This Teach Us?</h2>
+Two things:
+<ul>
+	<li>Most assumptions that hold on an individual basis (on my computer, I use Acrobat Reader to open PDF documents) do not carry over well to other people. This is what leads to the "doesn't work on other machines" portability issue, as well as many security issues when people cannot imagine that a hacker is going to use their program or website in a way they did not intend.</li>
+</ul>
+<ul>
+	<li>When someone does notice that an assumption is incorrect, and adds code to handle it, readers of that code will seldom understand on the first try what assumption is incorrect (precisely because, as an assumption, is it thought to be correct). Therefore, code handling some obscure detail will be thought as redundant and silly if it is not accompanied by a comment explaining why it's actually necessary and not redundant.</li>
+</ul>
+The portability issue is annoying, but not horrible. After all, if you make an assumption that hinders portability, you will be woefully aware of that once you actually try to perform the port. By contrast, security issues are far more annoying. The classic issue would be SQL injection:
+<pre style="padding-left: 30px;">mysql_query("SELECT * FROM `users` ".
+            "WHERE `id` = ".$_GET['user']." AND `password` = ".$_GET['pass']);</pre>
+This code assumes that the GET-parameter will always be a valid user identifier. This may be fine if the visitors always come to the page after clicking on a link that contains a valid GET-parameter, but even an average hacker can forge an HTTP GET request with all an invalid GET-parameter such as '?user=13--" (this selects user 13 without password checks).
+
+As for assuming that people are incorrect, I'd say there are three kind of developers:
+<ol>
+	<li>The young developer, who trusts everyone and accepts all the code as if it had been written by omniscient brain-gods.</li>
+	<li>The experienced developer, who has learned that other developers are incompetent and warily examines all code as if it had been written by an epileptic chimpanzee.</li>
+	<li>The wise developer, who has gone beyond mistrust into deep paranoia, and warily examines all code as if it had written by a sworn rival out to get him by placing devious traps in everything he commits.</li>
+</ol>
+Type 1 never notices bugs. Type 2 treats genuine corrections as bugs. Type 3 just spends too much time cross-checking everything to do any kind of work.
+
+No single type is perfect, and in every team there will be a type that will be better than the others. If your team is highly competent, be a type 1 developer. If your team is highly incompetent, be a type 2 developer. If your team is a sworn rival out to get you, be a type 3 ;-)

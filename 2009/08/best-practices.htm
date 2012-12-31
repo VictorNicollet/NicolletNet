@@ -1,0 +1,38 @@
+@title Best Practices
+@draft
+
+There are hundreds of things that can go wrong even in the simplest situations. I've already explained why <a href="http://www.nicollet.net/2009/07/empty-lists/" target="_blank">the real value of a domain expert</a> is precisely to identify in advance everything that could go wrong with a project, so that it can be avoided.
+
+Consider a comment form on a website. Nothing too fancy: the user fills in the "Name", "Website (optional)" and "Comment" areas on a form, clicks the "Submit" button, and the page reloads with the comment on the page. No login required, no AJAX, no special effects. There are many things that can go wrong with this setup, and <em>will </em>go wrong if left in the hands of an inexperienced developer. They can be inconvenient, annoying or outright dangerous.
+
+For example,
+<ul>
+	<li><strong>Double-posting. </strong>When the submit button is clicked, the form sends a request to the server with the comment to be added. The server responds with the new list of comments. The user clicks the "refresh" button while on that page, or navigates to another page and presses the "back" button. This cause the browser to send the request again, so the comment appears twice in the comment list. If using POST, this is slightly less dangerous : the user might get an annoying "Submit again?" window instead of double-posting.</li>
+	<li><strong>SQL Injection</strong>. It is highly probable that the comments will be stored in an SQL-accessible database. If the code constructing the SQL query is not properly written, an appropriately chosen value for the comment fields can result in nasty things happening to the database.</li>
+	<li><strong>Cross-Site Request Forgery</strong>. Suppose that posting the form creates a GET request like:
+<pre>http://yourdomain/postcomment?name={name}&amp;text={text}</pre>
+Knowing this, I can include an image tag in a forum, with a source attribute that matches the posting of a spam comment on your website. Every visitor of that forum page will send that request automatically (browsers auto-fetch images by default) and spam your comment list.</li>
+	<li><strong>Script Injection</strong>. The text entered by users must be displayed back to the visitors. If that text is not escaped before being output, an malicious attacker can submit a comment containing a dangerous script like:
+<pre>document.location = "<a href="http://www.youtube.com/watch?v=f2b1D5w82yU">http://www.youtube.com/watch?v=f2b1D5w82yU</a>";</pre>
+</li>
+	<li> <strong>Encoding Issues</strong>. What happens if the page is encoded in UTF-8 but I send you ISO-8859-1 text? Conversely, what happens if the page is encoded in ISO-8859-1 and I copy-paste my comment from Microsoft Word? For that matter, what is the encoding of the database? What is the encoding of your <em>string literals</em>?</li>
+	<li><strong>No Validation</strong>. User forgets to enter a name or a comment. No server-side check is made to determine whether the posted comment is valid and you get a mix of ugly empty comments and/or server error messages.</li>
+	<li><strong>Lossy Validation</strong>. You have to prevent people from posting with no name or no comment body. This means errors will be displayed on the page and, if the detection of such errors happens on the server after the initial post, it's easy to forget <em>displaying back the text the user entered in the first place</em>. "Sorry, you forgot to enter a name so I've thrown your ten-line comment away" [<a name="ft1-from" href="#ft1">#</a>]</li>
+	<li><strong>Does not work in Internet Explorer</strong>. There are many possible causes for it, such as <a href="http://www.thefutureoftheweb.com/blog/button-wont-submit-in-ie" target="_blank">respecting W3C specifications</a>.</li>
+	<li><strong>Legal Issues</strong>. If a malicious commenter uses your page as a soapbox for illegal activities, some countries will hold you responsible. For instance, in France, you can be condemned if anonymous posters engage in holocaust denial on your website.</li>
+</ul>
+That's nine, just thinking about the obvious problems that would happen if following the simplest approach to this, and I have seen many of them happen in three situations: novice programmers (such as interns), freelancers and low-wage programmers. The worst offender is by far the code written in naive PHP, which has the peculiarity of "the simplest thing" being almost always "the incorrect thing" as well.
+
+Still, if you can't let an intern write a simple user comments page, what are you going to let interns do?
+
+All of the above issues are easy to correct once you know about them. Always send data as POST, check the referrer, convert everything to UTF-8, validate your data, use prepared statements instead of inline SQL, respond with a 303 redirect to a GET page, include the posted data and any errors in the session and display them back in the form if present, take all your dynamic generation text through an an HTML escaping function, add "type=submit" to buttons, and add a quick moderation tool to hide unwanted messages quickly.
+
+Knowing about the issues and acting to prevent them is the hard part, which is why every project should have at least one experienced developer who knows about the errors. Or be using a framework that prevents such errors from happening in the first place (then again, if <a href="http://framework.zend.com/manual/en/zend.form.quickstart.html#zend.form.quickstart.puttingtogether" target="_blank">the documentation for Zend_Form</a> has an "user refreshes page, double-posts by mistake" error, who can we trust?)
+
+Although it has been taken over by marketing folks, there are still good thinks to be said about "best practices". The basic idea is to have a set of practices available for the less experienced developers to follow. Such practices are usually very simple to understand and follow (never display data in a POST controller, never change the model significantly in a GET controller), reasonably simple to verify automatically (assert that no output happened as part of a POST controller response) and have the immediate effect of preventing a classic mistake (no re-post on a page refresh).
+
+I'm a big proponent of enforcing good code through practices first, and then code-based contraptions if developers insist on ignoring them. The problem with going for the contraptions first is you have to explain how to use the contraptions anyway, and people will be tempted to move around the contraptions and still write bad code.
+
+If your code is reviewed by a compiler or an automatic code analysis tool, you can learn how to game the system. This results in code that does not trigger the alarms, while still being bad. Compare with having your code reviewed by a live person, who is experienced and anal-retentive about respecting practices and makes it horribly clear that if you don't follow them, you will be forced to follow them, on your free time before you can commit your code. Such reviews leave no room for wiggling, and as long as the judgment of the reviewer is fair, will actually motivate the team to respect the standards.
+
+<hr />[<a name="ft1" href="#ft1-from">#</a>] Viadeo actually did even worse things to me ("<em>Sorry, I forgot to tell you that you were only allowed 255 characters in this box, so I've deleted everything for you so you can try again. Oh, and don't try the back button of your browser, I have also deleted your input on the previous page.</em>") so I suspect it has been written by Java rookies with close oversight by non-technical management.

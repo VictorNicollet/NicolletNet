@@ -1,0 +1,34 @@
+@title Can references be null?
+@draft
+
+I often hear people insist that C++ references can be null.
+<blockquote>You can easily create a null reference like this:
+<pre>int *ptr = 0;
+int &amp;ref = *ptr;
+// ref is a null reference</pre>
+</blockquote>
+First, <strong>there is no such thing as a null reference in standard C++</strong>.
+
+Like all programming languages, C++ is purely a construction of the human mind, and the concepts of the language have been given arbitrary but meaningful names as part of the standardization process so that the users of the language could understand each other. These could be existing words such as <em>class</em>, <em>aligned</em>, <em>statement</em>, <em>pointer</em> or new ones like <em>rvalue</em> or <em>cv-qualified</em>.
+
+In particular, the C++ standard does define a <em>null pointer</em>, but it does not define a <em>null reference</em> because that concept is not part of the language.
+
+This means that instead of having a standard definition (like a null pointer), null references have a commonly accepted definition that follows a similar schema: a null reference is a reference <code>r</code> such that <code>&amp;r</code> is a null pointer. For the rest of this article, I will follow this definition.
+
+Second, <strong>a null reference cannot exist in a well-behaved program</strong>.
+
+Since the concept does not appear in the standard, it's pretty obvious that no place in the standard explicitly mentions an operation resulting in a null reference being constructed. In fact, the description of how references are constructed explains that references are constructed from other values, and by definition values cannot have a null pointer for an address.
+
+In particular, the typical construction of a null reference by dereferencing a null pointer is explicitly mentioned in the standard, and described as undefined behavior.
+
+In short, while many modern implementations will let you create a null reference, this will necessarily involve some form of undefined behavior along the way.
+
+I tend to evaluate programmers on a "would I hire this person?" basis. So, what does the "C++ references can be null" statement tell me about someone ?
+<ul>
+	<li>They might be confusing C++ references with C# or Java references, which <em>can</em> be null. Certainly a NO HIRE for a senior C++ programmer.</li>
+	<li>They might have misread their textbook and genuinely think references can be null in the same way as pointers (except, well, the lack of syntactic sugar for checking if a reference is null or creating a null reference strikes me as odd if that were the case). Again, NO HIRE for a senior C++ programmer.</li>
+	<li>They know it's not standard, but they do not care about writing standard programs. This is an immediate NO HIRE even for junior C++ programmer.</li>
+</ul>
+Then, there are those who know about it, and would not use it because they care about writing standard programs. The convention when discussing C++ is to assume that the program is well-behaved, so most people would parse "C++ references can be null" as "C++ references can be null in a well-behaved program", the latter being obviously incorrect. I don't really mind a small misunderstanding, the subject being as complex as it is, as long as it's corrected quickly.
+
+A person who does not is either someone without much experience discussing C++ with others, or a troll. A definite NO HIRE on a team.

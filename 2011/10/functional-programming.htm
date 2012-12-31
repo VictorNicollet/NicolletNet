@@ -1,0 +1,149 @@
+@title Functional Programming
+@draft
+
+<img class="aligncenter size-full wp-image-2562" title="hackers" src="http://www.nicollet.net/wp-content/uploads/2011/10/hackers.png" alt="" width="675" height="100" />
+
+Yesterday evening, I was present at <a href="http://parishackers.org/">Paris Hackers</a>, a meetup for <a href="http://news.ycombinator.com/" target="_blank">Hacker News</a> enthusiasts — and a «hacker» in this context is not someone who breaks into software systems, but someone who is passionate beyond words about how software works. But the definition is vague, and that vagueness is part of my surprise.
+
+We had a little chat on the topic of recent buzzwords — concepts that people were interested in, but not everyone understood. One of them was Functional Programming. The speaker asked who knew enough about it to explain to the others, and I naturally raised my hand: I was taught functional programming formally, I taught it myself, I implemented a functional programming language, and I am using functional programming professionally on a daily basis.
+
+My surprise was that I was the only one. I had sort of assumed that a majority of «hackers» would know what functional programming is. I will have to revise that definition.
+<h3>« Having Functions »</h3>
+Functional programming itself has a definition problem: depending on whom you ask, you can get two different definitions on functional programming. One definition is what I would call <em>pure</em> functional programming, and the other is better summarized as « having functions »
+
+Of course all languages have something they call «functions» but I strongly believe that there is a list of minimum requirements before you are allowed to say that.
+<ol>
+	<li>You should be able to define a FOOBAR anywhere. At global scope. Inside a class. Inside another function. Inside an expression. It can be an anonymous FOOBAR, or it can be given a name, depending on the situation.</li>
+	<li>You should be able to store a FOOBAR in a variable, pass it as an argument to a function, and return it from a function. If your language is strongly typed, it should have an easily described type as well.</li>
+</ol>
+Replace FOOBAR with «integer» or «string» and you will notice that without these requirements one can hardly say a language «supports integers» or «supports strings» — what if you could not store integers in variables, or write string literals as part of expressions?
+
+These requirements are called «having FOOBARs as first-class citizens» by the way. In C for instance, functions and arrays are second-class citizens, and integers are first-class citizens. In JavaScript, functions are a first-class citizen.
+
+Allowing functions helps make a language a lot more expressive. Let's think of a quick example: performing an HTTP request and displaying the result in a window. In pseudocode that looks shamefully like JavaScript code, it would look like this:
+<pre style="padding-left: 30px;"><code><span style="color: #000080;">function </span>display(url) {
+  <span style="color: #000080;">var </span>page = http(url);
+  <span style="color: #000080;">return new</span> Window(page);
+}</code></pre>
+This function has an obvious limitation: if it takes five seconds to load the data through HTTP, then the program will freeze for five seconds and only then display the window. A better solution would be to make the request asynchronous: a window in a «loading» state is returned immediately, and a background process takes care of the HTTP requests and fills the window with the contents once they have been received.
+
+A clean way of encapsulating this would be to let the <code>http</code> function handle the asynchronous behavior. The calling code would only need to provide a description of what needs to be done once the contents have been received. There are two ways of doing this in an object-oriented world.
+
+<strong>Object-oriented solution #1</strong>: inherit from an http request class.
+<pre style="padding-left: 30px;"><code><span style="color: #000080;">class </span>GetPageRequest <span style="color: #000080;">extends </span>HttpRequest {
+
+  <span style="color: #008000;">// We need to know what window to put the contents in</span>
+  <span style="color: #000080;">function </span>GetPage(window,url) {
+    <span style="color: #000080;">super</span>(url);
+    <span style="color: #000080;">this</span>.window = window;
+  } 
+
+  <span style="color: #008000;">// Override this function to react to the data being received</span>
+  <span style="color: #000080;">function </span>onSuccess(page) {
+    <span style="color: #000080;">this</span>.window.setContents(page);
+  }
+}
+
+<span style="color: #000080;">function </span>display(url) {
+  <span style="color: #000080;">var </span>window = <span style="color: #000080;">new </span>Window(loading);
+  <span style="color: #000080;">var </span>request = <span style="color: #000080;">new </span>GetPageRequest(window,url);
+  request.runAsynchronous();
+  <span style="color: #000080;">return </span>window;
+}</code></pre>
+<strong>Object-oriented solution #2</strong>: implement an «HTTP success event handler» interface.
+<pre style="padding-left: 30px;"><code><span style="color: #000080;">class </span>OnReceivePage <span style="color: #000080;">implements </span>IHttpRequestSuccessHandler {
+
+  <span style="color: #008000;">// What window do we need to fill ?</span>
+  <span style="color: #000080;">function </span>OnReceivePage(window) {
+    <span style="color: #000080;">this</span>.window = window;
+  }
+
+  <span style="color: #008000;">// Handle success (as previous example)</span>
+  <span style="color: #000080;">function </span>onSuccess(page) {
+    <span style="color: #000080;">this</span>.window.setContents(page);
+  }
+}
+
+<span style="color: #000080;">function </span>display(url) {
+  <span style="color: #000080;">var </span>window = <span style="color: #000080;">new </span>Window(loading);
+  http(url, <span style="color: #000080;">new </span>OnReceivePage(window));
+  <span style="color: #000080;">return </span>window;
+}</code></pre>
+Both solutions are quite long, because object-oriented solutions involve a certain amount of syntactic overhead. In both cases, the only code that is actually relevant to our work is the contents of the <code>onSuccess</code> function. What if the language allowed us to define that function directly, and passing it to the HTTP request without any syntactic fuss?
+
+<strong>Functional solution #1</strong>: local function definition.
+<pre><code><span style="color: #000080;">function </span>display(url) {
+  <span style="color: #000080;">var </span>window = <span style="color: #000080;">new </span>Window(loading);
+  <span style="color: #000080;">function </span>onSuccess(page) { window.setContents(page); }
+  http(url, onSuccess);
+  <span style="color: #000080;">return </span>window;
+}</code></pre>
+In fact, why bother with giving the function a name? Its contents are obvious enough, so it would be shorter and cleaner to just passing it to the HTTP request without any name.
+
+<strong>Functional solution #2</strong>: anonymous function definition, or «lambda»
+<pre><code><span style="color: #000080;">function </span>display(url) {
+  <span style="color: #000080;">var </span>window = <span style="color: #000080;">new </span>Window(loading);
+  http(url,<span style="color: #000080;">function</span>(page) { window.setContents(page); });
+  <span style="color: #000080;">return </span>window;
+}</code></pre>
+The latter example is syntactically correct JavaScript code, by the way. As you can see, the code is both shorter and more readable than the class-based version. In general, using inheritance or interface implementation to define a single method is always significantly more wasteful that using an anonymous function.
+
+There's a third requiremend that I left unvoiced. Look back at the previous examples again. Notice how the class-based examples have to store the window object explicitly, but the functional versions use the variable directly? This is known as «closures» : when defining a function inside a function, the defined function actually carries with it all the variables that were present when it was defined. <strong>Functional languages always have closures</strong>, because any non-trivial operation you might wish to place in an anonymous function will involve accessing data that was present near the definition.
+
+In summary: functional programming involves the ability to manipulate functions as you would manipulate any other data type (define anywhere, store, pass, return...) and allows writing more concise programs whenever you need to pass, store or return some behavior to be executed later.
+
+Examples of functional languages:
+<ul>
+	<li>JavaScript</li>
+	<li>Lisp (including Common Lisp, Scheme ...)</li>
+	<li>ML (including SML, OCaml, F# ...)</li>
+	<li>Haskell</li>
+	<li>Ruby</li>
+	<li>C#</li>
+</ul>
+Examples of near-functional languages:
+<ul>
+	<li>PHP only supports lambdas and closures since 5.3, and closure syntax is suboptimal.</li>
+	<li>Python has 99% support, the only issue is that only one-line lambdas are allowed.</li>
+	<li>XSLT 2.0 has no anonymous functions, but is otherwise functional. I kid you not.</li>
+</ul>
+Examples of non-functional languages:
+<ul>
+	<li>Java</li>
+	<li>C</li>
+	<li>C++</li>
+</ul>
+<h3>Pure Functional Programming</h3>
+This is the other definition of «Functional Programming» that you can hear, and the confusion is understandable: languages that match definition #2 have long been the only examples of definition #1 as well.
+
+The relevant concept is purity: can the impact of a function on the rest of the program be described only in terms of its <em>return type, </em>and can the impact of the rest of the program on the function be described only in terms of its <em>arguments</em>?
+
+Consider the signature of an interface method:
+<pre style="padding-left: 30px;"><code>public int frobnicate(Foo f);</code></pre>
+There are many ways in which that function can affect the rest of the program:
+<ul>
+	<li>It could call a global function to perform changes in the global state, such as altering a singleton, setting a global variable, printing data to the screen, sending data over a socket...</li>
+	<li>It could change member variables of the object it is called on.</li>
+	<li>It could call methods on its argument.</li>
+	<li><strong>It could return a new value that is then used by the calling code.</strong></li>
+</ul>
+There are also many ways in which the rest of the program could affect the behavior of the function:
+<ul>
+	<li>It could depend on global variables to decide what it should do.</li>
+	<li>It could read global state (user input, files, sockets...)</li>
+	<li><strong>It could access the data of the object it is called on.</strong></li>
+	<li><strong>It could access the data of its argument.</strong></li>
+</ul>
+The entries marked in bold can be deduced from the method signature: having a return type means you want to return something, being non-static means you wish to read the state of the object you are called on, having an argument means you want to read data from that argument. The other entries are possible, but not readily apparent in the signature.
+
+Pure functional programming is the principle of least surprise: sure, those entries that are not in bold are possible, but it would be surprising if they happened, so they are in fact not allowed. <strong>A pure function can only read data from its arguments and can only write data by returning it</strong>.
+
+Also, pure functions imply that data is immutable — if functions are not allowed to change anything, then they are not allowed to change data structures, so the data structures are by definition immutable.
+
+By the way, pure functional programming is all about what you cannot do — so you could in theory write functional programming in <em>any</em> language just by following coding conventions to that end. In practice, immutability is quite hard to respect if there is no syntax for making it easier — you spend a lot of time creating manual copies of objects in order to change a single field.
+
+Working with pure functions and immutable data structures involves both benefits and trade-offs when compared to non-pure programing. Think of it as a slider which goes between «0% Pure» and «100% Pure» and you pick one value for your entire program. Many algorithms and concepts get easier to understand, change and manipulate as the slider moves towards the 100% end, but there are some concepts that are intrinsically non-pure and actually get harder and harder to think about as your slider moves away from the 0% end. For instance, working with a persistent data store is an intrinsically mutable endeavor, and it's hard (but possible) to think about it in pure terms.
+
+I find that a slider value of 95% in a language that makes such a value possible is the optimal place to be — the 5% includes writing code that is truly non-pure (such as database manipulation, responding to HTTP requests...) as well as code that is non-pure on the inside but is actually pure from the outside (such as memoization and caching).
+
+<small>Article Image &copy; Tim Olson &mdash; <a href="http://www.flickr.com/photos/timmyo/4629980461/">Flickr</a></small>

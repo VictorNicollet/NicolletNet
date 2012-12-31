@@ -1,0 +1,18 @@
+@title You cannot hide
+@draft
+
+You shouldn't hide parts of your web pages by using <code>display:none</code>. At least, that's <a href="http://www.456bereastreet.com/archive/200905/hiding_with_css_problems_and_solutions/" target="_blank">what Roger Johansson says</a>:
+<blockquote>In most cases, using <code>display:none</code> to hide an element is a bad choice that reduces accessibility.</blockquote>
+I can't really agree with that. After all, the <code>display:none</code> CSS property exists for a reason, and that reason is precisely to let designers hide parts of the design that shouldn't be shown in a particular display mode. For instance, there is no point in displaying a navigation bar in a "print" stylesheet, so the navigation bar will get a <code>display:none</code> property and disappear.
+
+Aside from that, I also use <code>display:none</code> to hide things from users that don't have JavaScript enabled. I see no reason to display AJAX-specific constructs (such as 'loading' sprites or containers used to display the result of asynchronous operations) to these users—instead, non-AJAX constructs should be displayed by default and replaced by their AJAX counterparts though JavaScript executed upon page load.
+
+I believe the core of the disagreement here is what <em>hide</em> means. When I hide something, I want it to be completely <em>gone</em> for the user.
+<ul>
+	<li>The user should not be able to see the element.</li>
+	<li>The user should not be able to hear the text on the element.</li>
+	<li>The user should not be able to select the text of the element by using the browser's Find method.</li>
+</ul>
+It's already bad enough that some web browsers include hidden text when highlighting and copy-pasting text around it (try copy-pasting <span style="display:none">the hidden text in</span> this sentence), why go for an inferior solution that doesn't really hide the element?
+
+In the end, the real question is not <em>how </em>to hide elements—use <code>display:none</code> and that's it—but rather <em>when </em>to hide elements. And hiding an element that you want some users to see (or hear, or interact with in any other way) is just silly.

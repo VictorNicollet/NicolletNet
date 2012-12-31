@@ -1,0 +1,122 @@
+@title Interest(ing) rates
+@draft
+
+The most common way of investing money is putting it in a savings account. You lend a fixed amount of money to someone, and they pay interest over that money at a predetermined rate. Let's say you lend 1,000 € at an interest rate of 3%, paid every year: at the end of the year, you would receive 30 € as payment for your lending. You would spend these on fine wine or nice clothes and wait until the next year to get another 30 €, and so on.
+
+Savings accounts work on the basis of <strong>simple interest</strong> : what you get paid is a linear function of both time and money. Lend for half a year? 3% ÷ 2 = 1.5% Lend for two years? 3% ×2 = 6%
+
+An important thing to bear in mind is that interest is paid at fixed intervals, for instance at the beginning of January. You don't have to spend those 30 € : you can them on the savings account and earn simple interest on them after a year (3% of 30 € is 0.90 €).
+
+Using this strategy, lending for two years is done at a 6.09% rate instead of 6%, because you get interest on interest. This is known as <strong>compound interest</strong> : what you get paid is an exponential function of time. Lend for two years ? (+3%)² = +6.09% Lend for three years ? (+3%)³ = +9,27%
+
+The mathematical justification is that, with a 3% interest, your total amount of money is multiplied by 1.03 every year:
+<p style="padding-left: 30px;">1,000 + 30 = 1,000 + 3% of 1,000 = 1,000 + 0.03 × 1,000 = 1.03 × 1,000</p>
+
+So, after two years, the amount is multiplied by 1.03 two times, and so on.
+<p style="padding-left: 30px;">1,060.90 = 1.03 × 1,030 = 1.03 × 1.03 × 1,000</p>
+
+In short, <strong>percentages have a multiplicative effect</strong>.
+
+And now, pop quiz : I've gained +5% weight over the winter holidays. What percentage of my weight do I have to lose to be back to normal ?
+
+If you answered -5%, you missed the point. Multiplicative effect means the total change of weight would be +5% × -5% = 1.05 × 0.95 = 0.9975 = <strong>-0.25%</strong>. I would be losing too much weight !
+
+The correct answer was 1 ÷ 1.05 = <strong>-4.76%</strong>.
+
+Similarly, if the number of graduates of a given school increases by +10% on year one and +25% on year two, the total increase is +37.5% and not +35%.
+<h3>Duality</h3>
+This is where mathematicians (and computer scientists) use an interesting little concept called duality. Percentages are numbers that are easy to understand, but hard to combine. We can transform them into something that is a little bit harder to understand, but easier to combine.
+
+The traditional way to transform multiplication into addition is to exponentiate, due to an interesting property of the exponential function:
+<p style="padding-left: 30px;">exp(a) ×exp(b) = exp(a + b)</p>
+
+So, I wish to find a percentage operator (§) such that:
+<ul>
+	<li>we conserve some values, 0§ = 0% and 100§ = 100%</li>
+	<li>applying A§, then B§, is equivalent to applying (A+B)§</li>
+</ul>
+Then this uniquely defines an operator which is called exponential percentage:
+<p style="padding-left: 30px;">A§ = B%  ?  A = 100 × log(1 + B ÷ 100) ÷ log(2)</p>
+
+Some common values:
+<table border="0">
+<tbody>
+<tr>
+<td>0% = 0§</td>
+<td>+100% = +100§</td>
+<td>-100% = -?§</td>
+<td>200% = 158.4§</td>
+</tr>
+<tr>
+<td>+1% = +1.4§</td>
+<td>+99% = +99.2§</td>
+<td>-1% = -1.4§</td>
+<td>-99% = -664§</td>
+</tr>
+<tr>
+<td>+10% = +13.7§</td>
+<td>+90% = +92.6§</td>
+<td>-10% = -15.2§</td>
+<td>-90% = -332§</td>
+</tr>
+<tr>
+<td>+25% = +32.2§</td>
+<td>+75% = +80.7§</td>
+<td>+50% = +58.4§</td>
+<td>-50% = -100§</td>
+</tr>
+</tbody></table>
+<a href="http://www.nicollet.net/wp-content/uploads/2010/01/percent.png"><img class="aligncenter size-full wp-image-1246" title="percent" src="http://www.nicollet.net/wp-content/uploads/2010/01/percent.png" alt="percent" width="393" height="287" /></a>
+
+So, if I gained +5§ weight over the holidays, I can lose -5§ weight and be back to where I started, and if a number increases by 10§, then by 25§, it increases by 35§ overall.
+
+And of course, a yearly interest rate of 4.2§ = 3% compounded over ten years is 42§ = 34%.
+<h3>No Free Lunch</h3>
+Normal percentage rules make compounding hard, but it's reasonably easy to estimate a percentage based on a fraction. Exponential percentage rules make compounding easy, but evaluating a percentage based on real figures is harder.
+
+In practice, compounding happens less often than evaluating, so humans use normal percentage rules. And computers are good at compounding through multiplication, so they don't need exponentiation.
+
+Duality does have some other uses, though. For instance, there's the duality between two representations of complex numbers:
+<p style="padding-left: 30px;">a + <strong>i</strong>b = r exp <strong>i</strong>?</p>
+
+The cartesian (a,b) notation makes it easier to add numbers, but multiplication is harder:
+<p style="padding-left: 30px;">a + <strong>i</strong>b + c + <strong>i</strong>d = (a+c) + <strong>i</strong>(b+d)</p>
+
+The polar (r,?) notation makes it easier to multiply numbers, but addition is harder:
+<p style="padding-left: 30px;">r exp <strong>i</strong>? × s exp <strong>i</strong>? = (r × s) exp <strong>i</strong>(?+?)</p>
+
+For mathematically-oriented computer scientists, duality is a gold mine, because it lets one reduce a complex problem in one area to a simpler problem in another area (whether simpler means faster, as in the case of <a href="http://en.wikipedia.org/wiki/Fast_Fourier_transform" target="_blank">FFT</a>, or easier to think about)..
+<h3>The Law of DSLs</h3>
+There's one common duality that is fundamental in the computer world: the correspondence between data and code. In a fit of narcissism, let me sit wisely atop a tall mountain to announce <strong>Nicollet's Law of Domain Specific Languages</strong>:
+<blockquote>Any sufficiently complex data processing algorithm is as an interpreter for a small domain-specific language, and the data being processed is a program executed by the interpreter.</blockquote>
+In some cases, this law only complicates things further. In many cases, however, the different angle it provides leads to many advantages, one of them being to transform a non-programming concept (such as an accounting file format) into a concept programmers are familiar with (a programming language).
+
+A minimalist language design culture is enough to grasp several interesting concepts about executing code, which can be quite handy when processing data:
+<h4>1. Compile to Bytecode</h4>
+Interpreters don't execute a string of characters. They tokenize that string, turn the tokens into an abstract syntax tree representing operations, functions and variables, then turn that syntax tree into a sequence of small, executable operations. That sequence is then fed into a virtual machine (or further compiled to machine code) to perform the actual operations.
+
+If the input data for your algorithm is very complex, you can begin on the other side: what will the algorithm <strong>do</strong> with the data? Will it be inserting the data into a database? Constructing a data object from bits and pieces? What you are looking for is a set of atomic operations you can apply to generate the result. Implement these operations, then start working on a translation algorithm to turn the input data into such operations.
+
+There are several common and friendly representations for such atomic bytecode:
+
+<strong>Instruction lists</strong> are executed in order. This is your classic assembler listing, without the jumps. A typical "parse file and insert into database" algorithm would generate such an instruction list, and every instruction would be an INSERT, DELETE or UPDATE. Works best when you can read the data and generate the instructions in the right order: if you cannot get the list in the right order from the start, consider another approach.
+
+<strong>Dependency graphs</strong> work like makefiles: you have several instruction lists floating around with relationships between them, indicating that one list has to be executed before another. A topological sort of the graph results in a single classic instruction list you can execute. A multi-file import, where some files contain data needed in other files, can be the way to go.
+
+<strong>Nested scopes</strong> are the typical extension to instruction lists: every item in a list can be either an instruction, or another list, possibly tagged with some data. This could be a conditional (if this condition is true, execute this list), a loop (though it is best to avoid these) or a context (a "polygon" scope contains "insert vertex" operations that apply to that polygon). You can even allow variables in a let-in fashion (of which the polygon example above is just a special case) ! Note that nested scopes can be easily represented as XML.
+<h4>2. Static Analysis</h4>
+A side-effect of compiling to bytecode is that you get to process the entire file before you actually perform the intended operations. This makes a rollback easier if you notice that there's an error on the last line of the file: if you make sure that no atomic operation in your target language can fail due to bad input (such as incorrect data values), then you can check your input data for correctness without doing anything to your program state.
+
+Even better, if your compilation process is cheap (linearly traverse a file for parsing) and you have heuristics for predicting how much time and resources your individual instructions require, then you can try to accurately predict the needs of the entire process.
+
+Static analysis also means you can optimize. If, for instance, you're inserting data into a database and need to resolve names or keys frequently (such as "add this item to list #732"), you can easily construct a table of needed keys (that you can get in one query when the processing starts) using the dependency graph approach.You can also optimize resource allocation by using common register allocation techniques: sort your dependency graph to keep as few resources in memory as possible at any given time.
+<h4>3. Caching</h4>
+Try to perform most of the processing offline.
+
+For instance, if you frequently "apply" one file to another, such as a nearly-constant "list of categories" file used to resolve the "category" key in a daily object import, you can benefit from compiling the nearly-constant file to an easily loaded, easily applied format.
+
+You see a cached dictionary that maps keys to categories? I see a DSL that allows dictionary literals as part of the language, and a source file that contains a literal mapping keys to categories, with an interpreter that can apply constant propagation to dictionaries.
+
+Another benefit is when applying changes to mission-critical software. Inserting lots of data into a web database can create a heavy load on the server and make the site unavailable to visitors. It might therefore be preferrable to pre-compile the imported data into requests through a process that keeps a light load on the server, then run the requests.
+
+Besides, with proper nested scoping, you can slice an import into several transactions. This keeps the lock count low, allows spreading the transactions over time to reduce the load, and lets you resume the import process if, for some reason, it gets interrupted.

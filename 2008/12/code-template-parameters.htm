@@ -1,0 +1,22 @@
+@title Code Template Parameters
+@draft
+
+One cannot provide a function pointer as a template argument. This means that cases in which polymorphism is desirable for compile-time reasons (such as using one set of operations when testing and another set of operations when running the code), or where the behavior of code depends on a compile-time element and should be able to evolve in an <a href="http://en.wikipedia.org/wiki/Open/closed_principle" target="_blank">open-closed</a> fashion, cannot be handled by passing the correct function pointer.
+
+Of course, a common trick in template metaprogramming is to replace entities which cannot be used as parameters (such as non-integer values) with types that have the entities as static members.
+<blockquote>
+<pre style="background: #ffffff none repeat scroll 0% 50%; color: #000000;"><span style="color: #000084; font-weight: bold;">template</span> &lt;<span style="color: #000084; font-weight: bold;">typename</span> T&gt; 
+<span style="color: #000084; font-weight: bold;">void</span> Frobnicate(<span style="color: #000084; font-weight: bold;">int</span> value) { T::Process(value); } 
+
+<span style="color: #000084; font-weight: bold;">struct</span> Print 
+{ <span style="color: #000084; font-weight: bold;">static</span> <span style="color: #000084; font-weight: bold;">void</span> Process(<span style="color: #000084; font-weight: bold;">int</span> value) { std::<span style="color: #000084; font-weight: bold;">cout</span> &lt;&lt; value; } }; 
+
+<span style="color: #000084; font-weight: bold;">struct</span> Ignore 
+{ <span style="color: #000084; font-weight: bold;">static</span> <span style="color: #000084; font-weight: bold;">void</span> Process(<span style="color: #000084; font-weight: bold;">int</span>) {} }; 
+
+Frobnicate&lt;Print&gt;(10); 
+Frobnicate&lt;Ignore&gt;(10);</pre>
+</blockquote>
+As long as the structure that contains the function has external linkage (that is, it's not defined inside a function) this will work and inject the correct kind of behavior into the function template at compile-time, possibly also performing any required inlining.
+
+A typical application of this approach is, as mentioned earlier, unit testing: when working with rendering-related or input-related objects, it's useful to replace their primitives with mocks that can test if the calls performed were those expected. This replacement can be done with runtime polymorphism (using an interface for the primitives, with a real class and a mock class boh implementing it) but leads to unnecessary performance loss (the overhead of runtime polymorphism that is not really required outside of the unit testing scenario). Using compile-time polymorphism based on templates, unit testing works, but the runtime code is still as optimised as if no unit testing ever happened.

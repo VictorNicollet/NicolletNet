@@ -1,0 +1,25 @@
+@title Diagnosis
+@draft
+
+Ol' Granma feels a bit tired. The <a href="http://en.wikipedia.org/wiki/House_(TV_series)" target="_blank">doctor</a> comes around, blinks twice, and tells you she has a rare case of reverse acquired acute osteopraxia.  Some days, I wish I could do the same with software.
+
+Of course, there are some who say that Dijkstra managed to do so: he would peek at a student's screen, sift through the code in a few seconds, and assert that there would be a bug if the program was used in a certain way. I certainly don't doubt this: it's often easy to see the errors in the code written by others, especially if they just finished writing it and didn't have time to check it or test it.
+
+But there are other errors that can be quite anoying. Consider, for instance, an error message from our dearest friend <a href="http://www.alfresco.com/" target="_blank">Alfresco</a> the content management system:
+<p style="padding-left: 30px;"><span style="color: #ff0000;">org.alfresco.service.cmr.repository.TemplateException: Error during processing of the template 'Error on line 42, column 91 in status.ftl
+Expecting a string, date or number here, Expression exception.message is instead a freemarker.ext.beans.SimpleMethodModel'. Please contact your system administrator.
+caused by:
+freemarker.core.NonStringException: Error on line 42, column 91 in status.ftl
+Expecting a string, date or number here, Expression exception.message is instead a freemarker.ext.beans.SimpleMethodModel</span>
+
+It appeared as I executed a <em>Web Script</em>—a piece of Javascript-and-<a href="http://freemarker.sourceforge.net/" target="_blank">Freemarker</a> that runs inside the Java program itself—in my web browser. Despite being quite long and detailed, this error message does not contain interesting information. It actually makes three of the most fundamental mistakes in error reporting:
+<ul>
+	<li><strong>Bad technology level</strong>. This is a Java error (in fact, it's precisely a Java exception report and the full call stack was available for viewing on the page). Yet, the error comes from a Freemarker template, not from Java. But I'm a homo sapiens, so I can gather that the actual error is actually the <span style="color: #ff0000;">"Error on line 42, column 91 in status.ftl. Expecting a string, date or number here, Expression exception.message is instead a freemarker.ext.beans.SimpleMethodModel" </span>part.</li>
+</ul>
+<ul>
+	<li><strong>Vague references to files</strong>. Alfresco has the nasty habit of storing files <em>everywhere</em>. That <em>status.ftl</em> file could be within the repository itself, or it could be part of the alfresco WAR, or it could have been placed in any of the billion tiny locations in a typical Tomcat application server  your Alfresco will seep into unhindered if badly administrated. What I do know is that I've never written a <em>status.ftl</em> file myself, ever, so that certainly isn't my fault! Now, I understand that the exception came from Freemarker, and Freemarker was told that the file's name was <em>status.ftl</em>, but if you're executing file <em>foo/bar/qux/status.ftl</em> and the processing fails, add the complete path to the exception or diagnosis message!</li>
+</ul>
+<ul>
+	<li><strong>No references to documentation</strong>. There's no link to an online documentation, manual page, book, wiki, relevant log on my server or even an error number that I could google. Sure, the <em>contact your administrator</em> line is fine, but what happens if you are the administrator and how do you start looking for solutions?</li>
+</ul>
+By the way, google-fu yields <a href="http://wiki.alfresco.com/wiki/Web_Scripts#Response_Status" target="_blank">this link</a>, which accurately solves the problem. This would be a hint that a badly worded error message isn't always the end of the world (but this doesn't make it better).</p>

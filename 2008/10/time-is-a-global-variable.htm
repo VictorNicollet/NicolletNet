@@ -1,0 +1,163 @@
+@title Time is a Global Variable
+@draft
+
+<h2>Software Interfaces</h2>
+The interface of a tool, program or piece of code is a complete description of how it may be used without tinkering with its implementation. They would be the complete, ideal and perfect user manual and documentation if such a thing existed.
+
+For instance, consider the following function:
+<blockquote>
+<pre>int add_one(int i) { return i + 1; }</pre>
+</blockquote>
+This function is passed an integer, and returns that integer plus one.
+
+Some languages provide an explicit means of describing interfaces. Java, PHP and C# provide <em>interfaces</em>, which describe the list of functions that objects implementing that interface will have and how they should behave. For instance, in Java:
+<blockquote>
+<pre style="background: #ffffff none repeat scroll 0% 50%; color: #000000;"><span style="color: #808080;">// Represents a finite or infinite sequence of objects. </span>
+<span style="color: #808080;">// Initial state: no current object.
+// Iteration state: there is a current object.
+// Final state: there are no more objects.
+</span><span style="color: #000084; font-weight: bold;">interface</span> IEnumerator
+{
+  <span style="color: #808080;">// - If in initial state, moves to iteration state with
+  // the first object as current object, or directly to
+  // final state if the sequence is empty.
+  // - If in iteration state, if an object exists after
+  // the current object, then that object becomes
+  // current, otherwise moves to final state.
+  // - If in final state, remain in final state.
+  // Returns : true if ends in iteration state, false if in final state.
+ </span> <span style="color: #000084; font-weight: bold;">boolean</span> Next(); 
+
+  <span style="color: #808080;">// - If in iteration state, returns the current object.
+  // - In any other state, throw NoValueException
+</span>  <span style="color: #000084; font-weight: bold;">Object</span> Value();
+}</pre>
+</blockquote>
+Alternative representation, but much shorter:
+<blockquote>
+<pre style="background: #ffffff none repeat scroll 0% 50%; color: #000000;"><span style="color: #808080;">// Represents a numbered sequence of N elements, </span>
+<span style="color: #808080;">// with numbers from 0 to N-1.</span>
+<span style="color: #000084; font-weight: bold;">interface</span> ISequence
+{
+  <span style="color: #808080;">// Returns the number N of elements.</span>
+  <span style="color: #000084; font-weight: bold;">int</span> size(); 
+
+  <span style="color: #808080;">// Returns the element of the sequence with</span><span style="color: #808080;"> index i.
+  // Throws InvalidIndexException</span> <span style="color: #808080;">if i is not between 0 and N-1.</span>
+  <span style="color: #000084; font-weight: bold;">Object</span> at(<span style="color: #000084; font-weight: bold;">int</span> i);
+}</pre>
+</blockquote>
+An interface exists whether or not it's documented, but it is of course better for the users if the documentation exists.
+<h2>Keep interfaces simple</h2>
+Writing complete documentations is not simple in the average case, because one has to take into account all the possible ways in which the documented object may be used, and it's easy to forget a corner case which someone, someday, will have to tackle.
+
+Making interfaces as simple as possible helps both describing those interfaces (since there is less to write and think about) and using them (because there's less to read and less to understand). Common techniques for describing interfaces include:
+<ul>
+	<li>Avoid state. State-less behavior is the simplest to model, because it involves only input, output and the relationship between them. This is one of the major selling points of referential transparency:</li>
+</ul>
+<blockquote>
+<pre style="background: #ffffff none repeat scroll 0% 50%; color: #000000;"><span style="color: #808080;">(** Returns the sum of the elements, 0 if empty. *)</span>
+<span style="color: #000084; font-weight: bold;">val</span> sum : <span style="color: #000084; font-weight: bold;">int</span> <span style="color: #000084; font-weight: bold;">list</span> -&gt; <span style="color: #000084; font-weight: bold;">int</span></pre>
+</blockquote>
+<ul>
+	<li>Avoid mutable state. Describing state involves both describing how the various elements of that state are related with each other, and how the state changes in response to certain actions. If the state does not change, then there is that much less information to explain and understand.</li>
+</ul>
+<ul>
+	<li>Avoid multiple states. Not only does every additional state require a complete description of its inherent properties, it also requires handling the interaction between that state and every function and method which operates. If your code involves special cases that need to be handled separately, try to design the code so that those special cases are just examples of the more general case. In the above example, <span style="font-family: courier new,courier; color: #999999;">ISequence</span> (one state) is much simpler to describe that <span style="font-family: courier new,courier; color: #999999;">IEnumerator</span> (three states).</li>
+</ul>
+<ul>
+	<li>Describe multiple states separately and distinctly. Always make it clear and explicit what states an object may be in, and list the behavior by explicitly naming the states in the documentation of each method and function. Give each state a short, simple and understandable name, using the classic buzzwords <em>initial</em> (the state that the object is in when it's first created), <em>final </em>(a state from which no other state may be reached), <em>locked</em> (a state which prevents additional operations, is usually the consequence of a lock action and may be ended with an unlock action) and <em>error</em> (a state which is the result of an invalid operation and requires correction to return to a normal state).</li>
+</ul>
+<ul>
+	<li>Separate state into almost independent sub-states. While fully independent sub-states usually illustrate a design issue (each independent sub-state should be moved to its own function or class) it often makes things easier to mention that the state is comprised of substates that are mostly independent, except for a few cases. For instance, the capacity of an std::vector is mostly independent of its other operations (the only dependence is that the capacity will always be greater than the size, and will thus be adjusted accordingly) and so it does not require mentioning on every single operation (and especially not those which do not increase the size).</li>
+</ul>
+<ul>
+	<li>Use idioms. In C++, labeling an object as an iterator, or creating functions <span style="font-family: courier new,courier; color: #999999;">begin()</span> and <span style="font-family: courier new,courier; color: #999999;">end()</span> which return an iterator with a specific <span style="font-family: courier new,courier; color: #999999;">value_type</span>, immediately brings up a lot of information about the fact that these functions iterate through a sequence with a known mechanic. This eliminates the need for explaining the mechanic again from scratch.</li>
+</ul>
+<blockquote>
+<pre style="background: #ffffff none repeat scroll 0% 50%; color: #000000;"><span style="color: #000084; font-weight: bold;">class</span> random_sequence
+{
+<span style="color: #000084; font-weight: bold;">public</span>:
+  <span style="color: #808080;">// Create a sequence of 'size' random uniform integers in</span>
+  <span style="color: #808080;">// the interval [valmin,valmax), with valmin &lt; valmax.</span>
+  random_sequence(<span style="color: #000084; font-weight: bold;">unsigned</span> size, <span style="color: #000084; font-weight: bold;">int</span> valmin, <span style="color: #000084; font-weight: bold;">int</span> valmax);
+  <span style="color: #000084; font-weight: bold;">unsigned</span> size() <span style="color: #000084; font-weight: bold;">const</span>;
+  <span style="color: #000084; font-weight: bold;">typedef</span> detail::randseq_iterator <span style="color: #000084; font-weight: bold;">iterator</span>;
+  <span style="color: #000084; font-weight: bold;">iterator</span> begin() <span style="color: #000084; font-weight: bold;">const</span>;
+  <span style="color: #000084; font-weight: bold;">iterator</span> end() <span style="color: #000084; font-weight: bold;">const</span>;
+};</pre>
+</blockquote>
+<ul>
+	<li>Use domain vocabulary. There are some chances that, while unfamiliar with your code, the reader is familiar with the domain model. For instance, a hotel room is a concept known to the average programmer, and it can be easily understood that a room has a number, and can be either available or unavailable. This makes the following interface self-explanatory:</li>
+</ul>
+<blockquote>
+<pre style="background: #ffffff none repeat scroll 0% 50%; color: #000000;"><span style="color: #000084; font-weight: bold;">interface</span> IHotelRoom
+{
+  <span style="color: #000084; font-weight: bold;">int</span> room_number();
+  <span style="color: #000084; font-weight: bold;">boolean</span> available();
+}</pre>
+</blockquote>
+<ul>
+	<li>Reuse patterns. If your code needs to do things in an unusual way, then find a common way of doing things and reuse that approach as much as possible (without, of course, shoehorning a round peg in a square hole). This reduces the number of different patterns that the user has to understand when using your code.</li>
+</ul>
+<h2>Unreliable Behavior</h2>
+A very interesting explanation of this law was done by Joel Spolsky in <a href="http://www.joelonsoftware.com/articles/LeakyAbstractions.html">this article</a>. The gist of it is that you can't win the Good Interface battle, and that no matter how hard you fight to turn every one of your abstractions into a pure core of cleanly abstracted and elegant functionality that could be expressed in a single sentence, the implementation details that ought to be hidden will imperceptibly ooze out from the pores of your abstraction and bite the users of that interface when they least expect it.
+
+Let's look at our first example again:
+<blockquote>
+<pre>int add_one(int i) { return i + 1; }</pre>
+</blockquote>
+This function is supposed to add one to its argument. What happens when one calls <span style="font-family: courier new,courier; color: #999999;">add_one(MAX_INT)</span>? Certainly not returning an integer that represents the expected value, but more likely something along the lines of <span style="font-family: courier new,courier; color: #999999;">MIN_INT</span>.The interface of the function relied on the abstraction that <span style="font-family: courier new,courier; color: #999999;">int </span>represents all integers, but the fact that <span style="font-family: courier new,courier; color: #999999;">int </span>represents only a subset of all integers will ooze out as predicted when one hits the limit of the abstraction.
+
+While such leaks cannot be eliminated, they should be reduced as much as possible. This is done either by identifying and mentioning them in the interface (an arduous process, but one that can provide a nice pay-off when done correctly), or by altering the interface so that it flows with the underlying abstraction rather than trying to wrap around its corners and hard edges. Stone sculptors already know this quite well: follow the grain of the stone rather than fight against it.
+
+A classic example is that of treating remote access as local access. The main differences between local access and remote access are that local access is fast and reliable, while remote access is slow and unreliable. The <em>slow </em>and <em>unreliable </em>parts cannot be hidden away by the interface of your code as long as that remote access is necessary to the functionality. Your program should be able to anticipate when the user unplugs the cable or replaces it with an <a href="http://en.wikipedia.org/wiki/IP_over_Avian_Carriers">IPoAC</a> scheme, and intelligently react to these situations—whether that happens by aborting with a flashy error message, or by falling back to an offline or slow-connection mode with a little informational tag about what happened.
+
+The gist of the bittorrent system, on the user side, is that you have a file which floats around on the web, shared among many people from which you can get it simultaneously. You can even provide it to others before the download is complete, because you already have some bits of it. All you need is, of course, to be connected to the internet.
+
+On the technical side of things, the bittorrent protocol involves a large deal of communication that has some interaction issues with routers: though a person may have a perfectly working internet connection (allowing them to send and receive mail, visit web sites and chat on instant messaging programs), their computer may not be accessible from the internet. This is because a router (which acts as a bridge between a local network and the internet in this case) will connect a port on the local network side to a port on the internet side, at the request of a computer on the local network side. The result being that servers that you contact can answer back, but servers that want to contact you will be stopped by the router. And so, if two people who want to share a torrent are both behind routers, neither will be able to connect to the other to send the file. Too bad. <em>Yes, a router can be configured to work around this issue, but that is not the point</em>.
+
+The end result being that someone behind a router will not be able to receive files from anyone else behind a router, greatly reducing the download speed. Yet, this is not something as obvious as getting a download rate of zero because no internet connection is found.
+
+Some bittorrent clients silently ignore the absence of incoming connections, their interface is therefore puzzling to users because the consequence is present but the cause is not diagnosed. Other clients, such as <a href="http://www.utorrent.com/">µTorrent</a>, clearly indicate the issue and propose solutions.
+
+This brings up a point which goes largely unnoticed in language design: a function may either return a value, or give up and tell its caller than the value could not be computed by throwing. There's no way for a function to tell its caller a simple "this may take a while, you may want to try something else, or notify the user" without interrupting the computation. The end result is that the people who write software have to work around this limitation with asynchronous worker threads and notifications. More about this in a later article.
+<h2>Global dependencies</h2>
+Time is a global variable: every point in your program will be executed at a given point in time. Of course, it's not necessarily easy to evaluate what that time is (even the best time functions can only be so accurate) nor can one always make assumptions about whether two distinct operation will be evaluated at distinct times or even in a certain sequence, simply because of multithreading. Similarly, the network connection of your computer is a global variable: unless you're working at a very low level, your code will not be manipulating the wireless antenna or RJ-45 wire, and instead the network communication primitives that your code uses will be bound by the operating system drivers to the appropriate hardware without your code ever noticing it. In general, everything that is not part of your code is a global variable to your program. It's part of that big ball of global state that's called the real world.
+
+And, just like any other kind of global state, these external factors wreak havoc on the interface of every bit of code that ever uses them.
+
+The problem with any kind of global state is that the interaction of a function or object with a piece global state cannot be hidden. Consider the typical example of:
+<blockquote>
+<pre style="background: #ffffff none repeat scroll 0% 50%; color: #000000;"><span style="color: #000084; font-weight: bold;">int </span>i = 0;
+<span style="color: #000084; font-weight: bold;">int</span> next() { <span style="color: #000084; font-weight: bold;">return</span> i++; }</pre>
+</blockquote>
+This function references global state. This means that to explain the interface of the function, one must also mention the existence and nature of the global variable to which it is associated. In this example, the interface is reasonably simple: increment the value of the global variable, and return the old value.
+
+When you have a global variable (or any piece of global state, such as a monostate, singleton, external resource, and so on), ask yourself these two simple questions for every function in your codebase:
+<ol>
+	<li>Does this piece of code alter, under any circumstances, that global state?</li>
+	<li>Does the code behave in the same way regardless of the value of that global state?</li>
+</ol>
+If you answered 'yes' to either question, then that piece of code depends on the global state. Make sure that you mention that in the documentation, with the complete details of how the global state affects the behavior of your code. Simple continuous read-only global behavior (returns the size of the global array, for instance) is good, while complex non-continuous read-write global behavior tends to eat up so much documentation space that you might want to consider refactoring.
+
+Of course, if you answered "I don't know" to either question, then you have a much tougher problem on your hands: you have absolutely no idea how manipulating that global variable (adding code that changes it, or removing code that changes it) could break that code, nor do you have any idea about how removing or changing that code could break anything else in the program that relies on that global variable. That code is a <a href="http://c2.com/cgi/wiki?LavaFlow">Lava Flow</a> subject to potential <a href="http://en.wikipedia.org/wiki/Action_at_a_distance_%28computer_science%29">Action at a Distance</a>.
+
+But back to the actual situation where you know every piece global state that a given piece of the program must access. Of course, writing down a list of dependencies for every function and every global variable is going to end up with a quadratic amount of documentation and the corresponding difficulties for keeping up to date. Never mind the difficulty of using the compiler to statically check that it's correct!
+<h2>Procedural Style Singleton-Jutsu</h2>
+The main problem with global state today is that vanilla object-oriented programming is downright <em>lousy </em>as far as handling global state goes. For reuse purposes, your average object will expect to receive the context as an argument instead of accessing it globally (otherwise, to test or reuse the object, you'd have to replicate the entire context without changing a piece). While one can coax the object-oriented tools that are classes and objects into representing and handling global state appropriately, this usually eliminates most of the benefits of object-oriented programming (being able to replace an object with another, and to customize the behavior of an object through its parameters) while keeping the expressiveness drawback of having to uphold the class/instance duality. Yes, Mr. Singleton, I'm looking at you.
+
+Procedural-style programming, on the other hand, handles global state well. This is to be expected, after all global state was what procedural programmers relied on for their everyday code, so it should be no surprise that after a while patterns tend to emerge to handle it without too much pain. In a typical large-scale procedural application, state is encapsulated in modules and subsystems. These would pretty much amount to the singleton pattern, except that they don't have to define a class/instance separation like singletons do, and as a consequence they are shorter.
+
+So, why do subsystems and modules handle global state well? You have 1000 procedures in your code, and 100 pieces of global state: handling all these pieces leads to 1000×100 = 100000 possible references between procedures and code. There is no way to handle this through documentation without a way to eliminate most references early on in an obvious way. This is what procedural style achieves well.
+<ul>
+	<li>They encapsulate global state with a low granularity. Encapsulation in general is a no-brainer, but the catch is that these things have a low granularity. Instead of blowing up a functionality block to smithereens resulting in large hierarchies of classes and helper classes and auxiliary classes, systems tend to grow much fatter than average objects, and every function is cleanly tied to a system. This makes it much easier to describe one part of the dependency: <em>a function always depends on the global state of its system</em>. This is actually the entire point, after all. So, now our 100 pieces of global state are grouped together in exactly 10 modules with 100 procedures each. There are still 1000 procedures floating around, but now you've divided the maximum number of references by 10, down to 10000.</li>
+</ul>
+<ul>
+	<li>They encapsulate global state references with low granularity. Now this is the real winner. Since procedures are grouped in modules as well, the procedural programmer can decide that <em>all procedures in a module have the same global dependencies</em> (usually by asserting that the state of the module, which is the only thing that procedures care about, has a dependency on the state of another module). So, now you have only 10 modules, and you only have to care about the 45 possible dependencies between these. This can be done with a piece of paper or, even better, by generating a dependency graph with your compiler or build tools.</li>
+</ul>
+Object-Oriented Programming does not share these goals. Where procedural programming has evolved to help humans manage relationships between wads of pieces of global state, object-oriented programming set out from the very first moment to help humans manage the factoring of shared functionality and the reuse of existing code. Again, no surprise here : OO was never meant to rock your panties at global-state-handling.
+
+In order to improve reusability, object-oriented designs tend to apply the <a href="http://en.wikipedia.org/wiki/Single_responsibility_principle">Single Responsibility Principle</a> by creating one object per unit of responsibility (so that one can always use one functionality without having to bring several others along). This means that your average object-oriented program would have an order of magnitude more classes than the equivalent procedural program would have modules. This decreased granularity, linked to the fact that global state exists at the class level instead of the module level, makes it much harder to track which class is using the global state provided by which class (not to mention that quite often the tools just aren't able to trace a dependency graph for global state). Worse, since all the classes were designed to be used in isolation, every one of them must have a quick documentation effort about the relationship between that class and all the global state. So did modules, but modules were fewer.
+
+The consequence is that if a program has to contain a lot of global state, resorting to procedural programming will reduce the reusability of code, but will increase productivity on the long term as the global state does not seep through a low-granularity design as much as it does through a high-granularity design. Conversely, avoiding global state as much as possible improves the productivity of object-oriented development, because it allows better reuse of common functionality.

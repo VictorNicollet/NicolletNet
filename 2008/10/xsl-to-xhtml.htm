@@ -1,0 +1,76 @@
+@title XSL to XHTML
+@draft
+
+Last month, I have discussed using XSLT to generate XHTML from a fixed XML representation of a page, in <a href="http://nicollet.net/blog/php/18-xslt-template">this article</a>. However, due to the fickle nature of computers, several practical arise when applying a perfectly good theory.
+<h2>Verbatim inclusion and XHTML namespaces</h2>
+Naive implementation of copying XHTML tags from the input XML (for instance, the content of a page as entered by a user) is usually incorrect. XSL does provide a recursive copy process, <span style="font-family: courier new,courier;">&lt;xsl:copy-of select="xpath"/&gt;</span>, but this copy is so good that it will actually copy the <em>namespace </em>of the original nodes. If this namespace is not the usual xhtml namespace, then it will add <span style="font-family: courier new,courier;">xmlns="" </span>attributes to all copied nodes that appear as part of an XHTML document.
+
+The namespace of any XHTML element that has to be copied as XHTML should be the xhtml namespace. This is usually done by defining the xhtml namespace in the root element of the original XML document, for instance with:
+<blockquote>
+<pre>&lt;document xmlns:xhtml="http://www.w3.org/1999/xhtml"&gt;</pre>
+</blockquote>
+And then setting the correct namespace for every element that has to be copied:
+<blockquote>
+<pre>&lt;xhtml:div&gt;&lt;xhtml:img src="/pic.jpg" alt="The Picture"/&gt;&lt;/xhtml:div&gt;</pre>
+</blockquote>
+This is understandably difficult to enforce, especially when the inner XHTML was input by the user. An alternative is to set a default namespace for a container of XHTML code. For instance:
+<blockquote>
+<pre>&lt;content xmlns="http://www.w3.org/1999/xhtml"&gt;
+  &lt;div&gt;&lt;img src="/pic.jpg" alt="The Picture"/&gt;&lt;/div&gt;
+&lt;/content&gt;</pre>
+</blockquote>
+This allows wrapping the input XHTML without modifying it.
+
+Of course, you still have to be careful to use valid XHTML as an input (otherwise, the XML parser will reject the document).
+
+As a quick bonus snippet, a copy-everything helper, which performs a deep copy of every child (element or text) of the current node:
+<blockquote>
+<pre>&lt;xsl:template name="copy_everything"&gt;
+  &lt;xsl:copy-of select="*|text()"/&gt;
+&lt;/xsl:template&gt;</pre>
+</blockquote>
+<h2>Verbatim inclusion and Javascript</h2>
+The problem with Javascript that is inlined in XHTML code (unlike, say, CSS) is that Javascript uses some characters which must be escaped in XML documents, such as &lt; or &amp;. The solution, of course, is to place the javascript code in a <span style="font-family: courier new,courier; color: #333333;">&lt;![CDATA[...]]&gt;</span> section to avoid the issue altogether. This has the benefit of working correctly with an XSL stylesheet which will outpt the javascript code as-is.
+
+Except that, since the XSL stylesheet is generating XHTML, it will escape the characters found in the javascript. No problem so far, since modern browsers have XML parsers which will turn the &lt; and &amp; back to their former selves. However, older browsers often can't.
+
+The typical solution used for backwards compatibility is to use a final XHTML file that looks like this:
+<blockquote>
+<pre>&lt;script type="text/javascript"/&gt;
+  /* &lt;![CDATA[*/
+  { javascript code }
+  /* ]]&gt; */
+&lt;/script&gt;</pre>
+</blockquote>
+The XML parser in modern browsers ignores the javascript comments and generates <span style="font-family: courier new,courier; color: #333333;">/**/ { javascript code} /**/</span>, which is valid. The older browsers expect Javascript inside the script tag, so they recognize the comments, and the CDATA tag is interpreted as a comment.
+
+The problem is that applying the XSLT to the document will parse the CDATA segment, which removes the compatibility trick (but it should still work with browsers that have a good XML parser).
+
+A partial solution comes from the ability in XSL to wrap the text content of an element in a CDATA segment. The input document can now contain verbatim script declarations, such as:
+<blockquote>
+<pre>&lt;verbatim-script&gt;
+  &lt;![CDATA[alert('&lt;hello&gt;');]]&gt;
+&lt;/verbatim-script&gt;</pre>
+</blockquote>
+And the corresponding output will be:
+<blockquote>
+<pre>&lt;script type="text/javascript"&gt;
+  /*&lt;cdata&gt;&lt;![CDATA[*/
+  alert('&lt;hello&gt;');
+  /*]]&gt;&lt;/cdata&gt;*/
+&lt;/script&gt;</pre>
+</blockquote>
+Which will have the same quote-and-comment structure and properties as the original solution. Implementation:
+<blockquote>
+<pre>&lt;xsl:output cdata-section-elements="cdata"/&gt;
+&lt;xsl:template match="verbatim-script"&gt;
+  &lt;script type="text/javascript"&gt;
+    /*&lt;cdata&gt;*/
+    &lt;xsl:value-of select="."/&gt;
+    /*&lt;/cdata&gt;*/
+  &lt;/script&gt;
+&lt;/xsl:template&gt;</pre>
+</blockquote>
+The <strong>downside</strong> with this solution is that there is now an element within the script tag, which is invalid in XHTML and therefore causes validation failures. If you really need to include a bunch of Javascript in your file, then this is probably the solution.
+
+An improved and perfectly valid solution is to simply move off any javascript to external files, which are merely included by the client instead of being inlined. Depending on your dispatch architecture, it could be well possible to have the client look for a javascript by querying the same URL with a certain GET parameter, which triggers the use of a distinct XSL stylesheet that only extracts the script from an XML file and outputs it as a large Javascript file.

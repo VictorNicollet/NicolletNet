@@ -1,0 +1,60 @@
+@title Copy Protection
+@draft
+
+You're a software developer, and you've just developed a new piece of software that you now want to sell. But there's the problem: your customers are greedy schemers out to get you. You'll get one paid download from them, and then they'll make the software available online for free and you won't get another cent from it ever.
+
+<em>Never mind</em>, you say, <em>I can always include copy protection in my software</em>!
+
+[caption id="attachment_576" align="aligncenter" width="250" caption="Arr! Here be bytes and checksums!"]<img class="size-full wp-image-576" title="http://www.flickr.com/photos/nickhumphries/637745334/" src="http://www.nicollet.net/wp-content/uploads/2009/03/jolly-roger.png" alt="Arr! Here be bytes and checksums!" width="250" height="188" />[/caption]
+<h3>No protection is cracker-proof</h3>
+Any software that runs on the user's computer is vulnerable. What you have just given your customer is <em>a complete description of how the program</em> <em>works</em>, and any dedicated cracker can alter that description so that the copy protection behavior is disabled. No amount of skill or cleverness is going to save you here: you can not stop the cracking process, you may only slow it down.
+
+In fact, the objective of the copy protection of most games is just that: to <a href="http://www.gamasutra.com/features/20011017/dodd_01.htm" target="_blank">slow down the crackers</a> long enough for the game to make a profit (since most sales for games occur right after its release).
+
+So, you will be looking for the optimal amount of copy protection to include in your game: too much, and you will be spending more money than you'll ever earn, too little and hundreds of people will be seeding a torrent for your program within one day.
+<h3>No protection is harmless</h3>
+The problem with copy-protection is that it needs to determine whether the program is being used in a legitimate way. This is <em>extremely</em> hard to do correctly (even if you ignore the issue of crackers for a moment), because the very definition of legitimate use is complex.
+
+See, an user can use a program if they bought it from the developer. The problem is that your average computer has no biological identification features that could be used to identify the user, so you must rely on other ways of gathering that information such as:
+<ul>
+	<li>Requiring that the user inserts the original CD, connects an USB dongle or enters a key.</li>
+	<li>Using an internet connection for verification.</li>
+	<li>Locking the software to a single machine.</li>
+</ul>
+All of these are annoying to the user if they work correctly (can you backup your Wii games, or play single player Portal without an internet connection?), and can be downright damaging to your reputation if you <a href="http://en.wikipedia.org/wiki/2005_Sony_BMG_CD_copy_protection_scandal" target="_blank">push things too far</a>. In fact, customers have regularly managed to <a href="http://en.wikipedia.org/wiki/Spore_(2008_video_game)#SecuROM_controversy" target="_blank">pressure the copy protection away</a>.
+<h3>What else?</h3>
+One solution increasingly used by many developers is to go online. You cannot crack World of Warcraft, because the code that runs the game servers ... runs on the game servers! If you have no access to code, you cannot make it act differently. So, short of knowing the login/password to an account that was paid for, you cannot connect to the game servers. And, best of all, this kind of protection doesn't even <em>feel</em> like protection to users: it's perfectly normal to have to provide a login/password to connect to a multiplayer game (otherwise, how would the game know who you are and who your characters are?) and no one would give away their login/password online because their account might be stolen by others.
+
+So, if you can move any significant part of your operation online, you can have your customers pay for that part (whether this means anti-virus updates, video game servers or content) and it will both feel natural and be immune to cracking.
+
+If we were to broaden these definitions, we could say that anything you can offer which makes the software more valuable is something you can sell. A lot of open source software work this way: <em>you can download our program for free, and if you have any trouble using it or extending it, we'll be happy to provide help for a fee!</em>
+
+But there's something else. Something that has to do with how people cheat and steal when they think they can get away with it, <a href="http://www.ted.com/index.php/talks/dan_ariely_on_our_buggy_moral_code.html" target="_blank">unless you remind them that stealing is bad</a>.
+<h3>A three-step approach</h3>
+Suppose that your program does not have anything to offer online: updates happen few and far between, there's no online content and no support. It's just a simple, ten-dollar tool. You're not going through a retailer either: you're small, so you sell your software online, and you cannot rely on any physical security (such as a dongle or a CD).You have three objectives:
+<ol>
+	<li>To create and amplify the incentives to buy.</li>
+	<li>To prevent the customers from redistributing their software.</li>
+	<li>To prevent  the prospects from downloading a free version.</li>
+</ol>
+What kind of copy protection do you include?
+
+I would say, <em>none</em>, and make this statement on the sales website:
+<h3 style="padding-left: 30px;">No Copy Protection</h3>
+<p style="padding-left: 30px;">We decided not to include any kind of copy protection in <em>FooBar™</em>. Copy protection always ends up causing trouble to legitimate customers : we don't want you to remember a registration key, keep your computer connected to the internet or give us a call when you buy a new computer.</p>
+<p style="padding-left: 30px;">We strongly believe that if you paid for it, then you should be able to use it : restricting what you can do with <em>your</em> software is just as bad as downloading paying software for free.</p>
+
+<h3 style="padding-left: 30px;">Unlimited Downloads</h3>
+<p style="padding-left: 30px;">Once you buy <em>FooBar™</em>, you can download it as many times as you want, and install it on any number of computers you own: just connect to your online account and you will have unlimited access to the latest version of <em>FooBar™</em>.</p>
+<p style="padding-left: 30px;"><em>Warning</em>: revealing your account number and password or giving out your copy of <em>FooBar™</em> may let other people connect to your control panel and steal the account by changing the password.</p>
+
+What does this message achieve?
+<ul>
+	<li>The absence of copy protection is used as a feature: if you do it, you might as well get a few sales from it. This part is a promise: you won't be having these issues with <em>our</em> product. Obective 1.</li>
+	<li>The "we strongly believe" part creates a connection with the reader, and shows that we think about his satisfaction instead of our money. It also stealthily introduces the concept that "downloading software for free" is bad. So, if the reader was considering to look for a free torrent of the software, they will feel queasy because it's "bad", and because <a href="http://en.wikipedia.org/wiki/Reciprocity_(social_psychology)">it feels like betraying us</a> when we've done so much for them. Objective 3 (and, for a small part, 2).</li>
+	<li>It goes one step further and lets you download and install the software as many times as necessary with no restrictions. If this feature were presented on its own, it would probably feel out of place: people don't <em>need</em> that. But by placing it right after our copy protection discourse, it actually feels like a natural consequence: "not only do we let you install your software as you wish, but we actually help you do so by providing you with a download". Objective 1.</li>
+	<li>It warns against the consequences of redistributing FooBar not in terms of "you're an evil cracker" (accusing prospects of anything is a bad way to turn them into customers), but rather in terms of "evil persons could steal the software from you". We rely on <a href="http://en.wikipedia.org/wiki/Loss_aversion" target="_blank">loss aversion</a> to have people avoid losing a service that, while useful, isn't necessary for them to use the software, but we also espect smarter customers to infer that if evil thieves can determine the account number from the executable, so can we. Objective 2.</li>
+</ul>
+All you need to make this seem plausible is a watermarking process: when someone downloads the software, you give them a copy of the executable that contains the account number and the name of the buyer (readily available in, say, a "Licensed to:" subsection on the "About" menu). The crack in itself isn't exceedingly difficult to perform: just get a legal version and either distribute it for free or remove the buyer's name if you wish to protect him.
+
+There's another way to fight towards objective 3. Where do most people look for pirated software? Peer-to-peer networks, torrent search engines, and the classic search engines. So, if you manage to publish enough incorrect "free versions", finding an actual free version might end up being too hard for people to find. If your software <em>does</em> cost $10, how long do you expect people to spend looking for a free version? Not much. $10 is what many people spend for <em>lunch</em>.

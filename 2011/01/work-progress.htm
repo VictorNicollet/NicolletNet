@@ -1,0 +1,29 @@
+@title Work ? Progress
+@draft
+
+I did a lot of work today. Mostly, I tracked down and eliminated a nasty little problem related to our <strong>@runorg.com</strong> email addresses and our DNS records.
+
+DNS is the directory system which determines which particular computer handles the requests to a given domain name. So, if you're looking for <strong>holy-grail.runorg.com</strong>, a DNS entry mentions that it points to the machine known on the internet as 188.165.231.88, which happens to be our main production server.
+
+The MX records are used when you're looking for the mailboxes for that domain. This is because usually, you don't want your web server to handle your e-mail: it's handled elsewhere, such as another company server, or maybe gmail. So, you can specify a main DNS entry for your domain and then use the MX record to point to another server specifically for e-mail.
+
+Finally, the CNAME records represent the canonical name. We don't want our main web site to be available both on <strong>http://runorg.com</strong> and <strong>http://www.runorg.com</strong>, because it's confusing and bad for the search engine ranking. So, I pointed a CNAME telling that <strong>runorg.com</strong> should point at <strong>www.runorg.com</strong>.
+
+What I did not take into account (or even know) was that CNAME records are meant to be of a higher priority than MX records. So, when someone sent an e-mail to <strong>foobar@runorg.com</strong>, it would undergo canonicalization and point at <strong>foobar@www.runorg.com</strong> instead. Since there was no MX record for the latter, the e-mail would then disappear into the void. Our tools and newsletters apparently ignored the CNAME when sending e-mail, so we received those correctly.
+
+So, my entire day was spent hunting down an obscure, unpredictable and not-quite-documented error in my DNS records. It was necessary work and it certainly kept me busy, but it wasn't progress.
+
+Our team has a looming deadline: the delivery of our first version of the software. It's when we move from an "implement all the stuff we need before we can deliver" strategy to a "improve or add features to the existing product" strategy (which is an entirely different mechanism). Progress is what brings us closer to that transition — while dealing with the DNS issue was necessary, it did not move me an inch closer to delivering version 1.0.
+
+What is the single largest difference between working as an employee for another firm and working on your own Start-Up? Before I started, I would have guessed it would be the work hours (I now work week-ends quite often), the commute (I work at home because we're too small to need offices), the freedom (I'm literally by own boss) or the lack of money (no comment). Now it's pretty obvious that the single greatest difference is that I now emphasize progress more than I emphasize work.
+
+In my previous jobs, there was a fixed set of objectives which had to be accomplished, so I would just come to work every day and chip away at the monolith of work to be done, and since it all had to be done anyway, I could do it in any order I wished. Since I've started working on my Start-Up, I find myself increasingly questioning the very objectives I'm trying to accomplish — <em>is this going to let me ship sooner, or not? </em>The freedom of choosing (and discarding) my  objectives myself comes with the responsibility of making the right choices. <em>
+</em>
+
+<strong>That's a question I never asked myself before.</strong><em>
+</em>
+
+When you think about it, there are many things that are work but not progress. Some are done because it feels easier to do them sooner rather than later. Others are done because, let's face it, sometimes you have low morale and a neat exciting feature comes up that you'd rather implement even though it's purely gratuitous (I added a CSV export feature recently that is not necessary in any way, <em>and I know my definition of exciting is weird but bear with me</em>). Others stem from the necessary shame of delivering a half-baked product, but bear in mind that:
+<blockquote><em>If you are not embarrassed by the first version of your product, you’ve launched too late.</em>
+- Reid Hoffman, LinkedIn founder</blockquote>
+Delivering a huge product with a small under-funded team is ultimately a find-the-shortest-path endeavour. Choose your next objective based on that.

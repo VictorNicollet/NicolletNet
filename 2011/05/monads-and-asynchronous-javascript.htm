@@ -1,0 +1,62 @@
+@title Monads and Asynchronous Javascript
+@draft
+
+A minor yet interesting syntax extension for Javascript would help solve the eternal problem of too many nested anonymous functions when writing asynchronous code. For instance, reacting to an AJAX request in standard jQuery looks like this:
+<pre style="color: #000000; background: none repeat scroll 0% 0% #ffffff; padding-left: 30px;">$.getJSON(<span style="color: #0000ff;">'/status.php'</span>, {id : the_id}, <span style="color: #000084; font-weight: bold;">function</span>(data) {
+  <span style="color: #000084; font-weight: bold;">if</span> (data.deleted) {
+    $(<span style="color: #0000ff;">'#'</span> + the_id).hide(500, <span style="color: #000084; font-weight: bold;">function</span>(){
+      $(<span style="color: #000084; font-weight: bold;">this</span>).remove();
+    });
+  }
+}</pre>
+The function nesting is ugly, but necessary. In a monadic writing style, it would look like this instead :
+<pre style="color: #000000; background: none repeat scroll 0% 0% #ffffff; padding-left: 30px;"><span style="color: #000084; font-weight: bold;">var</span>! data = $.getJSON(<span style="color: #0000ff;">'/status.php'</span>, {id : the_id});
+<span style="color: #000084; font-weight: bold;">if</span> (data.deleted) {
+  <span style="color: #000084; font-weight: bold;">do</span>! $(<span style="color: #0000ff;">'#'</span> + the_id).hide(500);
+  $(<span style="color: #000084; font-weight: bold;">this</span>).remove();
+}</pre>
+This style restores the imperative look of the function, hiding away the asynchronous nature of the code in the special keywords.
+
+In itself, the rewriting is pretty simple to perform based on two unambiguous rules :
+<pre>var! a, b, c, d = expr(x,y,z);
+more code</pre>
+Becomes :
+<pre>expr(x,y,z,function(a,b,c,d) {
+  more code
+});</pre>
+And there is a shorthand notation:
+<pre>do! expr(x,y,z);
+more code</pre>
+That becomes :
+<pre>expr(x,y,z,function(){
+  more code
+});</pre>
+As a final example, here is how <a href="http://docs.jquery.com/Tutorials:Getting_Started_with_jQuery#Rate_me:_Using_Ajax">the "Rate Me" jQuery example</a> would be written :
+<pre style="color: #000000; background: none repeat scroll 0% 0% #ffffff; padding-left: 30px;"><span style="color: #000084; font-weight: bold;">do</span>! $(document).ready();
+
+<span style="color: #808080;">// generate markup</span>
+$(<span style="color: #0000ff;">"#rating"</span>).append(<span style="color: #0000ff;">"Please rate: "</span>);
+
+<span style="color: #000084; font-weight: bold;">for</span> ( <span style="color: #000084; font-weight: bold;">var</span> i = 1; i &lt;= 5; i++ )
+  $(<span style="color: #0000ff;">"#rating"</span>).append(<span style="color: #0000ff;">"&lt;a href='#'&gt;"</span> + i + <span style="color: #0000ff;">"&lt;/a&gt; "</span>);
+
+{
+  <span style="color: #808080;">// add markup to container and apply click handlers to anchors</span>
+  <span style="color: #000084; font-weight: bold;">var</span>! e = $(<span style="color: #0000ff;">"#rating a"</span>).click();
+
+  <span style="color: #808080;">// stop normal link click</span>
+  e.preventDefault();
+
+  <span style="color: #808080;">// send request</span>
+  <span style="color: #000084; font-weight: bold;">var</span>! xml = $.post(<span style="color: #0000ff;">"rate.php"</span>, {rating: $(<span style="color: #000084; font-weight: bold;">this</span>).html()});
+
+  <span style="color: #808080;">// format and output result</span>
+  $(<span style="color: #0000ff;">"#rating"</span>).html(
+    <span style="color: #0000ff;">"Thanks for rating, current average: "</span> +
+    $(<span style="color: #0000ff;">"average"</span>, xml).text() +
+    <span style="color: #0000ff;">", number of votes: "</span> +
+    $(<span style="color: #0000ff;">"count"</span>, xml).text()
+  );
+}</pre>
+
+Doesn't that look nicer ? I certainly look forward to something similar being included in ECMAScript.

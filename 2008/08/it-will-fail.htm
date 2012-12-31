@@ -1,0 +1,29 @@
+@title It Will Fail
+@draft
+
+These are a few bits of wisdom I have gathered over time, related to software development. These are related to the fact that when left in the hands of humans, things always go wrong.
+<p align="justify">A best practice is only as good as its weakest link, which in most cases is the enforcement of that practice. A bad developer might go against best practices out of laziness or perhaps misunderstanding of the benefits, while a good developer might be in a rush and write a quick hack that he intends to correct after a heavy deadline, or simply forget to perform a specific part of the iteration process.</p>
+<p align="justify">Every practice which relies merely on human enforcement is bound to be broken. Adding people in charge of verification decreases the probability of this happening, but increases the latency of the development cycle as software has to pass several layers of checks.</p>
+
+<h3>It will fail.</h3>
+<div>
+<blockquote>If you can imagine a situation in which a piece of software could fail, then that situation will inevitably arise, either in development or in a production environment, over the lifetime of the software. It's hard enough to deal with unforeseen failure causes to let the foreseen causes alone.</blockquote>
+</div>
+<h3>If you don't fix it, mention it.</h3>
+<blockquote>
+<p align="justify">Of course, not all problems are a priority. If a deadline looms and a possible error appears in a non-essential piece of code, correcting that possibility is definitely not a good idea. However, the knowledge of a possible failure should never be thrown away.</p>
+<p align="justify">Always mention a possible failure cause in the code. Most IDEs provide the functionality to extract comments prefixed with <span style="font-family: courier new,courier; color: #999999;">//TODO</span> in order to have a list of unsolved cases. Add the information where it would be most obvious to see to someone who is debugging the issue later on : right above the statement that would fail an assertion or throw an exception (if nothing would fail, then add an assertion of your own, as these disappear when optimizations are turned on) or, failing that, in the documentation of the function that would return spurious values.</p>
+<p align="justify">It is also very useful to log the issue in the bug tracking software used for the project, allowing the other developers to manipulate the issue with the appropriate tools.</p>
+</blockquote>
+<h3>Redundant things aren't.</h3>
+<blockquote>
+<p align="justify">If the design of your software requires that a given piece of information be identically present in two different locations, then the two locations will inevitably go out of sync.</p>
+<p align="justify">While this is usually taken to apply to software managing synchronized data distribution over several threads or even computers, it has a much more immediate practical information when applied to humans handling the data replication by hand. For instance, for a user to connect to a private server, he must use the password that the server expects. Out-of-sync means here that changing the server password will lock users out. Worse, the written down copy of the password that the administrator keeps in a safe locker will also go out of sync sooner or later.</p>
+<p align="justify">Always plan for synchronization loss : since it will inevitably happen, regardless of how much effort is made, what steps can be taken to save the day when it does happen? One possibility is to document the synchronization requirement, so that people encountering the error will know that they have to duplicate some data. Also, if configuration files are accessible and modifiable by scripts, automating the data synchronization is an interesting possibility.</p>
+</blockquote>
+<h3>People forget.</h3>
+<blockquote>The more complex the usage of a given piece of functionality, the fewer people can use that functionality. Besides, if the functionality is not used often enough, it fades from the skill set of those who had been using it, until nobody knows how it works exactly.
+
+As such, never let your processes rely on undocumented software. If the solution to an issue was not found in the documentation of the software, store it in a knowledge base (it could be an online wiki site, or something more complex). When a bug in a third party tool is worked around, also write down the solution.
+
+Similarly, always keep the code well-documented, and keep architectural descriptions. Use conventions used by all developers: add a <span style="font-family: courier new,courier; color: #999999;">README </span>file to your project, and store the documentation in a folder with the right name at the project root. Part of a good documentation is being able to easily find the documentation for a given element.</blockquote>

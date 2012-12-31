@@ -1,0 +1,61 @@
+@title Arrays: additionnal commas
+@draft
+
+This is starting to look like "attack of the arrays", but there are so many interesting things to discuss!
+
+Consider for a moment these languages: C#, Java, C++, Objective Caml, PHP, JavaScript. All these languages support a form of array literal (even though in some languages these literals are restricted to initialization purposes only). All of them use the value-separator format:
+<blockquote>
+<pre><span style="color: #008000;">// C#, Java, C++</span>
+{ 1, 2, 3, 4 }
+
+<span style="color: #008000;">(* Objective Caml *)</span>
+[| 1; 2; 3; 4 |]
+
+<span style="color: #008000;">// PHP</span>
+array( 1, 2, 3, 4 )
+
+<span style="color: #008000;">// JavaScript</span>
+[ 1, 2, 3, 4 ]</pre>
+</blockquote>
+When you need a program in one language to interact with code written in another language, a possibility is to have the origin language generate code in the target language and then dynamically link the generated code with the target. This could be Objective Caml generating data for a C program that's compiled on-the-fly with <a href="http://bellard.org/tcc/" target="_blank">TCC</a>, XSLT being used to generate PHP code from an XML file, or PHP generating JavaScript code to be embedded in a web page.
+
+There are two ways of generating array literals. One is to generate every element independently and then collapse the string array into a single string, which inserts the separators in-between elements. This could be PHP's <a href="http://fr3.php.net/function.implode" target="_blank">implode</a>, or Objective Caml's <a href="http://caml.inria.fr/pub/docs/manual-ocaml/libref/String.html#VALconcat" target="_blank">String.concat</a>. This generates a clean array.
+
+If you didn't plan out your code correctly (or if you're using XSLT 1.0 and have an approach that's too complex to allow the use of the XPath 'position()' function), or if you have unusual performance requirements such as having to push data to a client as fast as possible, you will end up instead having to generate the array string directly, without the ability to collapse it from an array of strings. The problem of separators appears: you have to determine which element is the last one, so you don't append a comma (or determine which one is the first, so you don't prepend a comma).
+
+The good news is that some languages let you add a surnumerary separator at the end of an array literal, so instead of the traditional <code>{ a, b, c }</code> you get a less obvious but more easily generated <code>{ a, b, c, }</code>.
+<p style="text-align: center;"><strong>Pop Quiz</strong></p>
+<p style="text-align: center;">Which of the above languages let you define an array literal with an additional comma or semicolon at the end?</p>
+
+Answers:
+<ul>
+	<li>C++ as per the optional comma shown in the grammar outline in <em>8.5 §1</em></li>
+</ul>
+<ul>
+	<li>Objective Caml lets you append optional semicolons in arrays, lists, expressions and records, and prepend optional pipes in pattern matching and variant definitions.</li>
+</ul>
+<ul>
+	<li>C#, Java and PHP do as well.</li>
+</ul>
+<ul>
+	<li>JavaScript <em>should</em>.</li>
+</ul>
+<em>Should</em>? In the design of ECMAScript, there are two opposing forces: on the one hand, the ability to add a trailing comma with no semantic effect, and on the other hand the ability to leave empty array elements by placing nothing between the commas. This is all explained in hairy detail in <a href="http://www.ecma-international.org/publications/files/ECMA-ST/Ecma-262.pdf" target="_self">ECMAScript 3</a> [pdf] 11.1.4 and means, mostly, that every comma found directly after another comma increases the length of the array by one before continuing processing. And all of this leads to somewhat confusing results:
+<blockquote>
+<pre><span style="color: #008000;">// #1: two values, length 2 (as expected)</span>
+[a,b]
+
+<span style="color: #008000;">// Removing a from #1: length 2 (as expected)</span>
+[,b]
+
+<span style="color: #008000;">// Removing b from #1: length 1 (what??)</span>
+[a,]</pre>
+</blockquote>
+This is ultimately a matter of whether something like <code>[,]</code> should count as a two-element array or a one-element array. ECMAScript 3 (and subsequent versions) settled for the one-element array, which makes ECMAScript easier to write (since you can move around elements in an array with their associated comma so you don't have to type/erase commas) but harder to read.
+
+Too bad Internet Explorer disagrees. Consistency matters and therefore:
+<blockquote>
+<pre><span style="color: #008000;">// Removing b from #1: length 2</span>
+[a,]</pre>
+</blockquote>
+So while it is entirely acceptable to use a terminating comma in JavaScript without ill effects on the rest of the array, portability dictates that if you support Internet Explorer (6 or 7) then you should avoid the terminating comma or have a clean way of handling the trailing undefined element that will be generated.

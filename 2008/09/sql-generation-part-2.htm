@@ -1,0 +1,37 @@
+@title SQL Generation, Part 2
+@draft
+
+<h2>Introduction</h2>
+This is a follow-up of an <a href="http://nicollet.net/blog/php/13-sql-gen-1">older article</a>, which examined automatic generation of relational database tables to represent an <em>entity-property-binding</em> data structure. That article concluded by stating that the next step would be the generation of queries.
+
+Deletion, modification and reading queries all have the ability to affect a subset of the available instances of an entity. This article is dedicated to providing subset semantics and a way to compile them to SQL.
+<h2>Naive solution</h2>
+In the most naive implementation, subsets would be either singletons (that is, all operations affect a single instance at a time) or the entire set (that is, all operations affect all instances). A simple modification would also allow constructing subsets through union operations from the singletons.
+<blockquote>
+<pre style="background: #ffffff none repeat scroll 0% 50%; color: #000000;"><span style="color: #000084; font-weight: bold;">val</span> all : entity -&gt; subset <span style="color: #000084; font-weight: bold;">
+val</span> singleton : id -&gt; subset <span style="color: #000084; font-weight: bold;">
+val</span> union : id <span style="color: #000084; font-weight: bold;">list</span> -&gt; subset</pre>
+</blockquote>
+Subsets would then be of the form '' or '<span style="font-family: courier new,courier; color: #999999;">WHERE id = $1 OR id = $2 ...</span>', which can be generated in mere seconds from Objective Caml code, and could be easily appended to any SQL query (select, delete, update) to determine the working set for that query.
+
+The advantage of this solution is that it's very simple to implement. The problem is that it moves all the processing from the database to the host code, which then has to sort through heaps of data (and send huge queries to select a large subset that's not the entire set) to achieve anything meaningful.
+<h2>Predicate-based solution</h2>
+Most queries performed on a database are either based on identifiers (thus possible with singletons) or based on <a href="http://en.wikipedia.org/wiki/Predicate_%28logic%29">logic predicates</a>. As such, a subset is merely the set of all instances of an entity which satisfy a given predicate (such as having a certain e-mail address, or being born before a certain date, or simply being the sole element of a singleton). This semantic approach is used in SQL (the <span style="font-family: courier new,courier; color: #999999;">WHERE </span>clause introduces a predicate) and showcased with a distinct syntax in a <a href="http://nicollet.net/blog/ocaml/21-meta-lang-1">recent article</a>.
+
+A basic predicate system involves writing a first-order logical expression (that is, without quantifiers) which applies to a single variable (an instance of the appropriate entity) to support the following operations:
+<p align="center">P(x) = atom(x) | P(x) × P(x) | P(x) + P(x) | ¬ P(x)</p>
+
+An atom is any elementary comparison between two expressions involving constants, query parameters, the identifier of the instance and its properties. For instance, an example of atom would be <span style="font-family: courier new,courier; color: #999999;">less (property "created") (sub curDate (days 30))</span>, indicating that the instance is older than 30 days, corresponding to <span style="font-family: courier new,courier; color: #999999;">WHERE created &lt; DATEADD("dd",-30,CURRENT_DATE())</span> (your SQL dialect may vary).
+
+In this situation, the subset can be translated into an SQL sentence to be placed after the WHERE, with the rules:
+<blockquote>
+<pre>atom     -&gt; compile(atom)
+Not(p)   -&gt; <span style="color: #008000;">"NOT ("</span> tr(p) <span style="color: #008000;">")"</span>
+And(p,q) -&gt; <span style="color: #008000;">"("</span> tr(p) <span style="color: #008000;">"AND"</span> tr(q) <span style="color: #008000;">")"</span>
+Or(p,q)  -&gt; <span style="color: #008000;">"("</span> tr(p) <span style="color: #008000;">"OR"</span> tr(q) <span style="color: #008000;">")"</span></pre>
+</blockquote>
+A preprocessing operation could be to move all Not operations to atoms using the <a href="http://en.wikipedia.org/wiki/De_Morgan%27s_laws">De Morgan rules</a>, and instead negate only atoms, or even convert the predicate to a normal form.
+
+By encapsulating subset operations in a type-safe, no-leak system, it becomes possible to propagate the construction of SQL queries to helper modules, for instance a module that provides the subset of recent elements  (younger than 30 days), which may then be intersected or unified at will with other subsets to obtain a full query.
+<h2>Further work</h2>
+All of the above does not handle bindings (which are the entity-property-binding representation of cross-table searching). The possible semantics, along with the actual implementation of bindings through SQL joins (and the consequences of that implementation on SQL UPDATE and DELETE queries) remains to be seen in a futher article.

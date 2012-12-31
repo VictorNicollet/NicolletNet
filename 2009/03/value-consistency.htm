@@ -1,0 +1,42 @@
+@title Value Consistency
+@draft
+
+<a href="http://www.codinghorror.com/blog/archives/001119.html" target="_blank">Jeff Atwood hates PHP</a>. So do I—despite working with it on a daily basis and leading several interesting PHP-based projects to successful completion, I do find PHP to be a disaster in terms of language design, and despite its gradual improvements over the course of its evolution.
+
+And yet, my biggest issue with PHP is the same I have with C and C++ and, arguably, every single language in the C family with the exception of JavaScript.
+<h3>Some Examples</h3>
+Consider a simple get-day-name function:
+<pre style="padding-left: 30px;">function french_day_name($timestamp)
+{
+  return array(
+    "Dimanche", "Lundi",    "Mardi",   "Mercredi",
+    "Jeudi",    "Vendredi", "Samedi"
+  ) [(int)date('w',$timestamp)];
+}</pre>
+You feed in a timestamp, and you get the day's name in French. It relies on the fact that <em>array()</em> is an array literal, which is an expression (you can assign it to a variable or pass it as an argument to a function) and <em>[]</em> subscripting can be used to extract a certain index from an array. Except that this doesn't work because the syntax does not allow subscripting into an array literal. Contrast this with JavaScript :
+<pre style="padding-left: 30px;">function french_day_name(timestamp)
+{
+  return [
+    "Dimanche", "Lundi", "Mardi", "Mercredi",
+    "Jeudi", "Vendredi", "Samedi"
+  ] [(new Date(timestamp)).getDay()];
+}</pre>
+This is what I call value consistency: if your semantics allow writing <em>array</em>[<em>subscript</em>], then I expect to be able to use an array literal (or any other expression that evaluates to an array) in that expression. As a matter of fact, I don't <em>know</em> what kinds of expressions support subscripting in PHP, and that makes me feel insecure so I always assign my array to a variable beforehand.
+
+The same happens in other situations as well. For instance, don't expect to write <em>(new Date(timestamp)) -&gt; getDay()</em> in PHP: there are restrictions on what kind of expressions are allowed on the left-hand side of the object member operator, too.
+
+Also, don't expect to write:
+<pre style="padding-left: 30px;">$obj -&gt; random = $good_random ? 'mt_rand' : 'rand' ;
+
+// Later
+
+$obj -&gt; random(); // Sorry, not a member function
+
+($obj -&gt; random)(); // Sorry, bad syntax
+
+$rand = $obj -&gt; random();
+$rand(); // Good programmer, you get a twinkie</pre>
+That's right, there are restrictions on what kind of expressions can be used to call functions as well! At least JavaScript is sane about this.
+<h3>Value Consistency</h3>
+<p style="padding-left: 30px;">For consistency, every operation that can operate on an arbitrary value should have a syntax that lets the programmer specify that value as an expression, whether that expression is a literal, an identifier, or any complex expression that ultimately evaluates to an appropriate value.</p>
+<p style="padding-left: 30px;">There are no circumstances under which syntax alone should prevent an expression to be used in a context where another semantically identical expression can be used.</p>

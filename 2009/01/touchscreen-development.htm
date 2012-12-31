@@ -1,0 +1,29 @@
+@title Touchscreen Development
+@draft
+
+A touchscreen is a variation on the traditional screen-and-mouse combination for input-output. One of its main benefits is that aiming is easier when you can just point at things with your finger, which means interaction can be faster. One of its disadvantages is that there is no scale adjustment (you can move a mouse by one inch to move the cursor by a half inch, but one inch of your finger is always one inch of your touchscreen), which leads to increasing the size of buttons, and a larger user interface means a smaller area for displaying back information.
+
+I've been looking around for touchscreen-centered development environments. <a href="http://uk.xbox360.ign.com/dor/objects/14310459/kodu/videos/ces2009sync_kodu_dem_010909.html" target="_blank">Kodu</a> comes close, since it's able to work on a television screen with an Xbox 360 controller and could conceivably be controlled through finger pointing. Aside from that, however, I haven't really found things worth mentioning (but I can certainly have missed some).
+
+One direction I would like to see explored in greater depth is the area of visual (or nearly visual programming languages). For instance, something like:
+
+<img class="alignnone" title="Graphical language example" src="/images/graph-lang.png" alt="" width="723" height="358" />
+
+These screenshots contain code blocks, where each block has a darker tab that serves as its header. Some blocks are short one-liners that only contain elementary code, so they're on the same line as their header, whereas larger block are drawn below their header. Header colors mean:
+<ul>
+	<li>Dark blue: top-level definitions, these appear as part of the current module.</li>
+	<li>Orange: conditional blocks. All such blocks are examined in order, the first one that matches is evaluated.</li>
+	<li>Light blue: for-loops, these define a new integer variable that traverses a range of integers.</li>
+	<li>Violet: nested definitions, these define a new variable bound to a specified value, and run some code with that binding.</li>
+</ul>
+All other code, in the white blocks, is actual code that is evaluated. A block's value depends on the block type, with most blocks evaluating to their last line, and loops evaluating to an imperative 'unit' type.
+
+The point of using blocks is to make the various elements stand out more for interaction, so that they are easier to identify and easier to touch.  The system supports four interaction modes: short presses, drag-and-drop, area select, and long presses. It also handles three distinct modes: <em>view</em>, <em>edit </em>and<em> refactor</em>. A short press on a block does the default action for that block, which depends on the current mode, for instance:
+<ul>
+	<li>In <em>edit</em> mode, touching a dark blue, light blue or violet header inserts the variable defined by that header into the currently edited code.</li>
+	<li>In <em>refactor </em>mode, touching a dark blue, light blue or violet header selects that header for refactoring (it highlights and counts all occurences, and proposes a contextual menu for moving and renaming).</li>
+	<li>In <em>view </em>mode, touching a dark blue, light blue or violet header expands the definition itself. Touching any white block collapses that block. Touching the header of a white block expands that block back, and touching an expanded header collapses that header.</li>
+</ul>
+Drag-and-drop can be use to move things around. In view mode, it scrolls the screen. In edit and refactor mode, it moves blocks and lines. Area selection merely selects several touched areas. the difference between area selection and drag-and-drop is that area selection begins outside any blocks. Long presses bring up contextual menus for the activated block.
+
+Done right, I believe this could improve the productivity of programmers by moving them away from the keyboard: not only is the physical speed itself faster, but selecting from a list has proven faster and less error-prone than typing out a name. Besides, automatic naming schemes could be found, for instance adding special documentation comments that suggests names for the return values of a function or the instances of a class.

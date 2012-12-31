@@ -1,0 +1,84 @@
+@title It's Payback Time
+@draft
+
+I have another problem for you. The European Union has banknotes of values 500€, 200€, 100€, 50€, 20€, 10€ and 5€, and coins of values 2€, 1€, 0.5€, 0.2€, 0.1€, 0.05€, 0.02€ and 0.01€. As you might expect, when you need to pay a certain amount (say, 118€), you give the cashier a few bills and coins (1&times;100€ + 1&times;20€) and you get some change back (1&times;2€). For every amount, there exists a perfect transaction which minimizes the number of notes and coins that are exchanged. For 118€, that number is 3 (as shown above). For 5€, it's 1 (give a single banknote). For 9€, it's 2 (give a 10€, get 1€ back). 
+
+Here's the question: what is the amount, smaller than 500€, which causes the highest number of notes and coins to be exchanged?
+
+While this could be solved mathematically, I am going to go for a brute-force algorithm because it's easier on the mind. The approach consists in exploring all possible transactions of size one (only one note or coin is exchanged) and remember what amounts were available, then construct all transactions of size two (by adding a coin or note to a transaction of size one), and so on until all new transactions end up being for amounts that have already been explored (there are 50001 possible amounts, so the algorithm will inevitably terminate, even if it takes a while). 
+
+First, I need a representation of all available coins and notes (in both positive and negative form, because in a transaction they can go either way). I will save some typing by writing some code that generates them:
+<pre style='color:#000000;background:#ffffff;'><span style='color:#7f0055; font-weight:bold; '>let</span> values =
+  List.concat
+    (List.map
+       (<span style='color:#7f0055; font-weight:bold; '>fun</span> v -> [ 5*v ; 2*v ; v ; -v ; -2*v ; -5*v ])
+       [ 100_00 ; 10_00 ; 1_00 ; 10 ; 1 ])</pre>
+
+This code turns every power of 10 between 10000 (100€) and 1 (0.01€) into a six-item list (for instance, 10 becomes 50, 20, 10, -10, -20, -50), then concatenates all these lists together. The resulting 30-element list contains all 15 notes and coins twice: once positive and once negative.
+
+To represent a transaction (a <i>node</i> in my exploration algorithm) I will define a brand new type that contains the current total in the transaction, the change (a list of notes and coins), and the transaction size (this is actually equal to the length of the change list, but storing it is faster than having to compute it from scratch). The type looks like this:
+<pre style='color:#000000;background:#ffffff;'><span style='color:#7f0055; font-weight:bold; '>type</span> t = { total : <span style='color:#7f0055; font-weight:bold; '>int</span> ; change : <span style='color:#7f0055; font-weight:bold; '>int</span> <span style='color:#7f0055; font-weight:bold; '>list</span> ; count : <span style='color:#7f0055; font-weight:bold; '>int</span> }</pre>
+
+Before I continue, a quick word about complexity: in my algorithm, I expect to do a lot of "has this node already been explored" queries, because this is what determines whether I need to stop processing. I also expect the list of explored nodes to grow to a size of 50001, and if I have to run such a query for every single node, I am looking at a minimum of one billion comparisons. This is starting to get a bit too large for my tastes (probably several minutes worth of computations), so I will look into an alternative storage method: sets.
+
+Sets are optimized for quick "add this element to the set" and "is this element in the set?" operations, running in logarithmic time rather than linear time. This makes the above queries several orders of magnitude faster (expect a 50000-element set to behave about as fast as a 50-element list). In Objective Caml, sets are available as part of the standard library, and can be used by defining a module containing the type you wish to store in the set, then call <code>Set.Make</code> to create a specialized set module dedicated to your type:
+<pre style='color:#000000;background:#ffffff;'><span style='color:#7f0055; font-weight:bold; '>module</span> Node = <span style='color:#7f0055; font-weight:bold; '>struct</span>
+  <span style='color:#7f0055; font-weight:bold; '>type</span> t = { total : <span style='color:#7f0055; font-weight:bold; '>int</span> ; change : <span style='color:#7f0055; font-weight:bold; '>int</span> <span style='color:#7f0055; font-weight:bold; '>list</span> ; count : <span style='color:#7f0055; font-weight:bold; '>int</span> }
+  <span style='color:#7f0055; font-weight:bold; '>let</span> compare node_1 node_2 = compare node_1.total node_2.total
+<span style='color:#7f0055; font-weight:bold; '>end</span>
+
+<span style='color:#7f0055; font-weight:bold; '>module</span> NodeSet = Set.Make(Node)</pre>
+
+Nothing very complex here: my module defines a type named <code>t</code> (as expected by the set module) and a <code>compare</code> function that relies on the built-in compare function to compare the totals (because my actual query is "was a node with this total explored?") so that nodes with equal totals but different transactions are still considered the same.
+
+While I'm doing this, I will also add two other functions to my node module: a function which adds a coin to a node (this changes the total, prepends the coin to the transaction list, and increments the count), and a function which returns whether the node is valid (its total is between 0€ and 500€). I will also add an empty node from which the exploration will start:
+
+<pre style='color:#000000;background:#ffffff;'><span style='color:#7f0055; font-weight:bold; '>module</span> Node = <span style='color:#7f0055; font-weight:bold; '>struct</span>
+
+  <span style='color:#7f0055; font-weight:bold; '>type</span> t = { total : <span style='color:#7f0055; font-weight:bold; '>int</span> ; change : <span style='color:#7f0055; font-weight:bold; '>int</span> <span style='color:#7f0055; font-weight:bold; '>list</span> ; count : <span style='color:#7f0055; font-weight:bold; '>int</span> }
+
+  <span style='color:#7f0055; font-weight:bold; '>let</span> compare node_1 node_2 = compare node_1.total node_2.total
+
+  <span style='color:#7f0055; font-weight:bold; '>let</span> add node coin = {
+    total  = node.total + coin ;
+    change = coin :: node.change ;
+    count  = node.count + 1
+  }
+
+  <span style='color:#7f0055; font-weight:bold; '>let</span> is_valid node = node.total >= 0 &amp;&amp; node.total &lt;= 500_00
+
+  <span style='color:#7f0055; font-weight:bold; '>let</span> empty = { total = 0 ; change = [] ; count = 0 }
+
+<span style='color:#7f0055; font-weight:bold; '>end</span></pre>
+
+Next, I use the set module to define a "node is not explored yet" function:
+<pre style='color:#000000;background:#ffffff;'><span style='color:#7f0055; font-weight:bold; '>let</span> is_unknown known node = <span style='color:#7f0055; font-weight:bold; '>not</span> (NodeSet.mem node known)</pre>
+
+Here <code>NodeSet.mem element set</code> is a function which returns true if the element is inside the set ("mem" means "member"). Based on this function, I can write the "explore one node" routine, which consists in adding all possible coin and note values to the node, eliminating any nodes that end up outside the 0€ - 500€ range and any nodes that have already been explored, and then returning those nodes. Elimination will use the built-in <code>List.filter predicate list</code> function, which keeps only the elements in the list for which the predicate function returns true. My predicates are "is not explored" and "is valid":
+<pre style='color:#000000;background:#ffffff;'><span style='color:#7f0055; font-weight:bold; '>let</span> explore known node =
+  <span style='color:#7f0055; font-weight:bold; '>let</span> reached    = List.map (Node.add node) values <span style='color:#7f0055; font-weight:bold; '>in</span>
+  <span style='color:#7f0055; font-weight:bold; '>let</span> valid      = List.filter Node.is_valid reached <span style='color:#7f0055; font-weight:bold; '>in</span>
+  <span style='color:#7f0055; font-weight:bold; '>let</span> unexplored = List.filter (is_unknown known) valid <span style='color:#7f0055; font-weight:bold; '>in</span>
+  unexplored</pre>
+
+The exploration process is fairly similar to what happened in the previous installment. An unexplored list is kept, and one item is taken from it and explored, which creates new unexplored items. Any items added to the list of unexplored items is also added to the set of known items to avoid duplicates. When the unexplored list runs out (everything has been explored), the set of known items is returned, because it contains all reachable nodes including the largest transaction. In order to make sure the smallest transaction is kept for every amount, the algorithm processes shorter transactions before longer transactions (so that the first transaction for any given total is always the shortest transaction for that total). This is done by appending newly found unexplored elements at the <i>end</i> of the unexplored list. The complete code is:
+<pre style='color:#000000;background:#ffffff;'><span style='color:#7f0055; font-weight:bold; '>let</span> <span style='color:#7f0055; font-weight:bold; '>rec</span> process known unexplored =
+  <span style='color:#7f0055; font-weight:bold; '>match</span> unexplored <span style='color:#7f0055; font-weight:bold; '>with</span>
+    | [] -> explored
+    | next :: rest ->
+      <span style='color:#7f0055; font-weight:bold; '>let</span> found = explore known next <span style='color:#7f0055; font-weight:bold; '>in</span>
+      <span style='color:#7f0055; font-weight:bold; '>let</span> known = List.fold_left (<span style='color:#7f0055; font-weight:bold; '>fun</span> known node -> NodeSet.add node known) known found <span style='color:#7f0055; font-weight:bold; '>in</span>
+      process known (rest @ found)</pre>
+
+This is the hardest function of the bunch, and the most complex line is the one that uses <code>List.fold_left</code> to add several new nodes to the set of known nodes. As an interesting side note, the order of the parameters to <code>NodeSet.add</code> is not adapted to the <code>List.fold_left</code> function, which forces me to write an anonymous function that swaps the two arguments it receives. 
+
+Once this is written, it's a simple matter of calling the function:
+<pre style='color:#000000;background:#ffffff;'><span style='color:#7f0055; font-weight:bold; '>let</span> explored = process NodeSet.empty [Node.empty]</pre>
+
+And extracting the maximum using <code>NodeSet.fold</code>, the set equivalent of <code>List.fold_left</code>: 
+<pre style='color:#000000;background:#ffffff;'><span style='color:#7f0055; font-weight:bold; '>let</span> maximum =
+  NodeSet.fold
+    (<span style='color:#7f0055; font-weight:bold; '>fun</span> node best -> <span style='color:#7f0055; font-weight:bold; '>if</span> node.Node.count > best.Node.count <span style='color:#7f0055; font-weight:bold; '>then</span> node <span style='color:#7f0055; font-weight:bold; '>else</span> best)
+    explored Node.empty</pre>
+
+Since the set is sorted in ascending order of node totals, I know that if several transactions have the maximum size, the one with the smallest total amount will be found first and kept as the best. And the result is <strong>333.33€</strong>, for which the optimal transaction consists in giving 500€ and receiving 100€, 50€, 10€, 5€, 1€, 0.5€, 0.1€, 0.05€ and 0.02€ back (<strong>a total of ten coins and banknotes</strong>). The computation, when compiled as an optimized executable, takes 58 seconds on a computer that was average by early 2008 standards.

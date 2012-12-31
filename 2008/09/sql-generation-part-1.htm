@@ -1,0 +1,109 @@
+@title SQL Generation, Part 1
+@draft
+
+As a complementary solution to <a href="http://nicollet.net/blog/ocaml/6-generating-a-php-view">generating PHP views</a> is the generation of PHP models in a Model-View-Controller approach. In this example, the following model is used:
+<ul>
+	<li>A user has a first name, a last name, and a password (stored as a hash).</li>
+	<li>A user may have at most one session, which contains an optional IP and an optional session token.</li>
+	<li>A user has a list of favorites (stored as URLs).</li>
+</ul>
+To represent these constraints, the Objective Caml code below is used:
+<blockquote>
+<pre style="background: #ffffff none repeat scroll 0% 50%; color: #000000;"><span style="color: #000084; font-weight: bold;">let</span> structure  =
+  empty
+  &gt;&gt; create_entity <span style="color: #0000ff;">"user"</span>
+    [ <span style="color: #0000ff;">"firstname"</span>, <span style="color: #0000ff;">"VARCHAR(255) NOT NULL"</span> ;
+      <span style="color: #0000ff;">"lastname"</span>, <span style="color: #0000ff;">"VARCHAR(255) NOT NULL"</span> ;
+      <span style="color: #0000ff;">"passhash"</span>, <span style="color: #0000ff;">"VARCHAR(64) NOT NULL"</span> ]
+  &gt;&gt; add_extension <span style="color: #0000ff;">"user"</span> <span style="color: #0000ff;">"session"</span>
+    [ <span style="color: #0000ff;">"ip"</span>, <span style="color: #0000ff;">"VARCHAR(16) NULL"</span> ;
+      <span style="color: #0000ff;">"token"</span>, <span style="color: #0000ff;">"VARCHAR(64) NULL"</span> ]
+  &gt;&gt; add_list_field <span style="color: #0000ff;">"user"</span> <span style="color: #0000ff;">"favorites"</span> <span style="color: #0000ff;">"VARCHAR(255)"</span></pre>
+</blockquote>
+<p style="background: #ffffff none repeat scroll 0% 50%; color: #000000;">Note: here, the <span style="font-family: courier new,courier; color: #999999;">&gt;&gt;</span> operator is used to mean <span style="font-family: courier new,courier; color: #999999;">x &gt;&gt; f == f(x)</span>. An extension defines an entity as being tied to another entity with optional semantics: the user entity may have at most one session entity, and a given session always has exactly one associated user. A list field associates several elementary values of a certain type with a single entity in a classic one-to-many relationship. The above structure is automatically transformed by a compiler function into this SQL code:</p>
+
+<blockquote>
+<pre style="background: #ffffff none repeat scroll 0% 50%; color: #000000;"><span style="color: #000084; font-weight: bold;">CREATE</span> <span style="color: #000084; font-weight: bold;">TABLE</span> <span style="color: #0000ff;">`</span><span style="background: #ffffff none repeat scroll 0% 50%; color: #000000;">user</span><span style="color: #0000ff;">`</span> (
+  <span style="color: #0000ff;">`</span><span style="background: #ffffff none repeat scroll 0% 50%; color: #000000;">id</span><span style="color: #0000ff;">`</span> <span style="color: #000084; font-weight: bold;">INT</span> NOT NULL AUTO_INCREMENT <span style="color: #000084; font-weight: bold;">PRIMARY</span> <span style="color: #000084; font-weight: bold;">KEY</span>,
+  <span style="color: #0000ff;">`</span><span style="background: #ffffff none repeat scroll 0% 50%; color: #000000;">passhash</span><span style="color: #0000ff;">`</span> <span style="color: #000084; font-weight: bold;">VARCHAR</span>(64) NOT NULL,
+  <span style="color: #0000ff;">`</span><span style="background: #ffffff none repeat scroll 0% 50%; color: #000000;">lastname</span><span style="color: #0000ff;">`</span> <span style="color: #000084; font-weight: bold;">VARCHAR</span>(255) NOT NULL,
+  <span style="color: #0000ff;">`</span><span style="background: #ffffff none repeat scroll 0% 50%; color: #000000;">firstname</span><span style="color: #0000ff;">`</span> <span style="color: #000084; font-weight: bold;">VARCHAR</span>(255) NOT NULL
+); 
+
+<span style="color: #000084; font-weight: bold;">CREATE</span> <span style="color: #000084; font-weight: bold;">TABLE</span> <span style="color: #0000ff;">`</span><span style="background: #ffffff none repeat scroll 0% 50%; color: #000000;">session</span><span style="color: #0000ff;">`</span> (
+  <span style="color: #0000ff;">`</span><span style="background: #ffffff none repeat scroll 0% 50%; color: #000000;">token</span><span style="color: #0000ff;">`</span> <span style="color: #000084; font-weight: bold;">VARCHAR</span>(64) NULL,
+  <span style="color: #0000ff;">`</span><span style="background: #ffffff none repeat scroll 0% 50%; color: #000000;">ip</span><span style="color: #0000ff;">`</span> <span style="color: #000084; font-weight: bold;">VARCHAR</span>(16) NULL,
+  <span style="color: #0000ff;">`</span><span style="background: #ffffff none repeat scroll 0% 50%; color: #000000;">user</span><span style="color: #0000ff;">`</span> <span style="color: #000084; font-weight: bold;">INT</span> NOT NULL <span style="color: #000084; font-weight: bold;">UNIQUE</span> <span style="color: #000084; font-weight: bold;">REFERENCES</span> <span style="color: #0000ff;">`</span><span style="background: #ffffff none repeat scroll 0% 50%; color: #000000;">user</span><span style="color: #0000ff;">`</span>(<span style="color: #0000ff;">`</span><span style="background: #ffffff none repeat scroll 0% 50%; color: #000000;">id</span><span style="color: #0000ff;">`</span>)
+); 
+
+<span style="color: #000084; font-weight: bold;">CREATE</span> <span style="color: #000084; font-weight: bold;">TABLE</span> <span style="color: #0000ff;">`</span><span style="background: #ffffff none repeat scroll 0% 50%; color: #000000;">user_favorites</span><span style="color: #0000ff;">`</span> (
+  <span style="color: #0000ff;">`</span><span style="background: #ffffff none repeat scroll 0% 50%; color: #000000;">value</span><span style="color: #0000ff;">`</span> <span style="color: #000084; font-weight: bold;">VARCHAR</span>(255),
+  <span style="color: #0000ff;">`</span><span style="background: #ffffff none repeat scroll 0% 50%; color: #000000;">user</span><span style="color: #0000ff;">`</span> <span style="color: #000084; font-weight: bold;">INT</span> NOT NULL <span style="color: #000084; font-weight: bold;">REFERENCES</span> <span style="color: #0000ff;">`</span><span style="background: #ffffff none repeat scroll 0% 50%; color: #000000;">user</span><span style="color: #0000ff;">`</span>(<span style="color: #0000ff;">`</span><span style="background: #ffffff none repeat scroll 0% 50%; color: #000000;">id</span><span style="color: #0000ff;">`</span>)
+);</pre>
+</blockquote>
+<h2>Design and rationale</h2>
+The underlying data structure used by the generator is divided into three main categories:
+<ul>
+	<li>Entities are the core concept, they are uniquely identified by a name. In themselves, they carry no information, except for an identifier which can be used to distinguish two entities of the same type from one another (for instance, differentiating two users using their key). Entities can have properties and can be related to each other by bindings.</li>
+	<li>Properties add a basic piece of information (an integer, a string or something close) to an entity. All entities of a given type have that property.</li>
+	<li>Bindings tie together two types of entities. A binding incorporates the notion of arity, meaning that it may relate zero or one, exactly one, or many entities of a type with zero or one, exactly one, or many entities of another type. A binding may also be normalized : either it is made part of the first entity type (meaning the arity for the other type cannot be "many"), or it is made part of the second type (meaning the arity for the first type cannot be "man"), or it is turned into a standalone relationship which gets its own table.</li>
+</ul>
+This structure differs from the typical "table with columns" approach that is prevalent in SQL in particular and in relational algebra in general, though it is perfectly equivalent to the latter : while an entity-property-binding representation can be turned into a table-column representation by making every entity and binding a table, and sticking properties as columns of the entity tables, the reverse transform is possible:
+<ul>
+	<li>A table is an entity.</li>
+	<li>The non-reference columns of a table are properties of that table's entity.</li>
+	<li>The reference columns of a table are bindings of the appropriate arity.</li>
+</ul>
+For the purposes of generating code, however, the entity-property-binding method is superior because it separates properties from bindings : while a property affects only the entity to which it is associated, a binding affects two entities. For instance, the unique identifier for an entity is not generated if that entity is an extension (that is, it is bound to exactly one other entity of another type, and is not subject to any other bindings). Also, because of normalization being a configurable option, it's possible to decide whether the binding is a relationship or a column.
+
+The entire data structure is kept in a single object, which acts as an associative container where new entities, properties and bindings may be added. The implementation of simple <span style="font-family: courier new,courier; color: #999999;">add_entity</span>, <span style="font-family: courier new,courier; color: #999999;">add_property</span>, <span style="font-family: courier new,courier; color: #999999;">add_binding</span> functions allow the creation of more elaborate data structure generators:
+<blockquote>
+<pre style="background: #ffffff none repeat scroll 0% 50%; color: #000000;"><span style="color: #000084; font-weight: bold;">let</span> create_entity e l s =
+  s &gt;&gt; add_entity e
+    &gt;&gt; add_fields e l
+
+<span style="color: #000084; font-weight: bold;">let</span> add_extension e n l s =
+  s &gt;&gt; add_entity n
+    &gt;&gt; add_binding (`One e) (`Option n) e `B
+    &gt;&gt; add_fields n l  
+
+<span style="color: #000084; font-weight: bold;">let</span> add_list_field e n k s =
+  <span style="color: #000084; font-weight: bold;">let</span> n = e ^ <span style="color: #0000ff;">"_"</span> ^ n <span style="color: #000084; font-weight: bold;">in</span>
+  s &gt;&gt; add_entity n
+    &gt;&gt; add_fields n [<span style="color: #0000ff;">"value"</span>,k]
+    &gt;&gt; add_binding (`One e) (`Many n) e `B</pre>
+</blockquote>
+The <span style="font-family: courier new,courier; color: #999999;">`B</span> argument means that the binding should be inserted into the right member of the relationship.
+<h2>Implementation</h2>
+A minimally documented implementation is available for download here : <a href="http://nicollet.net/files/articles/sql-gen-1.ml">files/articles/sql-gen-1.ml</a>
+<h2>Design patterns</h2>
+As with PHP views, Objective Caml can now serve as a meta-language, useful for describing processes that lead to the creation of data structures, and in particular of typical database design patterns. For instance, consider a simple rights management system, where a table maps object/user pairs with a set of rights (and a different such table exists for every kind of objects that can have rights). Adding rights management is then done as:
+<blockquote>
+<pre style="background: #ffffff none repeat scroll 0% 50%; color: #000000;"><span style="color: #000084; font-weight: bold;">let</span> add_rights users objects rights s =
+  <span style="color: #000084; font-weight: bold;">let</span> id = objects ^ <span style="color: #0000ff;">"_rights"</span> <span style="color: #000084; font-weight: bold;">in</span>
+  s &gt;&gt; create_entity id
+    [ <span style="color: #0000ff;">"rights"</span> , <span style="color: #0000ff;">"set("</span> ^ String.concat <span style="color: #0000ff;">","</span> rights ^ <span style="color: #0000ff;">") NOT NULL"</span> ]
+    &gt;&gt; add_binding (`Many id) (`One users) <span style="color: #0000ff;">"user"</span> `A
+    &gt;&gt; add_binding (`Many id) (`One objects) objects `A 
+
+<span style="color: #000084; font-weight: bold;">let</span> structure =
+  empty
+  &gt;&gt; add_entity <span style="color: #0000ff;">"user"</span>
+  &gt;&gt; add_entity <span style="color: #0000ff;">"page"</span>
+  &gt;&gt; add_rights <span style="color: #0000ff;">"user"</span> <span style="color: #0000ff;">"page"</span> [ <span style="color: #0000ff;">"read"</span> ; <span style="color: #0000ff;">"write"</span> ]</pre>
+</blockquote>
+Similarly, one could define a tree with the nodes referencing data from a given entity type:
+<blockquote>
+<pre style="background: #ffffff none repeat scroll 0% 50%; color: #000000;"><span style="color: #000084; font-weight: bold;">let</span> add_binary_tree_of data name s =
+  s &gt;&gt; add_entity name
+    &gt;&gt; add_binding (`Many name) (`One data) <span style="color: #0000ff;">"data"</span> `A
+    &gt;&gt; add_binding (`One name) (`Option name) <span style="color: #0000ff;">"left"</span> `A
+    &gt;&gt; add_binding (`One name) (`Option name) <span style="color: #0000ff;">"right"</span> `A 
+
+<span style="color: #000084; font-weight: bold;">let</span> structure =
+  empty
+  &gt;&gt; add_entity <span style="color: #0000ff;">"node"</span>
+  &gt;&gt; add_binary_tree_of <span style="color: #0000ff;">"node"</span> <span style="color: #0000ff;">"tree"</span></pre>
+</blockquote>
+<h2>Further work</h2>
+Now that the underlying data structure itself can be generated automatically, the operations (either in a high-level language or directly as SQL stored procedures) appears as a logical next step.

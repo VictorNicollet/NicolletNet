@@ -1,0 +1,80 @@
+@title The Mutator Idiom
+@draft
+
+<h4>Imperative Elegance</h4>
+Imperative programming has some elegant aspects to it. When representing a sequence of operations, as often happens for instance when drawing vectorial elements one by one, the "recipe" feel of imperative code can appear better than manually folding a concatenation operator of a list of operations.
+
+Of course, achieving the same elegance without mutable state is possible. The basic idea is to use a value to represent the state, and create mutator functions which represent the state changes, and which return a new state based on an old one. For instance, in the example below, the state is represented by type <span style="font-family: courier new,courier; color: #999999;">op</span>, and all mutator functions have a noticeable <span style="font-family: courier new,courier; color: #999999;">-&gt; mutator</span> type (instead of the <span style="font-family: courier new,courier; color: #999999;">-&gt; unit </span>type in true imperative functions).
+<blockquote>
+<pre style="background: #ffffff none repeat scroll 0% 50%; color: #000000;"><span style="color: #000084; font-weight: bold;">module</span> Graphics :
+<span style="color: #000084; font-weight: bold;">sig</span>
+  <span style="color: #000084; font-weight: bold;">type</span> op
+  <span style="color: #000084; font-weight: bold;">type</span> mutator = op -&gt; op
+  <span style="color: #000084; font-weight: bold;">val</span> apply       : op -&gt; <span style="color: #000084; font-weight: bold;">unit</span>
+  <span style="color: #000084; font-weight: bold;">val</span> nil         : op
+  <span style="color: #000084; font-weight: bold;">val</span> draw_rect   : vect -&gt; vect  -&gt; mutator
+  <span style="color: #000084; font-weight: bold;">val</span> draw_circle : vect -&gt; <span style="color: #000084; font-weight: bold;">int</span>   -&gt; mutator
+  <span style="color: #000084; font-weight: bold;">val</span> draw_line   : vect -&gt; vect  -&gt; mutator
+  <span style="color: #000084; font-weight: bold;">val</span> draw_pixel  : vect          -&gt; mutator
+  <span style="color: #000084; font-weight: bold;">val</span> draw        : vect -&gt; op    -&gt; mutator
+<span style="color: #000084; font-weight: bold;">end</span></pre>
+</blockquote>
+Keeping the state as the last argument of every mutator allows a fairly standard set of manipulations.
+<h4>Mutator lists</h4>
+The first possibility is to store all mutators in a list, and to concatenate them together with a folding operation:
+<blockquote>
+<pre style="background: #ffffff none repeat scroll 0% 50%; color: #000000;"><span style="color: #000084; font-weight: bold;">let</span> small_cross =
+  List.fold_left (<span style="color: #000084; font-weight: bold;">fun</span> x f -&gt; f x) nil
+  [
+    draw_line (-1,-1) ( 1, 1) ;
+    draw_line (-1, 1) ( 1,-1)
+  ] 
+
+<span style="color: #000084; font-weight: bold;">let</span> four_crosses =
+  List.fold_left (<span style="color: #000084; font-weight: bold;">fun</span> x f -&gt; f x) nil
+  [
+    draw ( 2, 0) small_cross ;
+    draw (-2, 0) small_cross ;
+    draw ( 0, 2) small_cross ;
+    draw ( 0,-2) small_cross
+  ]</pre>
+</blockquote>
+Using this approach, one comes closer to the imperative style of specification, while keeping the ability to manipulate the objects freely (for instance, in this case, to reuse the small cross drawing four times as part of a larger one).
+<h4>Piping operator</h4>
+A commonly found improvement in functional language is a piping operator, which replaces the (fun x f -&gt; f x) of the above folding operations, and which can then be used in infix position to separate the statements. Explicitly unrolling the folding operation yields:
+<blockquote>
+<pre style="background: #ffffff none repeat scroll 0% 50%; color: #000000;"><span style="color: #000084; font-weight: bold;">let</span> (|&gt;) x f = f x  
+
+<span style="color: #000084; font-weight: bold;">let</span> small_cross =
+  nil
+  |&gt; draw_line (-1,-1) ( 1, 1)
+  |&gt; draw_line (-1, 1) ( 1,-1) 
+
+<span style="color: #000084; font-weight: bold;">let</span> four_crosses =
+  nil
+  |&gt; draw ( 2, 0) small_cross
+  |&gt; draw (-2, 0) small_cross
+  |&gt; draw ( 0, 2) small_cross
+  |&gt; draw ( 0,-2) small_cross</pre>
+</blockquote>
+The piping operator can be found in languages such as F#. Objective Caml does not provide it by default, but it can be rewritten as above.
+<h4>Control structures</h4>
+Using the piping operator, one can implement the classic imperative control structures in a purely functional way. The loop will keep the state as an accumulator, and the body of the loop will be a mutator:
+<blockquote>
+<pre style="background: #ffffff none repeat scroll 0% 50%; color: #000000;"><span style="color: #000084; font-weight: bold;">let</span> <span style="color: #000084; font-weight: bold;">rec</span> _while cond iter init =
+  <span style="color: #000084; font-weight: bold;">if</span> cond init
+  <span style="color: #000084; font-weight: bold;">then</span> _while cond iter (iter init)
+  <span style="color: #000084; font-weight: bold;">else</span> init 
+
+<span style="color: #000084; font-weight: bold;">let</span> <span style="color: #000084; font-weight: bold;">rec</span> _for s n iter init =
+  <span style="color: #000084; font-weight: bold;">if</span> s &gt; n
+  <span style="color: #000084; font-weight: bold;">then</span> init
+  <span style="color: #000084; font-weight: bold;">else</span> _for (s+1) n iter (iter init s) 
+
+<span style="color: #000084; font-weight: bold;">let</span> drawing =
+  nil
+  |&gt; draw_rectangle (0,0) (10,10)
+  |&gt; _for 0 10
+     (<span style="color: #000084; font-weight: bold;">fun</span> i -&gt; draw_line (0,i) (10-i,0))</pre>
+</blockquote>
+As a consequence, every imperative construct can easily be converted to a purely functional approach using mutators and explicit state representation. Even better, the fact that state is explicit allows simple referencing of a previously manipulated state, and makes implementing undo functionality or simply reusing operations much easier.

@@ -1,0 +1,49 @@
+@title Ordinal Serialization
+@draft
+
+<h2>Serialization</h2>
+Serialization is the process of turning an in-memory non-linear data structure into a sequence of bytes that can be used, at another place or another time, to construct the original in-memory data structure. It's the equivalent of putting the data structure in a box before moving to a new house (or to keep it in the basement for later use).
+
+Today, serialization is a solved problem. Most programming languages provide serialization as a standard library feature (PHP's <span style="font-family: courier new,courier; color: #999999;">serialize</span>, OCaml's <span style="font-family: courier new,courier; color: #999999;">Marshal</span> module) or as a common extension (C++'s <span style="font-family: courier new,courier; color: #999999;">boost::serialization</span>). These packages solve countless problems encountered when serializing arbitrary data: handling collections, handling polymorphism, handling object graph joins or cycles, and even the low-level issues of binary serialization, such as endian-independent memory layouts. There is, as such, no reason to use your own serialization method without first trying out these methods.
+<h2>Ordinal serialization</h2>
+These methods, however, have the issue of being as general as possible. As such, they often generate serialized data that is too large when compared to the actual data being stored. This is of course perfectly normal: without prior knowledge of the data set, an algorithm cannot be optimized for either size or speed. For instance, if the programmer knows that the object graph is a tree (no joins or cycles), the serializer will still have to place additional data in the stream to tell the deserializer that no joins or cycles were encountered.
+
+A such example of overhead applies to indexes. In general, indexes are numbers between zero and the size of a container, and they are used quite a fair lot in data structures. So, if the container has a size of 172, all indices fit in a single 8-bit byte, yet will be represented by most binary serialization systems as a four-byte or eight-byte value in memory, leaving it to a compression algorithm down the pipeline to compress the three unnecessary "zero" bytes away.
+
+If ordinals are assumed to be close to zero with a higher probability, then a possible optimization is to pack as many ordinals in a single byte, then in the following byte, and so on. The memory representation thus uses, for each byte, 7 bits to represent the value and 1 bit to determine whether this is the last byte of the ordinal or if another byte exists. This method also has the advantage of eliminating any endianness issue, since it uses individual bytes.
+<h2>The code</h2>
+The piece of code below provides two functions for writing and reading an ordinal (represented as an unsigned number) from an iterator. The iterator's value_type should be unsigned char (or be compatible with it). Possibilities would be an <span style="font-family: courier new,courier; color: #999999;">std::back_insert_iterator&lt; std::vector&lt;unsigned char&gt; &gt;</span> or an <span style="font-family: courier new,courier; color: #999999;">std::ostream_iterator&lt; unsigned char &gt;</span> over the appropriate output stream.
+<blockquote>
+<pre style="background: #ffffff none repeat scroll 0% 50%; color: #000000;"><span style="color: #000084; font-weight: bold;">namespace</span> ordinal 
+{ 
+    <span style="color: #000084; font-weight: bold;">template</span> &lt;<span style="color: #000084; font-weight: bold;">typename</span> It&gt; 
+    <span style="color: #000084; font-weight: bold;">void</span> put(<span style="color: #000084; font-weight: bold;">unsigned</span> value, It &amp;target) 
+    { 
+        <span style="color: #000084; font-weight: bold;">while</span> (value &gt; 127) 
+        { 
+            *target++ = <span style="color: #000084; font-weight: bold;">static_cast</span>&lt;<span style="color: #000084; font-weight: bold;">unsigned</span> <span style="color: #000084; font-weight: bold;">char</span>&gt;(value % 128) + 128; 
+            value /= 128; 
+        } 
+
+      *target++ = <span style="color: #000084; font-weight: bold;">static_cast</span>&lt;<span style="color: #000084; font-weight: bold;">unsigned</span> <span style="color: #000084; font-weight: bold;">char</span>&gt;(value); 
+    } 
+
+  <span style="color: #000084; font-weight: bold;">  template</span> &lt;<span style="color: #000084; font-weight: bold;">typename</span> It&gt; 
+    <span style="color: #000084; font-weight: bold;">unsigned</span> get(It &amp;source) 
+    { 
+        <span style="color: #000084; font-weight: bold;">unsigned</span> <span style="color: #000084; font-weight: bold;">char</span> read; 
+        <span style="color: #000084; font-weight: bold;">unsigned</span> multiplier = 1; 
+        <span style="color: #000084; font-weight: bold;">unsigned</span> result = 0; 
+        <span style="color: #000084; font-weight: bold;">while</span> ((read = *source++) &gt; 127) 
+        { 
+            result += (<span style="color: #000084; font-weight: bold;">static_cast</span>&lt;<span style="color: #000084; font-weight: bold;">unsigned</span>&gt;(read) - 128) * multiplier; 
+            multiplier *= 128; 
+        } 
+
+        result += <span style="color: #000084; font-weight: bold;">static_cast</span>&lt;<span style="color: #000084; font-weight: bold;">unsigned</span>&gt;(read) * multiplier; 
+
+        <span style="color: #000084; font-weight: bold;">return</span> result; 
+    } 
+}</pre>
+</blockquote>
+This is a fairly common trick, encountered in countless file format specifications (take a peek at some of the binary formats for 3D models at <a href="http://www.wotsit.org/list.asp?fc=2">wotsit</a> and see how they represent endian-independent indices). The code above is hereby placed in the public domain, where allowed by law.

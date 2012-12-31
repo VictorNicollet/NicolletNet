@@ -1,0 +1,124 @@
+@title Exception Avoidance
+@draft
+
+From what I gather, many significant users of Objective Caml are moving away from exceptions, opting to rely on return types instead. To the more traditional C#/Java/C++ worlds, this must certainly sound as a heresy — exceptional situations <em>should</em> be handled using exceptions in order to avoid mudding up the control flow. Right?
+
+Wrong.
+
+Exceptions are a powerful tool that lets the author of a function say «heck, no way I can do this, let's tell the caller» while letting the caller of that function say «I don't care about your problems, tell <em>my</em> caller» and so the exception, once thrown, bubbles up through the hierarchy of function calls until it reaches a point where it can be handled. Which, in the vast majority of cases, is in some sort of catch-all handler that basically amounts to «drat, it didn't work, let's do something else»
+
+As the writer of the calling function, this makes your life easier: if any errors happen in the functions you call, they will nicely bubble up, so you only have to care about situations where everything works fine. As a human being, you are passing the responsibility for handling that failure to someone else on your team who will happen to write the code that calls your code. And a major problem with responsibilities being passed around is that they end up on the floor.
+
+This is further compounded by the fact that the presence of exception handlers is not adequately verified by compilers, and you end up with code in a mess that can only be solved in two ways:
+<ul>
+	<li>Read through all the code again, remember what functions might throw which exceptions, and add any missing handlers to treat them on the spot. This is hard.</li>
+	<li>Add a generic catch-all handler that silences errors but doesn't really react to exceptions in an acceptable manner.</li>
+</ul>
+Maybe your team <em>does</em> handle all exceptions appropriately in the places where they are needed. That would be quite surprising (where do you work?) but let's assume for a moment that this is the case.
+
+What happens when a change of specifications mandates that a new kind exception needs to be thrown? Suppose, for instance, that a given database resource may be now locked by an user, making all attempts to access that resource (by other users) fail. How do you change your code to handle this new requirement?
+
+Adding a new exception is perhaps one of the single most painful kind of code change in modern programming, because it is woefully ill-supported by both languages (by design) and tools. It would effectively require the «functional specs guy» to think of all the ways an user might trigger that lock condition and how the software should react, then provide the developers with a detailed plan of action that would let them jump into dozens of different code locations to add the appropriate try-catch block. If one such location goes unnoticed, it will be filed as a bug when a tester or customer noticed («I tried to save my document, but it said <strong>document locked</strong> and I lost my data!»).
+
+Consider the following example:
+<pre style="color: #000020; padding-left: 30px;"><span style="color: #200080; font-weight: bold;">let</span> get_age <span style="color: #308080;">(</span>person <span style="color: #308080;">:</span> Person.t<span style="color: #308080;">)</span> <span style="color: #308080;">=</span>
+<span style="color: #200080; font-weight: bold;">  if</span> Person<span style="color: #308080;">.</span>is_dead <span style="color: #200080; font-weight: bold;">then</span> <span style="color: #200080; font-weight: bold;">raise</span> PersonIsDead <span style="color: #308080;">;</span>
+  Date<span style="color: #008c00;">.</span>subtract Date<span style="color: #008c00;">.</span>today <span style="color: #308080;">(</span>Person.birth_date person<span style="color: #308080;">)</span></pre>
+I just added the exception-throwing line — how can I easily detect locations that are affected by this change? There is no way. So, what is the alternative?
+<h4>Eliminating Exceptions</h4>
+Objective Caml allows the use of <strong>polymorphic variants</strong>. You can create a tag on the fly and attach it to a value that you're returning (the tag is called a <em>polymorphic variant constructor</em>). You can also return tags without attached values, which is helpful when signaling error conditions. Here is how I would rewrite the above:
+<pre style="color: #000020; padding-left: 30px;"><span style="color: #200080; font-weight: bold;">let</span> get_age person <span style="color: #308080;">=</span>
+  <span style="color: #200080; font-weight: bold;">if</span> Person<span style="color: #308080;">.</span>is_dead <span style="color: #200080; font-weight: bold;">then</span> <span style="color: #308080;">`</span>person_is_dead
+  <span style="color: #200080; font-weight: bold;">else</span> <span style="color: #308080;">`</span>age <span style="color: #308080;">(</span>Date<span style="color: #008c00;">.</span>subtract Date<span style="color: #008c00;">.</span>today <span style="color: #308080;">(</span>Person<span style="color: #308080;">.</span>birth_date person<span style="color: #308080;">)</span><span style="color: #308080;">)</span></pre>
+I used the tag <code>`age</code> to represent a valid age, and <code>`person_is_dead</code> to represent the fact that a dead person has no age. Looking at the compiler output confirms that my function was indeed identified as returning a tagged value, and all possible tags were described <em>by the compiler</em> in the function signature:
+<pre style="padding-left: 30px;">val get_age : Person.t -&gt; [ `person_is_dead | `age of int ]</pre>
+Since the return type of the function changed (after all, it used to be <strong>int</strong>), all the functions that call it now cause a compiler error, which makes them quite easy to find <em>and correct</em>. Most of them will usually correspond to what the «functional specifications guy» wrote in his document, but the compiler will also find those that were overlooked. For instance, there's this line that displays the age of a person:
+<pre style="color: #000020; padding-left: 30px;"><span style="color: #008c00;"> </span>printf <span style="color: #1060b6;">"</span><span style="color: #0f69ff;">%s</span><span style="color: #1060b6;"> </span><span style="color: #0f69ff;">%s</span><span style="color: #1060b6;"> (age </span><span style="color: #0f69ff;">%d</span><span style="color: #1060b6;">)"</span>
+  <span style="color: #308080;">(</span>Person<span style="color: #308080;">.</span>firstname<span style="color: #308080;">)</span>
+  <span style="color: #308080;">(</span>Person<span style="color: #308080;">.</span>lastname<span style="color: #308080;">)</span>
+  <span style="color: #308080;">(</span>get_age person<span style="color: #308080;">)</span></pre>
+Seeing this code, but not seeing anything about it in the specification document, the programmer asks the stakeholder in the next scrum meeting, and the latter decides that showing <em>deceased</em> would be enough. So, the code becomes:
+<pre style="color: #000020; padding-left: 30px;">printf <span style="color: #1060b6;">"</span><span style="color: #0f69ff;">%s</span><span style="color: #1060b6;"> </span><span style="color: #0f69ff;">%s</span><span style="color: #1060b6;"> (</span><span style="color: #0f69ff;">%s</span><span style="color: #1060b6;">)"</span>
+  <span style="color: #308080;">(</span>Person<span style="color: #308080;">.</span>firstname person<span style="color: #308080;">)</span>
+  <span style="color: #308080;">(</span>Person<span style="color: #308080;">.</span>lastname person<span style="color: #308080;">)</span>
+  <span style="color: #308080;">(</span><span style="color: #200080; font-weight: bold;">match</span> get_age person <span style="color: #200080; font-weight: bold;">with</span> <span style="color: #308080;">`</span>age a <span style="color: #308080;">-&gt;</span> sprintf <span style="color: #1060b6;">"age </span><span style="color: #0f69ff;">%d</span><span style="color: #1060b6;">"</span> a <span style="color: #308080;">|</span> <span style="color: #308080;">`</span>person_is_dead <span style="color: #308080;">-&gt;</span> <span style="color: #1060b6;">"deceased"</span><span style="color: #308080;">)</span></pre>
+Pattern matching is a powerful tool from the ML family of languages. It behaves like a switch, but with several added benefits:
+<ul>
+	<li>It extracts any values attached to the tags, and the compiler checks the presence and types of those values. So, if I tried to access the <code>a</code> value from the <code>`person_is_dead</code> tag, the compiler would complain that no such value exists — the type signature of <code>get_age</code> specifies that no value is attached to <code>`person_is_dead</code>.</li>
+	<li>It verifies that all possible tags are handled by the construct. So, if I had to hide the age of all female users, I would return <code>`is_woman</code> and the compiler would point out that said tag is not handled in the above code — an interesting tool when adding more exceptional cases.</li>
+</ul>
+<h4>Preventing Exceptions</h4>
+But that is not all. Having the compiler as an ally also helps the programmer prevent exceptions in the first place. For instance, suppose that, on the online profile page of every user, I have a tab that shows a countdown to the next birthday of that user. The code looks like this:
+<pre style="color: #000020; padding-left: 30px;"><span style="color: #200080; font-weight: bold;">let</span> show_user_profile person url <span style="color: #308080;">=</span> <span style="color: #595979;">(* ... *)</span>
+
+<span style="color: #200080; font-weight: bold;">let</span> show_birthday_countdown person url <span style="color: #308080;">=</span>
+  printf <span style="color: #1060b6;">"</span><span style="color: #0f69ff;">%d</span><span style="color: #1060b6;"> minutes left to age </span><span style="color: #0f69ff;">%d</span><span style="color: #1060b6;">"</span>
+    <span style="color: #308080;">(</span>get_minutes_to_birthday person<span style="color: #308080;">)</span>
+    <span style="color: #308080;">(</span>get_age person<span style="color: #308080;">)</span>
+
+<span style="color: #200080; font-weight: bold;">let</span> profile_page person url <span style="color: #308080;">=</span>
+  <span style="color: #595979;">(* This renders both tabs, then checks which one is </span>
+<span style="color: #595979;">   * active based on url and renders its content </span>
+<span style="color: #595979;">   *)</span>
+  Tabs<span style="color: #008c00;">.</span>render url
+    <span style="color: #308080;">[</span> <span style="color: #1060b6;">"profile"</span><span style="color: #308080;">,</span>   show_user_profile person <span style="color: #308080;">;</span>
+      <span style="color: #1060b6;">"countdown"</span><span style="color: #308080;">,</span> show_birthday_countdown person <span style="color: #308080;">]</span></pre>
+Obviously, a lot of functions called to render the contents of that tab will have to handle exceptions when the user is deceased — but the sane thing to do would be to hide the tab in the first place. If you don't try to render the tab contents, no errors will happen while rendering it... The problem, of course, is that if we check whether the user is alive <em>outside</em> the tab contents (in order to decide if the tab is present) we still have to check whether the user is alive inside the tab contents, <strong>even though we know that the tab contents would not have been rendered if this were not the case</strong>:
+<pre style="color: #000020; padding-left: 30px;"><span style="color: #200080; font-weight: bold;">let</span> show_user_profile person url <span style="color: #308080;">=</span> <span style="color: #595979;">(* ... *)</span>
+
+<span style="color: #200080; font-weight: bold;">let</span> show_birthday_countdown person url <span style="color: #308080;">=</span>
+  printf <span style="color: #1060b6;">"</span><span style="color: #0f69ff;">%d</span><span style="color: #1060b6;"> minutes left to age </span><span style="color: #0f69ff;">%d</span><span style="color: #1060b6;">"</span>
+    <span style="color: #308080;">(</span>get_minutes_to_birthday person<span style="color: #308080;">)</span>
+    <span style="color: #308080;">(</span><span style="color: #200080; font-weight: bold;">match</span> get_age person <span style="color: #200080; font-weight: bold;">with</span> <span style="color: #308080;">`</span>age a <span style="color: #308080;">-&gt;</span> a <span style="color: #308080;">|</span> <span style="color: #308080;">`</span>person_is_dead <span style="color: #308080;">-&gt;</span> <span style="color: #595979;">(* Should never happen! *)</span><span style="color: #308080;">)</span>
+
+<span style="color: #200080; font-weight: bold;">let</span> profile_page person url <span style="color: #308080;">=</span>
+  <span style="color: #595979;">(* This renders all available tabs, then checks which one is </span>
+<span style="color: #595979;">   * active based on url and renders its content (default is the first one) </span>
+<span style="color: #595979;">   *)</span>
+  Tabs<span style="color: #008c00;">.</span>render url
+    <span style="color: #308080;">[</span> <span style="color: #1060b6;">"profile"</span><span style="color: #308080;">,</span> show_user_profile person <span style="color: #308080;">]</span>
+    @ <span style="color: #308080;">(</span><span style="color: #200080; font-weight: bold;">if</span> Person<span style="color: #308080;">.</span>is_dead person <span style="color: #200080; font-weight: bold;">then</span> <span style="color: #308080;">[</span><span style="color: #308080;">]</span>
+       <span style="color: #200080; font-weight: bold;">else</span> <span style="color: #308080;">[</span> <span style="color: #1060b6;">"countdown"</span><span style="color: #308080;">,</span> show_birthday_countdown person <span style="color: #308080;">]</span><span style="color: #308080;">)</span></pre>
+Above, an if-then-else makes sure that <code>show_birthday_countdown</code> will only ever be called if the person is not dead (otherwise the tab is not available and the profile tab is shown instead). However, the <code>show_birthday_countdown</code> function does not know that, which means that pattern matching must still be used even though the error is known not to happen — and I hate "<em>should never happen</em>" comments in code. Should another programmer reuse the birthday countdown in another context where the unwritten assumption that the person is alive is not verified, the compiler will not be able to detect it, and the "<em>should never happen</em>" will happen. Constructs like the above should be avoided like the plague. <strong>Instead, the unwritten assumption should be written into a type</strong>.
+
+Let's build a different type that is known to be a living person:
+<pre style="color: #000020; padding-left: 30px;"><span style="color: #200080; font-weight: bold;">module</span> AlivePerson <span style="color: #308080;">:</span> <span style="color: #200080; font-weight: bold;">sig</span>
+  <span style="color: #200080; font-weight: bold;">type</span> t <span style="color: #308080;">=</span> <span style="color: #200080; font-weight: bold;">private</span> Person<span style="color: #008c00;">.</span>t
+  <span style="color: #200080; font-weight: bold;">val</span> is_alive <span style="color: #308080;">:</span> Person<span style="color: #008c00;">.</span>t <span style="color: #308080;">-&gt;</span> t option
+  <span style="color: #200080; font-weight: bold;">val</span> get_age  <span style="color: #308080;">:</span> t <span style="color: #308080;">-&gt;</span> <span style="color: #200080; font-weight: bold;">int</span>
+<span style="color: #200080; font-weight: bold;">end</span> <span style="color: #308080;">=</span> <span style="color: #200080; font-weight: bold;">struct</span>
+
+  <span style="color: #200080; font-weight: bold;">type</span> t <span style="color: #308080;">=</span> Person<span style="color: #008c00;">.</span>t
+
+  <span style="color: #200080; font-weight: bold;">let</span> is_alive person <span style="color: #308080;">=</span>
+    <span style="color: #200080; font-weight: bold;">if</span> Person<span style="color: #008c00;">.</span>is_dead person <span style="color: #200080; font-weight: bold;">then</span> <span style="color: #200080; font-weight: bold;">None</span>
+    <span style="color: #200080; font-weight: bold;">else</span> <span style="color: #200080; font-weight: bold;">Some</span> person
+
+  <span style="color: #200080; font-weight: bold;">let</span> get_age person <span style="color: #308080;">=</span>
+    Date<span style="color: #008c00;">.</span>subtract Date<span style="color: #008c00;">.</span>today <span style="color: #308080;">(</span>Person<span style="color: #008c00;">.</span>birth_date person<span style="color: #308080;">)</span>
+
+<span style="color: #200080; font-weight: bold;">end</span></pre>
+How does this work? First, we define a private type — this means that within the definition of the <code>AlivePerson</code> module, <code>AlivePerson.t</code> and <code>Person.t</code> are the same type, but outside, they are different and incompatible types. Being incompatible means that we need to define a function that creates an <code>AlivePerson.t</code> from a <code>Person.t</code> — this is what <code>AlivePerson.is_alive</code> does : if the person is alive, it is returned with type <code>AlivePerson.t</code>, and otherwise no value is returned. <strong>This proves that only a <code>Person.t</code> who is not dead can be turned into an <code>AlivePerson.t</code></strong>. Finally, we define the <code>AlivePerson.get_age</code> function which, on living persons, always returns the age without checking for them being alive.
+
+Next up, we must re-define the original get-age function, because we don't want to repeat ourselves: only write the age calculation code once! The good news is that the <code>AlivePerson</code> module provides everything we need to do this:
+<pre style="color: #000020; padding-left: 30px;"><span style="color: #200080; font-weight: bold;">let</span> get_age person <span style="color: #308080;">=</span>
+  <span style="color: #200080; font-weight: bold;">match</span> AlivePerson<span style="color: #008c00;">.</span>is_alive person <span style="color: #200080; font-weight: bold;">with</span>
+    <span style="color: #308080;">|</span> <span style="color: #200080; font-weight: bold;">None</span>       <span style="color: #308080;">-&gt;</span> <span style="color: #308080;">`</span>person_is_dead
+    <span style="color: #308080;">|</span> <span style="color: #200080; font-weight: bold;">Some</span> alive <span style="color: #308080;">-&gt;</span> <span style="color: #308080;">`</span>age <span style="color: #308080;">(</span>AlivePerson<span style="color: #008c00;">.</span>get_age alive<span style="color: #308080;">)</span></pre>
+The function signature remains the same, so it's a safe bet to say that the behavior did not change (and unit tests should make sure that it did not). Then, we can finally rewrite the offending tab-rendering code so that the countdown tab expects an alive person as an argument :
+<pre style="color: #000020; padding-left: 30px;"><span style="color: #200080; font-weight: bold;">let</span> show_birthday_countdown alive url <span style="color: #308080;">=</span>
+  printf <span style="color: #1060b6;">"</span><span style="color: #0f69ff;">%d</span><span style="color: #1060b6;"> minutes left to age </span><span style="color: #0f69ff;">%d</span><span style="color: #1060b6;">"</span>
+    <span style="color: #308080;">(</span>get_minutes_to_birthday <span style="color: #308080;">(</span>alive <span style="color: #308080;">:&gt;</span> Person<span style="color: #008c00;">.</span>t<span style="color: #308080;">)</span><span style="color: #308080;">)</span>
+    <span style="color: #308080;">(</span>AlivePerson<span style="color: #008c00;">.</span>get_age alive<span style="color: #308080;">)</span>
+
+<span style="color: #200080; font-weight: bold;">let</span> profile_page person url <span style="color: #308080;">=</span>
+  Tabs<span style="color: #008c00;">.</span>render url
+    <span style="color: #308080;">[</span> <span style="color: #1060b6;">"profile"</span><span style="color: #308080;">,</span> show_user_profile person <span style="color: #308080;">]</span>
+    @ <span style="color: #308080;">(</span><span style="color: #200080; font-weight: bold;">match</span> AlivePerson<span style="color: #008c00;">.</span>is_alive person <span style="color: #200080; font-weight: bold;">with</span>
+       <span style="color: #308080;">|</span> <span style="color: #200080; font-weight: bold;">None</span>       <span style="color: #308080;">-&gt;</span> <span style="color: #308080;">[</span><span style="color: #308080;">]</span>
+       <span style="color: #308080;">|</span> <span style="color: #200080; font-weight: bold;">Some</span> alive <span style="color: #308080;">-&gt;</span> <span style="color: #308080;">[</span> <span style="color: #1060b6;">"countdown"</span><span style="color: #308080;">,</span> show_birthday_countdown alive <span style="color: #308080;">]</span><span style="color: #308080;">)</span></pre>
+No compiler error occurs, and there is no more "<em>should never happen</em>" case in the first function. Also, should that function be re-used in a context where the assumption about the person being alive is not available, the compiler will issue an error (this value has type Profile.t but a value was expected of type <code>AliveProfile.t</code>) because type inference has determined (based on the call to <code>AlivePerson.get_age</code>) that <code>alive</code> is of type <code>AlivePerson.t</code>! Your unwritten assumption has been detected and checked by the compiler.
+<h4>In Conclusion</h4>
+In this article, I demonstrated how to turn exceptions into compiler-checked return values, this turning the compiler into a valuable ally that detects any locations where the addition of a new error might require altering existing functionality. I also illustrated how this enables the programmer to pre-empt the possibility of exceptions by injecting a compiler-verified proof that «<em>this will not throw an exception</em>» into a new module. The consequence of these coding practices is fewer mishandled exceptional situations, the ability to detect all consequences of a new kind of error, and a clean documentation of both error types and assumptions about what errors might or might not happen in a given piece of code.
+
+Which, I believe, leads to better code and happier developers. What do you think?

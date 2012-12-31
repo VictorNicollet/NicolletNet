@@ -1,0 +1,95 @@
+@title The Evil Overlord Solution
+@draft
+
+This is the answer to the <a href="http://www.nicollet.net/2010/06/the-evil-overlord-problem/" target="_blank">June 21st Evil Overlord contest</a>; you can scroll to the bottom to see the answer directly. The rest of this post is me ranting about why that's the answer. <span style="text-decoration: line-through;">For those of you who expect me to announce the winner: sorry, this is an automated posting that was written on June 20th; I'll pick the winner and announce his or her secret identity today or tommorrow.</span>
+<p style="padding-left: 30px;"><span style="color: #888888;">EDIT: The correct answer was found by four people:</span></p>
+
+<ul style="padding-left: 30px;">
+	<li>
+<ul>
+	<li><span style="color: #888888;">Radan</span></li>
+	<li><span style="color: #888888;">Adnan</span></li>
+	<li><span style="color: #888888;">Pacem</span></li>
+	<li><span style="color: #888888;">Jean-Baptiste</span></li>
+</ul>
+</li>
+</ul>
+<p style="padding-left: 30px;"><span style="color: #888888;">Radan said five, but I can only find four... This means I will have to pick one at random, by sorting them by the MD5 hashes of their post names and the opening value for the Dow Jones Industrial Index today, as provided by <a href="http://www.google.com/finance?client=ob&amp;q=INDEXDJX:DJI" target="_blank">Google</a> (which is <span style="width: 119px;">9,773.27). In case you're wondering, this is the technique used in my former school to decide who goes first when picking a dorm room.
+</span></span>
+</p><p style="padding-left: 30px;"><span style="color: #888888;"><span style="width: 119px;">As a consequence, here are the four MD5 hashes:</span></span></p>
+
+<ul style="padding-left: 30px;">
+	<li>
+<ul>
+	<li><span style="color: #888888;"><span style="width: 119px;">md5(Radan</span><span style="width: 119px;">9,773.27) = </span>23cfb426e5b7ad2e00c9b95c4755d106</span></li>
+	<li><span style="color: #888888;">md5(Adnan<span style="width: 119px;">9,773.27) = </span>07587d1c769526ad2971c77cd2107b1a</span></li>
+	<li><span style="color: #888888;">md5(Pacem<span style="width: 119px;">9,773.27) = </span>44df5cfd078f8ddbf666527894cb01f7</span></li>
+	<li><span style="color: #888888;">md5(Jean-Baptiste<span style="width: 119px;">9,773.27) = </span>d27252ac9481762463e395c71d417b60</span></li>
+</ul>
+</li>
+</ul>
+<p style="padding-left: 30px;"><span style="color: #888888;">And so...</span></p>
+
+<p style="text-align: center; padding-left: 30px;"><span style="color: #888888;"><strong>Adnan Wins!</strong>
+<small>By virtue of having the smallest hash.</small></span>
+</p><p style="text-align: left; padding-left: 30px;"><span style="color: #888888;">Thank you for participating. I'm happy to see that some people don't suck at math. Besides, I now own the "Evil Overlord Problem" and "Evil Overlord Solution" google searches; a good first step towards being an Evil Overlord consultant.</span></p>
+
+<hr style="padding-left: 30px;" />
+<p style="padding-left: 30px;">To solve the problem, let's summarize the available data:</p>
+
+<ul>
+	<li>Thirty warehouses, all of them contain soda bottles, one of them sits on top of a nuclear silo.</li>
+	<li>Soda bottles remain inside warehouses for a fixed duration.</li>
+	<li>A bottle remains N days in warehouse N.</li>
+	<li>A henchman of the Evil Overlord managed to steal a bottle from the warehouse on top of the nuclear silo, and knows how long it had been there.</li>
+	<li>The Evil Overlord is supremely intelligent: he will use the age of the bottle to maximize his chances of finding the correct warehouse.</li>
+	<li>What is the probability of the Evil Overlord raiding the warehouse with the nuclear silo?</li>
+</ul>
+<h3>Step 1 : Be the Evil Overlord</h3>
+Let's look at the problem through the eyes of the Evil Overlord, by assuming that we know how long the bottle had been in there.
+<p style="text-align: center;"><strong>Let's assume, for instance, that the bottle is almost ten days old.</strong>
+<small>(by which I mean it has been there for more than nine days, but less than ten)</small>
+
+Remember that each day, a fixed number of bottles enters each warehouse, and that same fixed number leaves. So, warehouse X contains equal numbers of bottles that are 0, 1, ... X-1 days old, and every bottle will leave warehouse X the minute it becomes X days old.
+
+The fact that the bottle had been there for almost ten days eliminates warehouses 1 to 9. Finding an almost-ten-days-old bottle in warehouse 10 is a 1-in-10 chance, and the odds decrease from there (finding an almost-ten-days-old bottle in warehouse 30 is a mere 1-in-30 chance).
+</p><p style="text-align: center;"><strong>The Dark Legion should attack warehouse 10</strong>.</p>
+
+Of course, that was only half the question. The other half is to determine the probability of success. This is where the hand-waving has to stop and the real math begins.
+
+It's fairly easy to determine the odds of [<em>found almost-X-days-old bottle</em>] if <em>[stolen from warehouse Y</em>], but we actually want to determine the odds of [<em>stolen from warehouse Y</em>] if [<em>found almost-X-days-old bottle</em>]. This kind of reversal is done using <a href="http://en.wikipedia.org/wiki/Bayes%27_theorem" target="_blank">Bayes' theorem</a>:
+<p style="text-align: center;"><img class="size-full wp-image-1554 aligncenter" title="bayes" src="http://www.nicollet.net/wp-content/uploads/2010/06/bayes.png" alt="bayes" width="216" height="48" /></p>
+
+Here, <em>P(A|B)</em> represents the probability of event A <em>if event B is known to have happened</em>. I'll just choose <em>A = [stolen from warehouse Y]</em> and <em>B = [found almost-X-days-old bottle]</em> to get the result I'm looking for. Now, all I have to do is evaluate the three other probabilities.
+
+<em>» P(A)</em> is the probability of stealing from warehouse Y. Since all warehouses are identical and he does not remember anything, Igor could have stolen the bottle from any of these. So, this is equal to 1/30.
+
+<em>» P(B|A)</em> is the probability of finding an almost-X-days-old bottle in warehouse Y. This probability is zero if Y &lt; X, and 1/Y otherwise.
+
+<em>» P(B)</em> is the probability of finding an almost-X-days-old bottle by stealing from any warehouse. This is not an obvious value to compute, but we can rely on another consequence of Bayes' theorem:
+<p style="text-align: center;"><img class="size-full wp-image-1555 aligncenter" title="bayes2" src="http://www.nicollet.net/wp-content/uploads/2010/06/bayes2.png" alt="bayes2" width="363" height="37" /></p>
+<p style="text-align: left;">That is, to get the probability of finding a X-days-old bottle by stealing from any warehouse, we just average the probability of finding a X-days-old bottle in every warehouse (weighted by the probability of stealing from that warehouse in the first place). So, this probability is <em>(1/X + ... + 1/29 + 1/30)/30</em>.</p>
+
+Now, just apply Bayes' theorem for X=10, Y=10.
+<p style="text-align: center;"><strong>There is a 8.57619% probability of success if the Dark Legion attacks warehouse 10.</strong></p>
+
+If you're curious, here is the probability of success against the number of the attacked warehouse, if the stolen bottle is almost ten days old:
+<p style="text-align: center;"><img class="aligncenter size-full wp-image-1556" title="graph" src="http://www.nicollet.net/wp-content/uploads/2010/06/graph.png" alt="graph" width="660" height="290" /></p>
+
+<h3>Step 2 : Average the Situations</h3>
+Of course, we don't actually know how old the stolen bottle was (the value of X), so we can only average the success probability for each possible X, knowing that for every X the Evil Overlord will choose the best course of action, which is X=Y. Excel (or OpenOffice Calc) is a fairly nice tool for doing this:
+<ul>
+	<li>One column for every value of X</li>
+	<li>One line for every value of Y</li>
+	<li>Every cell in the matrix contains <em>P(B|A)</em>, probability of finding a bottle close to age X in warehouse Y</li>
+	<li>Add a <em>P(B)</em> line that contains the probability of finding a bottle close to age X (computed as a sum of all <em>P(B|A)</em> divided by 30)</li>
+	<li>Add a <em>P(Success|B)</em> line that contains the best <em>P(A|B)</em> for the column (which in turn is the best <em>P(B|A)</em> divided by 30 times <em>P(B)</em>).</li>
+	<li>Add a <em>P(Success|B) P(B)</em> line that multiplies the two lines above it.</li>
+	<li>Sum the last line to get <em>P(Success)</em>.</li>
+</ul>
+I've uploaded an <a href="http://www.nicollet.net/files/eviloverlord.xls" target="_blank">Excel Spreadsheet with the data</a>. And the result is:
+<p style="text-align: center;"><strong>There is a 13.31662% success probability for the Evil Overlord.</strong>
+<small>(Which is a clear improvement over the 3.33% success probability for picking a warehouse at random).</small>
+<h3 style="text-align: center;">Thank you for participating!</h3>
+</p><p style="text-align: center;">If you found this problem interesting, please <a href="http://www.nicollet.net/feed/" target="_blank">subscribe to my feed</a> or follow <a href="http://twitter.com/victorNicollet" target="_blank">@victorNicollet</a>.
+There might be other contests like this one soon!</p>

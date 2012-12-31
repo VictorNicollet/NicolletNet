@@ -1,0 +1,38 @@
+@title Array iterators
+@draft
+
+<h2>Array, pointers and iterators</h2>
+Consider a typical operation of outputting an array of data to the screen:
+<blockquote>
+<pre style="background: #ffffff none repeat scroll 0% 50%; color: #000000;"><span style="color: #000084; font-weight: bold;">const</span> <span style="color: #000084; font-weight: bold;">char</span> *users[] = { <span style="color: #0000ff;">"</span><span style="color: #0000ff;">Alice</span><span style="color: #0000ff;">"</span>, <span style="color: #0000ff;">"</span><span style="color: #0000ff;">Bob</span><span style="color: #0000ff;">"</span>, <span style="color: #0000ff;">"</span><span style="color: #0000ff;">Charlie</span><span style="color: #0000ff;">"</span> }; 
+
+<span style="color: #000084; font-weight: bold;">for</span>(<span style="color: #000084; font-weight: bold;">int</span> i = 0; i &lt; 3; ++i) 
+  std::<span style="color: #000084; font-weight: bold;">cout</span> &lt;&lt; users[i] &lt;&lt; <span style="color: #0000ff;">"</span><span style="color: #0000ff;">\n</span><span style="color: #0000ff;">"</span>;</pre>
+</blockquote>
+This can be performed in a more functional way by using algorithms and iterators:
+<blockquote>
+<pre style="background: #ffffff none repeat scroll 0% 50%; color: #000000;">std::<span style="color: #000084; font-weight: bold;">copy</span>(users, users + 3,  
+          std::ostream_operator&lt;<span style="color: #000084; font-weight: bold;">const</span> <span style="color: #000084; font-weight: bold;">char</span>*&gt;(std::<span style="color: #000084; font-weight: bold;">cout</span>, <span style="color: #0000ff;">"</span><span style="color: #0000ff;">\n</span><span style="color: #0000ff;">"</span>));</pre>
+</blockquote>
+While marginally longer, this code has the advantage that the output iterator can be replaced with any other (for instance, one that appends to a vector). This relies on the fact that arrays decay to pointers when they are used in a pointer context (be aware that <a href="http://www.gamedev.net/community/forums/viewreply.asp?ID=3005382">arrays are not pointers</a>, however) and that <a href="http://www.gamedev.net/community/forums/viewreply.asp?ID=3174491">pointers are iterators</a>.
+
+The main issue, however, is the compile-time constant 3 which represents the size of the array. Should the contents of the array change over time, one may forget to update the constant (even if it's defined as a named constant on the line that immediately follows the array).
+<h2>Arrays as template parameters</h2>
+Luckily, it's possible to solve this problem by using a template function to extract the size of an array (since the size of the array is part of its type). The code and application:
+<blockquote>
+<pre style="background: #ffffff none repeat scroll 0% 50%; color: #000000;"><span style="color: #000084; font-weight: bold;">template</span> &lt;<span style="color: #000084; font-weight: bold;">size_t</span> N, <span style="color: #000084; font-weight: bold;">typename</span> T&gt; 
+<span style="color: #000084; font-weight: bold;">size_t</span> size(T (&amp;)[N]) { <span style="color: #000084; font-weight: bold;">return</span> N; } 
+
+std::<span style="color: #000084; font-weight: bold;">copy</span>(users, users + size(users),  
+          std::ostream_operator&lt;<span style="color: #000084; font-weight: bold;">const</span> <span style="color: #000084; font-weight: bold;">char</span>*&gt;(std::<span style="color: #000084; font-weight: bold;">cout</span>, <span style="color: #0000ff;">"</span><span style="color: #0000ff;">\n</span><span style="color: #0000ff;">"</span>));</pre>
+</blockquote>
+This works by having a template function that has both the type and the size of an array as template parameters. Since the template parameters are inferred (when possible) from the types of the arguments provided to the function template, both the type (which is ignored) and the size are extracted from an array reference. Even better, unlike the brittle <span style="font-family: courier new,courier; color: #999999;">sizeof(users)/sizeof(users[0])</span> construct, this code will throw a clean compile-time error if for some reason <span style="font-family: courier new,courier; color: #999999;">users </span>becomes a pointer and the size is not available anymore.
+
+The next step is obviously:
+<blockquote>
+<pre style="background: #ffffff none repeat scroll 0% 50%; color: #000000;"><span style="color: #000084; font-weight: bold;">template</span> &lt;<span style="color: #000084; font-weight: bold;">size_t</span> N, <span style="color: #000084; font-weight: bold;">typename</span> T&gt; 
+T* end(T (&amp;a)[N]) { <span style="color: #000084; font-weight: bold;">return</span> a + N; } 
+
+std::<span style="color: #000084; font-weight: bold;">copy</span>(users, end(users),  
+          std::ostream_operator&lt;<span style="color: #000084; font-weight: bold;">const</span> <span style="color: #000084; font-weight: bold;">char</span>*&gt;(std::<span style="color: #000084; font-weight: bold;">cout</span>, <span style="color: #0000ff;">"</span><span style="color: #0000ff;">\n</span><span style="color: #0000ff;">"</span>));</pre>
+</blockquote>

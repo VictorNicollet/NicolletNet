@@ -1,0 +1,38 @@
+@title AJAX is Hard
+@draft
+
+Seen from the outside, AJAX has become an <em>easy </em>technology:
+<pre style="padding-left: 30px;">$('#container').<a href="http://docs.jquery.com/Ajax/load" target="_blank">load</a>('http://domain/path/to/page');</pre>
+Even if you're doing smarter things, like updating server-side values with asynchronous POST requests, it's still <em>easy</em>:
+<pre style="padding-left: 30px;">$.<a href="http://docs.jquery.com/Ajax/jQuery.post" target="_blank">post</a>(
+  'http://domain/path/to/action',
+  { user_id       : $('#user').val(),
+    new_user_name : $('#name').val() }
+);</pre>
+And, of course, it's also <em>easy</em> to make mistakes in AJAX.
+<h3>Not taking errors into account</h3>
+In an ideal world, the AJAX request is sent to the server, completed successfully, and the response is propagated back and applied.
+
+In the real world, the AJAX request might never reach the server because the network cable was pulled, or it could carry stale data that cannot be processed, or the user session might have expired, or something else altogether.
+
+This "request cannot be completed successfully" issue has been solved for years in the traditional HTTP world by both servers and browsers: when you try to get to a page and that page can't be reached, you will either get an error message from your browser or be redirected to another page by the server.
+
+In the AJAX world, a failed request times out silently without anything happening. You have to actually implement that small "Your session has expired, click here to log in again" message box yourself, just like so many other websites did. And, of course, you need to take into account into all of your workflows that the user may be logged out of their session at any point.
+
+Don't forget to include cable-plugging as part of your testing protocols!
+<h3>Forgetting to refresh parts</h3>
+When you post some modifications to the server asynchronously, you need to refresh some parts according to the new state of the server. Which parts do you refresh?
+
+While the answer might seen easy in every single specific case (I'm updating this list/object/grid, so I'll just refresh it), the general answer is not so simple: your server-side modification might have an impact on other parts of your system.
+
+Consider a typical Facebook-like interface: you have a menu with an inbox, and to the right of that inbox there's the number of unread messages. On the inbox page, you have a list of messages with a little cross on each message that deletes it through AJAX. The naive thing to do is have that cross update the list of messages, but then deleting an unread message wouldn't update the menu.
+
+Inevitably, a developer working on an AJAX feature will forget to take into account that some other part of the page that needs to be updated. Or a developer will add some information to every page and forget that some pages need to update that information.
+<h3>Repeating yourself</h3>
+Javascript does not benefit from the same clean separation of features into classes, files, packages and namespaces. Also, IDE quality is lacking when compared to other languages. This makes it hard to refactor JS code when duplicate functionality starts to appear.
+
+Let's consider the asynchronous post situation. In order for that code to work, you need to have fields with identifiers 'user' and 'name' and some element to initiate the post through an event. This is not encapsulated: if another page needs similar "post user name" functionality, the code will have to be rewritten. In fact, when the code is that small, it's actually faster to rewrite it than it is to find and call an existing function (not to mention writing that function in the first place).
+
+No refactoring means the code repeats itself. Having two user-name-change pieces of javascript on two different pages means twice as much work to do when you eventually change how that part really works.
+
+Allowing complex behavior to be written in two or three lines is no excuse for letting your code get out of hand: stand firm by the "once, twice, refactor" motto and do not hesitate to turn a three-liner into a ten-line reusable function with appropriate documentation.

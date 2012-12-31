@@ -1,0 +1,41 @@
+@title Autoloading : be friendly to intruders
+@draft
+
+Back in the old days of PHP 4, every script started with a shopping list of include statements for other files.
+
+PHP 5 brought along the <a href="http://php.net/manual/en/language.oop5.autoload.php" target="_blank">__autoload</a> function, and people were overjoyed. Since most programmers already had some kind of mental rule that said « class Foo is defined in Foo.php, » PHP let those programmers write down the rule and then followed it when looking for classes that had not been defined yet. A simple example would be:
+<pre style="padding-left: 30px;">function __autoload($classname)
+{
+  @include "$classname.php";
+}</pre>
+The classic PHP 5 architecture moved from « write a shopping list at the top of every script » to « include the file that defines __autoload » and even « redirect all requests to a single index.php file that defines __autoload and dispatches the requests. »
+
+And the <em>tutorialosphere</em> went wild. People everywhere discovered the power of autoloading and expounded on the usage of __autoload as the next step in PHP evolution. A <a href="http://www.bing.com/search?q=__autoload" target="_blank">Bing search for __autoload</a> (or <a href="http://www.google.com/search?q=__autoload" target="_blank">google</a>) will bring up many such one-page tutorials that discuss the benefits of that function for the sake of wide adoption.
+
+But meanwhile, __autoload's little sister <a href="http://www.php.net/manual/en/function.spl-autoload-register.php" target="_blank">spl_autoload_register</a> remained unknown, despite a major difference:
+<blockquote>If there must be multiple autoload functions, <span><strong>spl_autoload_register()</strong></span> allows for this. It effectively creates a queue of autoload functions, and runs through each of them in the order they are defined. By contrast, <span><strong>__autoload()</strong></span> may only be defined once.</blockquote>
+With __autoload, your code breaks if you ever need to interact with code that uses its own autoloading approach. While you can usually turn __autoload into spl_autoload_register in a few key presses, you might not have sufficient control over the code to make that change.
+
+<img class="aligncenter size-full wp-image-1472" title="joomla" src="http://www.nicollet.net/wp-content/uploads/2010/06/joomla.png" alt="joomla" width="235" height="46" />
+
+Case in point: <a href="http://www.joomla.org/" target="_blank">Joomla!</a> is a well-known content management system (often said to be the third of the Drupal-Wordpress-Joomla! triumvirate of PHP CMS solutions). Since version 1.5, it uses <a href="http://api.joomla.org/Joomla-Framework/_loader.php.html#function__autoload" target="_blank">__autoload</a>. It looks like this:
+<pre style="padding-left: 30px;">function __autoload($class)
+{
+  if(JLoader::load($class)) {
+    return true;
+  }
+  return false;
+}</pre>
+If you need to make Joomla! and the Zend Framework talk to each other, you need to include Zend Framework files by hand because you can't add <a href="http://framework.zend.com/manual/en/zend.loader.autoloader.html" target="_blank">Zend_Loader</a> on top of __autoload.  <strong>While it would be possible to change Joomla! to use spl_autoload_register instead of __autoload, this change will probably be overwritten by the next update you download</strong>.
+
+In short, if you write code that will be used by people who do not <em>own</em> it (in the sense that they can change it without annoying side-effects), you need to use spl_autoload_register() instead of __autoload().
+
+In the case of Joomla!, a simple patch would be to remove the __autoload() function definition and replace it with:
+<pre style="padding-left: 30px;">spl_autoload_register(array('JLoader','load'));</pre>
+(In fact, <a href="http://joomlacode.org/gf/project/joomla/tracker/?action=TrackerItemEdit&amp;tracker_id=32&amp;tracker_item_id=19562" target="_blank">there has already been one such suggestion</a> made there).
+<h4>Related posts</h4>
+<ul>
+	<li><a title="Permanent Link to &quot;PHP Autoloading&quot;" rel="bookmark" href="http://www.nicollet.net/2009/06/php-autoloading/">PHP Autoloading</a> : yes, I made that mistake once, too</li>
+	<li><a title="Permanent Link to &quot;3. Pervasive code&quot;" rel="bookmark" href="http://www.nicollet.net/useless/jitbrain/pervasive-code/">Pervasive code</a> : an unusual class-to-file mapping in JITBrain</li>
+	<li><a title="Permanent Link to &quot;Singletons&quot;" rel="bookmark" href="http://www.nicollet.net/2008/11/singletons/">Singletons</a> : having a single autoloader carries the typical issues of one-instance-only entities</li>
+</ul>

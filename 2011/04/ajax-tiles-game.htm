@@ -1,0 +1,21 @@
+@title AJAX Tiles Game
+@draft
+
+I started programming life by writing an AI for a simple game called <a href="http://txt.langworth.com/jsrobowar/" target="_blank">RoboWar</a> (back when it was a shareware game on Macintosh, in the pre-OS X days). Make sure you click the "Edit" buttons at the bottom of that page to view the kind of code I had to deal with. I then moved on to HyperTalk and, when I finally got my hands on a PC, started a ten-year spree in C++.
+
+Recently, I started toying with a similar idea: to create a game where people could write an AI that would play for them, with simple and easily modeled rules, and a really easy way to share your creations with your programmer friends (because just adding your AI to a long list of other AIs is kind of boring and not very social).
+
+So, I wrote a simple game in JavaScript. You feed it one URL for each player, and the game connects to that URL and asks for the next move. So, <strong>your AI is one URL</strong>, which makes it easy to share. Not to mention that you can probably write that AI in any language you wish, provided it can respond to HTTP requests and read JSON arrays of characters, and you can resort to a lot of fancy stuff (cloud computing, learning from experience, genetic algorithms) that would otherwise not be available in a game like RoboWar. The game board is readily available for you to observe while the game is played. It looks like this:
+
+<a href="http://tiles.nicollet.net/"><img class="aligncenter size-full wp-image-2353" title="tile-game" src="http://www.nicollet.net/wp-content/uploads/2011/04/tile-game.png" alt="" width="540" height="318" /></a>
+
+The rules to the game are fairly simple: pick white tiles to paint them with your color, pick tiles you already own to nuke them (blows up that tile and the four adjacent tiles as well), and connect a large group of tiles you own to a small group of tiles your opponent owns to conquer them. The player with the most tiles when the board is covered, wins. <a href="http://tiles.nicollet.net/" target="_blank"><strong>Play it here</strong></a>. I've already programmed four different AIs:
+<ul>
+	<li><strong>http://tiles.nicollet.net/ai/?random</strong> plays randomly.</li>
+	<li><strong>http://tiles.nicollet.net/ai/?expand</strong> creates one single group of tiles and expands it as fast as possible.</li>
+	<li><strong>http://tiles.nicollet.net/ai/?fearful</strong> nukes its own tiles when they might become connected to enemy tiles.</li>
+	<li><strong>http://tiles.nicollet.net/ai/?contain</strong> attempts to contain the enemy in a prison of nuked tiles.</li>
+</ul>
+None of these are particularly good, and a human player can certainly beat them quite easily, but they're a good challenge for your own AI. If you wish to participate without starting from scratch, you can <a href="https://github.com/VictorNicollet/AjaxTiles-AI" target="_blank">fork the sample AI on GitHub</a> to create your own (it's PHP code). Also, the GitHub <a href="https://github.com/VictorNicollet/AjaxTiles-AI/blob/master/README" target="_blank">README</a> contains all the technical details about what data your AI URL receives and what data it should respond with. And, if you're curious, the game rules are cleanly described in the <a href="http://tiles.nicollet.net/script.js" target="_blank">JavaScript source code</a>.
+
+I'm looking forward to hearing from you. Please share your AIs in the comments below, if you please: I'm really interested in what you might come up with.

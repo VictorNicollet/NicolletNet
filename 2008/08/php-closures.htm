@@ -1,0 +1,53 @@
+@title PHP Closures
+@draft
+
+A closure,  as explained in the corresponding <a href="http://en.wikipedia.org/wiki/Closure_%28computer_science%29">wikipedia article</a>, is a computer language feature that allows a function defined within another function to use all the variables in the function that contains it. The typical usage of a closure is to create a lambda (anonymous) function that is used by an algorithmic function over a collection. In other words, this is what would be nice (but impossible right now):
+<blockquote>
+<pre>$sum = 0;
+array_walk($array, function ($x) { $sum += $x; });</pre>
+</blockquote>
+While this may not seem as something very interesting in this specific case (after all, the version based on for_each is equivalent), it does get more interesting once you start to work on more complex data types that are not fully described by arrays or hash maps. Consider a form class with automatic validation of its fields:
+<blockquote>
+<pre>$db = connect_to_database();
+$labels = get_i18n_resource();
+$form -&gt; AddField('mail', 'input', function ($x) { 
+    if (mail_exists($db, $x)) return i18n($labels, 'invalid mail');
+    return null;
+});</pre>
+</blockquote>
+<h2>Doesn't PHP provide closures?</h2>
+No, it does not. However, some features do come close. The most obvious is the <span style="font-family: courier new,courier; color: #999999;">create_function</span> function from the standard library, which is available since PHP 4. It allows the creation of an anonymous function with the provided arguments and code:
+<blockquote>
+<pre>$new = array_map($old, create_function('$x', 'return $x * 2;'));</pre>
+</blockquote>
+However, the created function does not capture its environment. While it's possible to access a global variable, or even to hardcode a constant into the body of the function, referencing local variables of the creator is impossible.
+
+It should be noted that several workarounds have already been provided by clever authors. <a href="http://steike.com/code/php-closures/">This one</a> provides a way to extract the environment variables directly into a piece of code (it does not, however, include the possibility to pass arguments). <a href="http://blinkinglights.org/php/Closure.php">This one</a> uses a trick based on replacing positional parameters of the form $_1, $_2 ... $_n.
+
+Last but not least, PHP 5.3 has true closure support, although the local context variables have to be imported into the closure manually (more information <a href="http://wiki.php.net/rfc/closures">here</a>).
+<h2>The solution</h2>
+Since I don't expect the excellent solution from PHP 5.3 to be widely supported for another while (my current hosting doesn't even go beyond PHP 4, for what it's worth), I want to propose my own solution which mixes the idiomatic syntax of <span style="font-family: courier new,courier; color: #999999;">create_function</span> with the principle of importing values from the context manually. Another constraint is that the code should be clean and small. The expected usage is:
+<blockquote>
+<pre>$sum = 0;
+array_walk($array, <span style="background: #ffccaa none repeat scroll 0% 50%;">create_closure('$x', '$sum += $x;', array( 'sum' =&gt; &amp;$sum))</span>);</pre>
+</blockquote>
+That is, the function behaves like create_function, but takes a third argument that binds variable names in the code expressed as a second argument. The variables are bound to the provided values by reference, allowing modification of the context in addition to simple reading.
+
+The implementation I use involves a global variable (which can be accessed from PHP4 anonymous lambdas) to provide an anonymous function with the context (by means of a prelude that loads the data from the globally available context into the appropriate variable names). The code is as follows:
+<blockquote>
+<pre><span style="color: #000084; font-weight: bold;">function</span> create_closure($args, $code, $context) 
+{ 
+  <span style="color: #000084; font-weight: bold;">global</span> $create_closure_data; 
+
+  $nth = <span style="color: #000084; font-weight: bold;">count</span>($create_closure_data); 
+  $create_closure_data[] = &amp; $context; 
+
+  $prefix = <span style="color: #0000ff;">'global $create_closure_data;'</span>; 
+  <span style="color: #000084; font-weight: bold;">foreach</span> ($context <span style="color: #000084; font-weight: bold;">as</span> $var =&gt; $ignored) 
+    $prefix .= <span style="color: #000084; font-weight: bold;">sprintf</span>(<span style="color: #0000ff;">'$%s = &amp; $create_closure_data[%d][\'%s\'];'</span>, 
+                       $var, $nth, $var); 
+
+  <span style="color: #000084; font-weight: bold;">return</span> <span style="color: #000084; font-weight: bold;">create_function</span>($args, $prefix . $code); 
+}</pre>
+</blockquote>
+Additional checks (mostly, testing each variable name to check that it's a valid variable name) are fairly easy to add if required. This code is also hereby placed in the public domain, where allowed by law.

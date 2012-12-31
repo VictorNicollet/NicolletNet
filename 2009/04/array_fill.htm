@@ -1,0 +1,52 @@
+@title array_fill
+@draft
+
+PHP provides the <a href="http://us2.php.net/manual/en/function.array-fill.php" target="_blank">array_fill</a> function to create an array containing identical values a fixed number of times. To quote the example on the documentation page, code such as:
+<blockquote>
+<pre><code><span style="color: #000000;"><span style="color: #0000bb;">$a </span><span style="color: #007700;">= </span><span style="color: #0000bb;">array_fill</span><span style="color: #007700;">(</span><span style="color: #0000bb;">5</span><span style="color: #007700;">, </span><span style="color: #0000bb;">6</span><span style="color: #007700;">, </span><span style="color: #dd0000;">'banana'</span><span style="color: #007700;">);</span></span></code></pre>
+</blockquote>
+Generates this kind of array:
+<blockquote>
+<pre>Array
+(
+    [5]  =&gt; banana
+    [6]  =&gt; banana
+    [7]  =&gt; banana
+    [8]  =&gt; banana
+    [9]  =&gt; banana
+    [10] =&gt; banana
+)</pre>
+</blockquote>
+But the documentation does not answer an important question: are the values inserted into the array merely copies of the argument, or are they actual references to the argument?
+
+This may not seem like much, but PHP5 introduces manipulation of objects by reference (since working by value seldom plays nicely with object mutation) so it can be interesting to know how an array of objects reacts.
+
+The result is quite interesting. Consider the following code:
+<blockquote>
+<pre><code><span style="color: #000000;"><span style="color: #0000bb;">$obj </span><span style="color: #007700;">= (object)array(</span><span style="color: #dd0000;">'x' </span><span style="color: #007700;">=&gt; </span><span style="color: #0000bb;">0</span><span style="color: #007700;">);
+</span><span style="color: #0000bb;">$arr </span><span style="color: #007700;">= </span><span style="color: #0000bb;">array_fill</span><span style="color: #007700;">(</span><span style="color: #0000bb;">0</span><span style="color: #007700;">, </span><span style="color: #0000bb;">2</span><span style="color: #007700;">, </span><span style="color: #0000bb;">$obj</span><span style="color: #007700;">);
+</span><span style="color: #0000bb;">$arr</span><span style="color: #007700;">[</span><span style="color: #0000bb;">0</span><span style="color: #007700;">]-&gt;</span><span style="color: #0000bb;">x </span><span style="color: #007700;">= </span><span style="color: #0000bb;">1</span><span style="color: #007700;">;</span></span></code></pre>
+</blockquote>
+The expected output, if all the elements are independent copies, is that only the first cell will have a value of zero:
+<blockquote>
+<pre>Array
+(
+  [0] =&gt; object(stdClass)#1 { ["x"] =&gt; 1 }
+  [1] =&gt; object(stdClass)#1 { ["x"] =&gt; 0 }
+)</pre>
+</blockquote>
+But what really happens is that all the cells in the array actually reference the original object, which means the array will actually look like this:
+<blockquote>
+<pre>Array
+(
+  [0] =&gt; object(stdClass)#1 { ["x"] =&gt; 1 }
+  [1] =&gt; object(stdClass)#1 { ["x"] =&gt; 1 }
+)</pre>
+</blockquote>
+Oops! I hope you weren't relying on that function for filling an array of objects.
+
+On the other hand, since arrays are manipulated by value, code such as ...
+<blockquote>
+<pre><code><span style="color: #000000;"><span style="color: #0000bb;">array_fill</span><span style="color: #007700;">(</span><span style="color: #0000bb;">0</span><span style="color: #007700;">, </span><span style="color: #0000bb;">10</span><span style="color: #007700;">, </span></span></code><code><span style="color: #000000;"><span style="color: #0000bb;">array_fill</span><span style="color: #007700;">(</span><span style="color: #0000bb;">0</span><span style="color: #007700;">, </span><span style="color: #0000bb;">10</span><span style="color: #007700;">, </span><span style="color: #0000bb;">$value</span><span style="color: #007700;">)</span></span></code><code><span style="color: #000000;"><span style="color: #007700;">);</span></span></code></pre>
+</blockquote>
+... does indeed create a 10x10 grid of independent cells.

@@ -1,0 +1,35 @@
+@title OCaml Submodule Pattern
+@draft
+
+My code is quite large for an OCaml project. The main RunOrg repository alone contains 46212 lines of OCaml code (plus an additional 5631 lines of OCaml mli files) — and then, there's the web framework code and the independent plugins code.
+
+It's is Better™ to have many short files than a few long ones. One reason is incremental compiling with <em>ocamlbuild</em> : that the smaller your files are, the smaller the percentage of code to be compiled when you make a small change. Another reason is that files provide a natural delineation of code that makes it slightly easier to reason about.
+
+The very process of splitting a large file into smaller files is also an excellent way to clean up the code. Every split is an opportunity to move some code to a more generic location — why have a <code>CMember_importParser</code> module when all of its functionality could fit into an <code>OzCsv</code> plugin module ? Even when no such generic solution exists, cutting through the jungle that a 2000-line module contains helps clean up dependencies, identify shared functionality and imagine better ways to design code.
+
+Still, when cutting up code this way, the problem of encapsulation remains. If code that relates to pictures (an upload module, a transform module, a download module, an access rights module) is split across several files, it is desirable to let each file access functions and values from other values that would not otherwise be shown to modules not related to picture processing. For instance, a <code>get_download_link</code> function should be available throughout all picture-related modules, but the rest of the application should use the <code>get_download_link_for_user</code> function that checks whether the user is allowed to download the file.
+
+In order to achieve several nested levels of encapsulation required to work with modules this way, I have come up with a convention :
+<ul>
+	<li>A module name (and thus, a file name) is composed of segments written in camelCase and separated by underscores. For instance, <code>CEntity_view_grid</code> is a module name containing segments <code>CEntity,</code> <code>view</code> and <code>grid</code>.</li>
+	<li>Modules with only one segment are public. Any other module may include, open or otherwise reference them with no limitations beyond what the module signature says. So, <code>CEntity</code> may access <code>MGroup</code> freely.</li>
+	<li>Modules with N &gt; 1 segments are private. They may only be accessed by modules which share the first N-1 segments. So, <code>CEntity_view</code> is available to modules <code>CEntity</code> and <code>CEntity_edit</code> but not <code>CPicture</code>.</li>
+	<li>A module with N segments may export any module with N+1 segments it can access, possibly under a more restrictive signature. For instance, <code>CEntity_view</code> is available to all other modules as <code>CEntity.View</code>.</li>
+</ul>
+To make these rules easier to respect, private module dependencies are made explicit by adding a list of module aliases at the top of each file. The top of my <code>cEntity_view.ml</code> file starts with :
+<pre style="padding-left: 30px;"><code>module Sidebar     = CEntity_sidebar
+module Unavailable = CEntity_unavailable
+module Edit        = CEntity_edit
+module Info        = CEntity_view_info
+module Directory   = CEntity_view_directory
+module Grid        = CEntity_view_grid
+module Wall        = CEntity_view_wall
+</code></pre>
+It is forbidden to use a private module without going through such an alias, and it is forbidden to define such an alias anywhere except at the top of the file. This makes it extremely easy to determine whether private access rules are respected.
+
+The rule of thumb for splitting files (in my particular coding style) is :
+<ul>
+	<li>Code for separate layers (model, view, controller...) go into separate public modules.</li>
+	<li>For complex code (such as complex rules in model or controller code), consider splitting files larger than 200 lines.</li>
+	<li>For simple code (such as HTML template or JSON serialization definitions), there is no splitting limit except for factoring out common behavior.</li>
+</ul>

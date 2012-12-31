@@ -1,0 +1,140 @@
+@title XSLT as a Templating System
+@draft
+
+XSL is a programming language (which uses an XML-compatible syntax) used to describe a transform from an XML file to another XML file (though it may also be used to generate non-XML documents with a little bit of hacking).
+
+Consider a simple XML file describing a filesystem tree: every node contains a name and optionally some children.
+<blockquote>
+<pre>&lt;dir name="home"&gt;
+  &lt;dir name="arkadir"&gt;
+    &lt;file name=".emacs" /&gt;
+    &lt;file name=".zshrc" /&gt;
+  &lt;/dir&gt;
+  &lt;dir name="root"&gt;
+    &lt;file name="TWiki.tar.gz"/&gt;
+  &lt;/dir&gt;
+&lt;/dir&gt;</pre>
+</blockquote>
+One would wish to convert this to bit of XHTML such as the following:
+<blockquote>
+<pre>&lt;ul&gt;&lt;li&gt;&lt;p&gt;home&lt;/p&gt;
+  &lt;ul&gt;&lt;li&gt;&lt;p&gt;arkadir&lt;/p&gt;
+    &lt;ul&gt;&lt;li&gt;&lt;p&gt;.emacs&lt;/p&gt;&lt;/li&gt;
+        &lt;li&gt;&lt;p&gt;.zshrc&lt;/p&gt;&lt;/li&gt;
+    &lt;/ul&gt;&lt;/li&gt;
+        &lt;li&gt;&lt;p&gt;root&lt;/p&gt;
+    &lt;ul&gt;&lt;li&gt;&lt;p&gt;TWiki.tar.gz&lt;/p&gt;&lt;/li&gt;
+    &lt;/ul&gt;&lt;/li&gt;
+  &lt;/ul&gt;&lt;/li&gt;
+&lt;/ul&gt;</pre>
+</blockquote>
+A stylesheet to perform that transform would be:
+<blockquote>
+<pre style="background: #ffffff none repeat scroll 0% 50%; color: #000000;"><span style="color: #7f0055;">&lt;</span><span style="color: #000084; font-weight: bold;">xsl</span>:<span style="color: #000084; font-weight: bold;">template</span> match=<span style="color: #0000ff;">"</span><span style="color: #0000ff;">dir</span><span style="color: #0000ff;">"</span><span style="color: #7f0055;">&gt;</span> 
+  <span style="color: #7f0055;">&lt;</span><span style="color: #7f0055;">li</span><span style="color: #7f0055;">&gt;</span> 
+    <span style="color: #7f0055;">&lt;</span><span style="color: #7f0055;">p</span><span style="color: #7f0055;">&gt;</span><span style="color: #7f0055;">&lt;</span><span style="color: #000084; font-weight: bold;">xsl</span>:<span style="color: #000084; font-weight: bold;">value-of</span> select=<span style="color: #0000ff;">"</span><span style="color: #000084; font-weight: bold;">@</span><span style="color: #0000ff;">name</span><span style="color: #0000ff;">"</span><span style="color: #7f0055;">/&gt;</span><span style="color: #7f0055;">&lt;/</span><span style="color: #7f0055;">p</span><span style="color: #7f0055;">&gt;</span> 
+    <span style="color: #7f0055;">&lt;</span><span style="color: #7f0055;">ul</span><span style="color: #7f0055;">&gt;</span><span style="color: #7f0055;">&lt;</span><span style="color: #000084; font-weight: bold;">xsl</span>:<span style="color: #000084; font-weight: bold;">apply-templates</span><span style="color: #7f0055;">/&gt;</span><span style="color: #7f0055;">&lt;/</span><span style="color: #7f0055;">ul</span><span style="color: #7f0055;">&gt;</span> 
+  <span style="color: #7f0055;">&lt;/</span><span style="color: #7f0055;">li</span><span style="color: #7f0055;">&gt;</span> 
+<span style="color: #7f0055;">&lt;/</span><span style="color: #000084; font-weight: bold;">xsl</span>:<span style="color: #000084; font-weight: bold;">template</span><span style="color: #7f0055;">&gt;</span> 
+
+<span style="color: #7f0055;">&lt;</span><span style="color: #000084; font-weight: bold;">xsl</span>:<span style="color: #000084; font-weight: bold;">template</span> match=<span style="color: #0000ff;">"</span><span style="color: #0000ff;">file</span><span style="color: #0000ff;">"</span><span style="color: #7f0055;">&gt;</span> 
+  <span style="color: #7f0055;">&lt;</span><span style="color: #7f0055;">li</span><span style="color: #7f0055;">&gt;</span><span style="color: #7f0055;">&lt;</span><span style="color: #7f0055;">p</span><span style="color: #7f0055;">&gt;</span><span style="color: #7f0055;">&lt;</span><span style="color: #000084; font-weight: bold;">xsl</span>:<span style="color: #000084; font-weight: bold;">value-of</span> select=<span style="color: #0000ff;">"</span><span style="color: #000084; font-weight: bold;">@</span><span style="color: #0000ff;">name</span><span style="color: #0000ff;">"</span><span style="color: #7f0055;">/&gt;</span><span style="color: #7f0055;">&lt;/</span><span style="color: #7f0055;">p</span><span style="color: #7f0055;">&gt;</span><span style="color: #7f0055;">&lt;/</span><span style="color: #7f0055;">li</span><span style="color: #7f0055;">&gt;</span> 
+<span style="color: #7f0055;">&lt;/</span><span style="color: #000084; font-weight: bold;">xsl</span>:<span style="color: #000084; font-weight: bold;">template</span><span style="color: #7f0055;">&gt;</span> 
+
+<span style="color: #7f0055;">&lt;</span><span style="color: #000084; font-weight: bold;">xsl</span>:<span style="color: #000084; font-weight: bold;">template</span> match=<span style="color: #0000ff;">"</span><span style="color: #0000ff;">/</span><span style="color: #0000ff;">"</span><span style="color: #7f0055;">&gt;</span> 
+  <span style="color: #7f0055;">&lt;</span><span style="color: #7f0055;">ul</span><span style="color: #7f0055;">&gt;</span><span style="color: #7f0055;">&lt;</span><span style="color: #000084; font-weight: bold;">xsl</span>:<span style="color: #000084; font-weight: bold;">apply-templates</span><span style="color: #7f0055;">/&gt;</span><span style="color: #7f0055;">&lt;/</span><span style="color: #7f0055;">ul</span><span style="color: #7f0055;">&gt;</span> 
+<span style="color: #7f0055;">&lt;/</span><span style="color: #000084; font-weight: bold;">xsl</span>:<span style="color: #000084; font-weight: bold;">template</span><span style="color: #7f0055;">&gt;</span></pre>
+</blockquote>
+Stylesheets work based on templates, where every element in the source tree may be associated with one or more templates. Whenever a template matches the currently explored node, the code for that template is inserted into the output tree, with the special elements in the template being replaced with the appropriate values : <span style="font-family: courier new,courier; color: #999999;">xsl:value-of</span> inserts the text value of an attribute or XSL variable, or the text contents of an element, while <span style="font-family: courier new,courier; color: #999999;">xsl:apply-template</span> will traverse the child nodes and attempt to match them with templates. The replace-with-result semantics allow the writer to specify how the generated code should be wrapped at every level.
+<h2>Making it real</h2>
+To perform any kind of serious work in a programming language, one needs to have access to abstraction functionality: the ability to factor identical code into code blocks (<span style="font-family: courier new,courier; color: #999999;">xsl:template</span>), the ability to make abstractions based on parameters (<span style="font-family: courier new,courier; color: #999999;">xsl:param</span>), and the ability to separate the code into different files (<span style="font-family: courier new,courier; color: #999999;">xsl:import</span>).
+
+An issue appears from the fact that <span style="font-family: courier new,courier; color: #999999;">xsl:apply-templates</span> will apply all available templates for the given elements, which makes it difficult to factor out code (for instance, using distinct templates for a given element when generating a quick view and a full view within the same file). The element <span style="font-family: courier new,courier; color: #999999;">xsl:for-each</span> can be used to inline that behavior, but it still prevents factoring.
+
+The solution comes from calling templates:
+<blockquote>
+<pre style="background: #ffffff none repeat scroll 0% 50%; color: #000000;"><span style="color: #7f0055;">&lt;</span><span style="color: #000084; font-weight: bold;">xsl</span>:<span style="color: #000084; font-weight: bold;">template</span> name=<span style="color: #0000ff;">"</span><span style="color: #0000ff;">long-dir</span><span style="color: #0000ff;">"</span><span style="color: #7f0055;">&gt;</span> 
+  <span style="color: #7f0055;">&lt;</span><span style="color: #7f0055;">li</span><span style="color: #7f0055;">&gt;</span> 
+    <span style="color: #7f0055;">&lt;</span><span style="color: #7f0055;">p</span><span style="color: #7f0055;">&gt;</span><span style="color: #7f0055;">&lt;</span><span style="color: #000084; font-weight: bold;">xsl</span>:<span style="color: #000084; font-weight: bold;">value-of</span> select=<span style="color: #0000ff;">"</span><span style="color: #000084; font-weight: bold;">@</span><span style="color: #0000ff;">name</span><span style="color: #0000ff;">"</span><span style="color: #7f0055;">/&gt;</span><span style="color: #7f0055;">&lt;/</span><span style="color: #7f0055;">p</span><span style="color: #7f0055;">&gt;</span> 
+    <span style="color: #7f0055;">&lt;</span><span style="color: #7f0055;">ul</span><span style="color: #7f0055;">&gt;</span> 
+      <span style="color: #7f0055;">&lt;</span><span style="color: #000084; font-weight: bold;">xsl</span>:<span style="color: #000084; font-weight: bold;">for-each</span> select=<span style="color: #0000ff;">"</span><span style="color: #0000ff;">dir</span><span style="color: #0000ff;">"</span><span style="color: #7f0055;">&gt;</span> 
+        <span style="color: #7f0055;">&lt;</span><span style="color: #000084; font-weight: bold;">xsl</span>:<span style="color: #000084; font-weight: bold;">call-template</span> name=<span style="color: #0000ff;">"</span><span style="color: #0000ff;">long-dir</span><span style="color: #0000ff;">"</span><span style="color: #7f0055;">/&gt;</span> 
+      <span style="color: #7f0055;">&lt;/</span><span style="color: #000084; font-weight: bold;">xsl</span>:<span style="color: #000084; font-weight: bold;">for-each</span><span style="color: #7f0055;">&gt;</span> 
+    <span style="color: #7f0055;">&lt;/</span><span style="color: #7f0055;">ul</span><span style="color: #7f0055;">&gt;</span> 
+  <span style="color: #7f0055;">&lt;/</span><span style="color: #7f0055;">li</span><span style="color: #7f0055;">&gt;</span> 
+<span style="color: #7f0055;">&lt;/</span><span style="color: #000084; font-weight: bold;">xsl</span>:<span style="color: #000084; font-weight: bold;">template</span><span style="color: #7f0055;">&gt;</span> 
+
+<span style="color: #7f0055;">&lt;</span><span style="color: #000084; font-weight: bold;">xsl</span>:<span style="color: #000084; font-weight: bold;">template</span> name=<span style="color: #0000ff;">"</span><span style="color: #0000ff;">short-dir</span><span style="color: #0000ff;">"</span><span style="color: #7f0055;">&gt;</span> 
+  { 
+  <span style="color: #7f0055;">&lt;</span><span style="color: #000084; font-weight: bold;">xsl</span>:<span style="color: #000084; font-weight: bold;">value-of</span> select=<span style="color: #0000ff;">"</span><span style="color: #000084; font-weight: bold;">@</span><span style="color: #0000ff;">name</span><span style="color: #0000ff;">"</span><span style="color: #7f0055;">/&gt;</span> 
+  <span style="color: #7f0055;">&lt;</span><span style="color: #000084; font-weight: bold;">xsl</span>:<span style="color: #000084; font-weight: bold;">for-each</span> select=<span style="color: #0000ff;">"</span><span style="color: #0000ff;">dir</span><span style="color: #0000ff;">"</span><span style="color: #7f0055;">&gt;</span> 
+    <span style="color: #7f0055;">&lt;</span><span style="color: #000084; font-weight: bold;">xsl</span>:<span style="color: #000084; font-weight: bold;">call-template</span> name=<span style="color: #0000ff;">"</span><span style="color: #0000ff;">short-dir</span><span style="color: #0000ff;">"</span><span style="color: #7f0055;">/&gt;</span> 
+  <span style="color: #7f0055;">&lt;/</span><span style="color: #000084; font-weight: bold;">xsl</span>:<span style="color: #000084; font-weight: bold;">for-each</span><span style="color: #7f0055;">&gt;</span> 
+  } 
+<span style="color: #7f0055;">&lt;/</span><span style="color: #000084; font-weight: bold;">xsl</span>:<span style="color: #000084; font-weight: bold;">template</span><span style="color: #7f0055;">&gt;</span></pre>
+</blockquote>
+Instead of executing templates based on matching the input elements by XPath, one can select the appropriate elements using xsl:for-each and then use the appropriate template with xsl:call-template. The code above, for instance, uses this property to define two recursive directory printing templates, one which uses lists and the other which uses text-mode with delimiting brackets (and an output of <span style="font-family: courier new,courier; color: #999999;">{   home   {   arkadir   }    {   root   }    }</span> for the example above).
+<h2>Using helpers</h2>
+The ability to import and call individual templates makes it possible to create libraries of helpers that can be included at will. For instance, to insert a button that hides/shows an element, one could write the following template:
+<blockquote>
+<pre style="background: #ffffff none repeat scroll 0% 50%; color: #000000;"><span style="color: #808080;">&lt;!--</span><span style="color: #808080;"> A template that inserts a show/hide toggle button.</span> 
+<span style="color: #808080;">     Param 'target' : the identifier of the target element.</span> 
+<span style="color: #808080;">     Param 'show' : the display style when visible. </span><span style="color: #808080;">--&gt;</span> 
+<span style="color: #7f0055;">&lt;</span><span style="color: #000084; font-weight: bold;">xsl</span>:<span style="color: #000084; font-weight: bold;">template</span> name=<span style="color: #0000ff;">"</span><span style="color: #0000ff;">toggle</span><span style="color: #0000ff;">"</span><span style="color: #7f0055;">&gt;</span> 
+  <span style="color: #7f0055;">&lt;</span><span style="color: #000084; font-weight: bold;">xsl</span>:<span style="color: #000084; font-weight: bold;">param</span> name=<span style="color: #0000ff;">"</span><span style="color: #0000ff;">target</span><span style="color: #0000ff;">"</span><span style="color: #7f0055;">/&gt;</span> 
+  <span style="color: #7f0055;">&lt;</span><span style="color: #000084; font-weight: bold;">xsl</span>:<span style="color: #000084; font-weight: bold;">param</span> name=<span style="color: #0000ff;">"</span><span style="color: #0000ff;">show</span><span style="color: #0000ff;">"</span><span style="color: #7f0055;">/&gt;</span> 
+  <span style="color: #7f0055;">&lt;</span><span style="color: #7f0055;">button</span> style=<span style="color: #0000ff;">"</span><span style="color: #0000ff;">width:20px ; height:20px ; float:left</span><span style="color: #0000ff;">"</span><span style="color: #7f0055;">&gt;</span> 
+    <span style="color: #7f0055;">&lt;</span><span style="color: #000084; font-weight: bold;">xsl</span>:<span style="color: #000084; font-weight: bold;">attribute</span> name=<span style="color: #0000ff;">"</span><span style="color: #0000ff;">onclick</span><span style="color: #0000ff;">"</span><span style="color: #7f0055;">&gt;</span> 
+      toggle('<span style="color: #7f0055;">&lt;</span><span style="color: #000084; font-weight: bold;">xsl</span>:<span style="color: #000084; font-weight: bold;">value-of</span> select=<span style="color: #0000ff;">"</span><span style="color: #0000ff;">$target</span><span style="color: #0000ff;">"</span><span style="color: #7f0055;">/&gt;</span>','<span style="color: #7f0055;">&lt;</span><span style="color: #000084; font-weight: bold;">xsl</span>:<span style="color: #000084; font-weight: bold;">value-of</span> select=<span style="color: #0000ff;">"</span><span style="color: #0000ff;">$show</span><span style="color: #0000ff;">"</span><span style="color: #7f0055;">/&gt;</span>'); 
+    <span style="color: #7f0055;">&lt;/</span><span style="color: #000084; font-weight: bold;">xsl</span>:<span style="color: #000084; font-weight: bold;">attribute</span><span style="color: #7f0055;">&gt;</span> 
+  <span style="color: #7f0055;">&lt;/</span><span style="color: #7f0055;">button</span><span style="color: #7f0055;">&gt;</span> 
+<span style="color: #7f0055;">&lt;/</span><span style="color: #000084; font-weight: bold;">xsl</span>:<span style="color: #000084; font-weight: bold;">template</span><span style="color: #7f0055;">&gt;</span> 
+
+<span style="color: #7f0055;">&lt;</span><span style="color: #000084; font-weight: bold;">xsl</span>:<span style="color: #000084; font-weight: bold;">template</span> match=<span style="color: #0000ff;">"</span><span style="color: #0000ff;">dir</span><span style="color: #0000ff;">"</span><span style="color: #7f0055;">&gt;</span> 
+  <span style="color: #808080;">&lt;!--</span><span style="color: #808080;"> Generate an unique identifier </span><span style="color: #808080;">--&gt;</span> 
+  <span style="color: #7f0055;">&lt;</span><span style="color: #000084; font-weight: bold;">xsl</span>:<span style="color: #000084; font-weight: bold;">variable</span> name=<span style="color: #0000ff;">"</span><span style="color: #0000ff;">id</span><span style="color: #0000ff;">"</span><span style="color: #7f0055;">&gt;</span><span style="color: #7f0055;">&lt;</span><span style="color: #000084; font-weight: bold;">xsl</span>:<span style="color: #000084; font-weight: bold;">value-of</span> select=<span style="color: #0000ff;">"</span><span style="color: #000084; font-weight: bold;">generate-id</span><span style="color: #0000ff;">(</span><span style="color: #000084; font-weight: bold;">.</span><span style="color: #0000ff;">)</span><span style="color: #0000ff;">"</span><span style="color: #7f0055;">/&gt;</span><span style="color: #7f0055;">&lt;/</span><span style="color: #000084; font-weight: bold;">xsl</span>:<span style="color: #000084; font-weight: bold;">variable</span><span style="color: #7f0055;">&gt;</span> 
+  <span style="color: #7f0055;">&lt;</span><span style="color: #000084; font-weight: bold;">xsl</span>:<span style="color: #000084; font-weight: bold;">variable</span> name=<span style="color: #0000ff;">"</span><span style="color: #0000ff;">show</span><span style="color: #0000ff;">"</span><span style="color: #7f0055;">&gt;</span>block<span style="color: #7f0055;">&lt;/</span><span style="color: #000084; font-weight: bold;">xsl</span>:<span style="color: #000084; font-weight: bold;">variable</span><span style="color: #7f0055;">&gt;</span> 
+  <span style="color: #7f0055;">&lt;</span><span style="color: #7f0055;">li</span><span style="color: #7f0055;">&gt;</span> 
+    <span style="color: #808080;">&lt;!--</span><span style="color: #808080;"> Insert a toggle button </span><span style="color: #808080;">--&gt;</span> 
+    <span style="color: #7f0055;">&lt;</span><span style="color: #000084; font-weight: bold;">xsl</span>:<span style="color: #000084; font-weight: bold;">call-template</span> name=<span style="color: #0000ff;">"</span><span style="color: #0000ff;">toggle</span><span style="color: #0000ff;">"</span><span style="color: #7f0055;">&gt;</span> 
+      <span style="color: #7f0055;">&lt;</span><span style="color: #000084; font-weight: bold;">xsl</span>:<span style="color: #000084; font-weight: bold;">with-param</span> name=<span style="color: #0000ff;">"</span><span style="color: #0000ff;">target</span><span style="color: #0000ff;">"</span> select=<span style="color: #0000ff;">"</span><span style="color: #0000ff;">$id</span><span style="color: #0000ff;">"</span><span style="color: #7f0055;">/&gt;</span> 
+      <span style="color: #7f0055;">&lt;</span><span style="color: #000084; font-weight: bold;">xsl</span>:<span style="color: #000084; font-weight: bold;">with-param</span> name=<span style="color: #0000ff;">"</span><span style="color: #0000ff;">show</span><span style="color: #0000ff;">"</span> select=<span style="color: #0000ff;">"</span><span style="color: #0000ff;">$show</span><span style="color: #0000ff;">"</span><span style="color: #7f0055;">/&gt;</span> 
+    <span style="color: #7f0055;">&lt;/</span><span style="color: #000084; font-weight: bold;">xsl</span>:<span style="color: #000084; font-weight: bold;">call-template</span><span style="color: #7f0055;">&gt;</span> 
+    <span style="color: #7f0055;">&lt;</span><span style="color: #7f0055;">p</span><span style="color: #7f0055;">&gt;</span><span style="color: #7f0055;">&lt;</span><span style="color: #000084; font-weight: bold;">xsl</span>:<span style="color: #000084; font-weight: bold;">value-of</span> select=<span style="color: #0000ff;">"</span><span style="color: #000084; font-weight: bold;">@</span><span style="color: #0000ff;">name</span><span style="color: #0000ff;">"</span><span style="color: #7f0055;">/&gt;</span><span style="color: #7f0055;">&lt;/</span><span style="color: #7f0055;">p</span><span style="color: #7f0055;">&gt;</span> 
+    <span style="color: #7f0055;">&lt;</span><span style="color: #7f0055;">ul</span><span style="color: #7f0055;">&gt;</span> 
+      <span style="color: #808080;">&lt;!--</span><span style="color: #808080;"> Specify the ID of the 'ul' element to bind it</span> 
+<span style="color: #808080;">           to the toggle button. </span><span style="color: #808080;">--&gt;</span> 
+      <span style="color: #7f0055;">&lt;</span><span style="color: #000084; font-weight: bold;">xsl</span>:<span style="color: #000084; font-weight: bold;">attribute</span> name=<span style="color: #0000ff;">"</span><span style="color: #0000ff;">id</span><span style="color: #0000ff;">"</span><span style="color: #7f0055;">&gt;</span> 
+        <span style="color: #7f0055;">&lt;</span><span style="color: #000084; font-weight: bold;">xsl</span>:<span style="color: #000084; font-weight: bold;">value-of</span> select=<span style="color: #0000ff;">"</span><span style="color: #0000ff;">$id</span><span style="color: #0000ff;">"</span><span style="color: #7f0055;">/&gt;</span> 
+      <span style="color: #7f0055;">&lt;/</span><span style="color: #000084; font-weight: bold;">xsl</span>:<span style="color: #000084; font-weight: bold;">attribute</span><span style="color: #7f0055;">&gt;</span>     
+      <span style="color: #7f0055;">&lt;</span><span style="color: #000084; font-weight: bold;">xsl</span>:<span style="color: #000084; font-weight: bold;">apply-templates</span><span style="color: #7f0055;">/&gt;</span> 
+    <span style="color: #7f0055;">&lt;/</span><span style="color: #7f0055;">ul</span><span style="color: #7f0055;">&gt;</span> 
+  <span style="color: #7f0055;">&lt;/</span><span style="color: #7f0055;">li</span><span style="color: #7f0055;">&gt;</span> 
+<span style="color: #7f0055;">&lt;/</span><span style="color: #000084; font-weight: bold;">xsl</span>:<span style="color: #000084; font-weight: bold;">template</span><span style="color: #7f0055;">&gt;</span> 
+
+<span style="color: #7f0055;">&lt;</span><span style="color: #000084; font-weight: bold;">xsl</span>:<span style="color: #000084; font-weight: bold;">template</span> match=<span style="color: #0000ff;">"</span><span style="color: #0000ff;">file</span><span style="color: #0000ff;">"</span><span style="color: #7f0055;">&gt;</span> 
+  <span style="color: #7f0055;">&lt;</span><span style="color: #7f0055;">li</span><span style="color: #7f0055;">&gt;</span><span style="color: #7f0055;">&lt;</span><span style="color: #7f0055;">p</span><span style="color: #7f0055;">&gt;</span><span style="color: #7f0055;">&lt;</span><span style="color: #000084; font-weight: bold;">xsl</span>:<span style="color: #000084; font-weight: bold;">value-of</span> select=<span style="color: #0000ff;">"</span><span style="color: #000084; font-weight: bold;">@</span><span style="color: #0000ff;">name</span><span style="color: #0000ff;">"</span><span style="color: #7f0055;">/&gt;</span><span style="color: #7f0055;">&lt;/</span><span style="color: #7f0055;">p</span><span style="color: #7f0055;">&gt;</span><span style="color: #7f0055;">&lt;/</span><span style="color: #7f0055;">li</span><span style="color: #7f0055;">&gt;</span> 
+<span style="color: #7f0055;">&lt;/</span><span style="color: #000084; font-weight: bold;">xsl</span>:<span style="color: #000084; font-weight: bold;">template</span><span style="color: #7f0055;">&gt;</span> 
+
+<span style="color: #7f0055;">&lt;</span><span style="color: #000084; font-weight: bold;">xsl</span>:<span style="color: #000084; font-weight: bold;">template</span> match=<span style="color: #0000ff;">"</span><span style="color: #0000ff;">/</span><span style="color: #0000ff;">"</span><span style="color: #7f0055;">&gt;</span> 
+  <span style="color: #808080;">&lt;!--</span><span style="color: #808080;"> Insert the script containing the toggle function </span><span style="color: #808080;">--&gt;</span> 
+  <span style="color: #7f0055;">&lt;</span><span style="color: #7f0055;">script</span><span style="color: #7f0055;">&gt;</span> 
+function toggle(id, show) 
+{ 
+  var target = document.getElementById(id); 
+  if (target.style.display == 'none') 
+    target.style.display = show; 
+  else  
+    target.style.display = 'none'; 
+} 
+  <span style="color: #7f0055;">&lt;/</span><span style="color: #7f0055;">script</span><span style="color: #7f0055;">&gt;</span> 
+  <span style="color: #7f0055;">&lt;</span><span style="color: #7f0055;">ul</span><span style="color: #7f0055;">&gt;</span><span style="color: #7f0055;">&lt;</span><span style="color: #000084; font-weight: bold;">xsl</span>:<span style="color: #000084; font-weight: bold;">apply-templates</span><span style="color: #7f0055;">/&gt;</span><span style="color: #7f0055;">&lt;/</span><span style="color: #7f0055;">ul</span><span style="color: #7f0055;">&gt;</span>
+<span style="color: #7f0055;">&lt;/</span><span style="color: #000084; font-weight: bold;">xsl</span>:<span style="color: #000084; font-weight: bold;">template</span><span style="color: #7f0055;">&gt;</span></pre>
+</blockquote>
+Assuming that the toggle function (written in javascript) is provided in the resulting file, one can simply bind a new toggle button to any element on the page, and the button will then automatically perform show-hide operations on that element.
+<h2>Templating system</h2>
+A templating system is plugged at the output end of a web site. The web site generates print instructions (in the form of function calls, native objects or generated XML) that are then processed by the templating system and turned into an XHTML document that is sent to the user.
+
+Zend views apply this process with native objects : the data required for rendering is inserted into a <span style="font-family: courier new,courier; color: #999999;">Zend_View</span> object, and a template is a PHP file which reads data from the view object and wraps it in XHTML.
+
+When using XSL templates, the web site generates an XML file which is then processed by the templates. The process is intrinsically slower than using PHP objects (because one has to generate the XML file, then invoke the processor, as opposed to loading up an object and using the same interpreter to turn it into XHTML), but can be performed on the client side and thus make the server load lighter. As a bonus, since the generated output is made up of only strings, it's possible to cache the parts that do not change often in a database without requiring complex serialization and parsing setups.

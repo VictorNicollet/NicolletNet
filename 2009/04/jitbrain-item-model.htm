@@ -1,0 +1,60 @@
+@title JITBrain - Item Model
+@draft
+
+I have posted the articles explaining:
+<ul>
+	<li>What users can do with items : <a href="http://www.nicollet.net/jitbrain/groups-and-users/">Groups and Users</a>.</li>
+	<li>How items are stored in the database: <a href="http://www.nicollet.net/jitbrain/item-model/">Item Model</a>.</li>
+	<li>The PHP side of the item table: <a href="http://www.nicollet.net/jitbrain/create-and-read">Create and Read</a>.</li>
+	<li>The PHP side of the revision table: <a href="http://www.nicollet.net/jitbrain/update-and-delete">Update and Delete</a>.</li>
+</ul>
+The next step will be to discuss the AJAX-based interface, which can already be seen (at least in part) on the demo website by creating yourself a new account:
+<p style="padding-left: 30px;"><a href="http://jitbrain.nicollet.net">http://jitbrain.nicollet.net</a></p>
+
+JITBrain currently contains 2224 lines of PHP code, and not all of them have been discussed yet. I will start counting the Javascript soon, as well.
+<blockquote>
+<pre>   25 config/db.php
+   54 config/domain.php
+   17 config/error.php
+
+   31 controllers/ajax-post.php
+   19 controllers/confirm.php
+   52 controllers/do-login.php
+  107 controllers/do-reset-password.php
+   82 controllers/do-signup.php
+   70 controllers/files.php
+   24 controllers/index.php
+   17 controllers/login.php
+   27 controllers/reset-password.php
+
+   83 models/authentication.php
+   40 models/group.php
+   98 models/groupusers.php
+  170 models/item.php
+  292 models/itemrevision.php
+   34 models/user.php
+   39 objects/html.php
+   77 objects/lazy.php
+
+   21 utils/array.php
+  154 utils/db.php
+   67 utils/error.php
+   31 utils/item.php
+   10 utils/js.php
+    9 utils/localization.php
+   53 utils/pervasive.php
+   27 utils/redirect.php
+   88 utils/request.php
+   40 utils/session.php
+
+   27 views/confirm.php
+   24 views/itemlist.php
+   69 views/loginpage.php
+   29 views/newitemfield.php
+   18 views/page404.php
+   40 views/plainpage.php
+  101 views/resetpassword.php
+   58 views/twocolform.php
+
+ 2224 total</pre>
+</blockquote>

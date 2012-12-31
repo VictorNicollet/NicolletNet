@@ -1,0 +1,26 @@
+@title You're not a person
+@draft
+
+<blockquote>WEEK 1
+<p style="padding-left: 30px;"><em>In this application, every person belongs to exactly one team.</em></p>
+
+WEEK 4
+<p style="padding-left: 30px;"><em>We need to manage external contractors. We could use the "person" object.</em></p>
+
+WEEK 5
+<p style="padding-left: 30px;"><em>Hey, we need to assign a team to every person. Let's create an "external" team.</em></p>
+
+WEEK 127
+<p style="padding-left: 30px;"><em>Did you see that newspaper article about our company? They say we have an average of 30 people on every team. Do we even have 30-people teams?</em></p>
+</blockquote>
+Names are short. They can only convey a very limited amount of information. Even worse, that information tends to be different from its meaning in standard English: by declaring in week one that every person belongs to a team, the project designers separated the Application::Person (always in a team) from the English::Person (might be in zero, one or more teams). By week four, this separation vanished from the minds of most of the team. A developer noticed that "<em>English::Contractor is-a English::Person</em>" and mistakenly translated it to "<em>Application::Contractor is-a Application::Person</em>".
+
+This was the first mistake. Why didn't he notice?
+
+A positive property is what you <em>can</em> do with a thing.With the Person object, you can store a name, login, password and phone number!This is exactly we you needed! Those positive properties you need that the object doesn't provide, you can always add them through inheritance or composition, and that's still less work than implementing everything or having to refactor the code. A negative property is what you <em>cannot</em> do with an object no matter how hard you try. With the Person object, you cannot remain on your own without a team! But our brains are biased to look for positive properties first, and passively ignore negative properties until it's too late. Positive properties are about the solution solving the problem. Negative properties are about the solution not being applicable.
+
+The second mistake was, by far, the worst. So they finally noticed that negative property that blasted all their model away. And they went on with it, patching the issue by altering the meaning of Application::Team. It originally a project team within the company, it then represented a named group of people that could be a project team or the group of external contractors. This <em>is</em> refactoring: no matter how you look at it, you change the behavior of an object and let it propagate throughout the project, so you better be careful about where it propagates! In this case, they weren't careful about propagating the change of meaning to the documentation and user interaction part of the project, who mistakenly kept the old meaning of Application::Team. This led to a naive PR team issuing a statement that included the "external" group as if it were a project team.
+
+It's always helpful to have an anal-retentive person in a group, preferably in a position of authority that lets them veto such changes, and who is vigilant enough to spot that "external" team early on in the design.
+
+The real mistake was allowing a negative property to slip into the design. Negative properties hinder reuse, <em>by definition</em>. Sure, allowing a person to belong to zero-one-many teams is hard on every piece of code that must work on teams, because the writers have to remember to check whether the person has a team in the first place. But it has to be done. Doing it may even bring to light some issues in the original requirements ("So what happens when a person changes teams between the moment team bonuses are computed and the moment they are paid out?") that would become annoying later on.

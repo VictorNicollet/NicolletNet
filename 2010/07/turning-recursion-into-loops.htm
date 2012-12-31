@@ -1,0 +1,64 @@
+@title Turning recursion into loops
+@draft
+
+This message is a rehash of an earlier <a href="http://stackoverflow.com/questions/2116662/help-me-understand-inorder-traversal-without-using-recursion/2116755#2116755" target="_blank">post on Stack Overflow</a>. It's self-sufficient enough to be featured here, and I like to keep my content where I can see it ;) If you're not a computer genius, you can wait until next Monday for an article that can be read by standard issue humans.
+
+The premise is to take a standard tree traversal function (which is a recursive algorithm) and implement it without recursion. The recursive version is:
+<pre><code>traverse(node):
+  <span style="color: #0000ff;">if </span>node != None <span style="color: #0000ff;">do</span>:
+    traverse(node.left)
+    <span style="color: #0000ff;">print</span> node.value
+    traverse(node.right)
+  <span style="color: #0000ff;">endif</span>
+</code></pre>
+Try doing it on your own, then start reading the solution below once your brain is fried.
+<h4>The solution</h4>
+This is a clear case of tail recursion, so you can easily turn it into a while-loop.
+<pre><code>traverse(node):
+  <span style="color: #0000ff;">while</span> node != None <span style="color: #0000ff;">do</span>:
+    traverse(node.left)
+    <span style="color: #0000ff;">print</span> node.value
+    node = node.right
+  <span style="color: #0000ff;">endwhile</span>
+</code></pre>
+You're left with a recursive call. What the recursive call does is push a new context on the stack, run the code from the beginning, then retrieve the context and keep doing what it was doing. So, you create a stack for storage, and a loop that determines, on every iteration, whether we're in a "first run" situation (non-null node) or a "returning" situation (null node, non-empty stack) and runs the appropriate code:
+<pre><code>traverse(node):
+  stack = []
+  <span style="color: #0000ff;">while</span> !empty(stack) || node != None <span style="color: #0000ff;">do</span>:
+    <span style="color: #0000ff;">if</span> node != None <span style="color: #0000ff;">do</span>: <span style="color: #339966;">// this is a normal call, recurse</span>
+      push(stack,node)
+      node = node.left
+    <span style="color: #0000ff;">else</span> <span style="color: #339966;">// we're returning: pop and print the current node</span>
+      node = pop(stack)
+      <span style="color: #0000ff;">print</span> node.value
+      node = node.right
+    <span style="color: #0000ff;">endif
+  endwhile</span>
+</code></pre>
+The hard thing to grasp is the "return" part: you have to determine, in your loop, whether the code you're running is in the "entering the function" situation or in the "returning from a call" situation, and you will have an <code>if/else</code> chain with as many cases as you have non-terminal recursions in your code.
+
+In this specific situation, we're using the node to keep information about the situation. Another way would be to store that in the stack itself (just like a computer does for recursion). With that technique, the code is less optimal, but easier to follow
+<pre><code>traverse(node):
+<span style="color: #339966;">  // entry:</span>
+  <span style="color: #0000ff;">if</span> node == NULL <span style="color: #0000ff;">do return</span>
+  traverse(node.left)
+ <span style="color: #339966;"> // after-left-traversal:</span>
+  <span style="color: #0000ff;">print</span> node.value
+  traverse(node.right)
+
+traverse(node):
+   stack = [node,<span style="color: #ff0000;">'entry'</span>]
+   <span style="color: #0000ff;">while</span> !empty(stack) <span style="color: #0000ff;">do</span>:
+     [node,state] = pop(stack)
+     <span style="color: #0000ff;">switch</span> state:
+       <span style="color: #0000ff;">case</span> <span style="color: #ff0000;">'entry'</span>:
+         <span style="color: #0000ff;">if</span> node == None <span style="color: #0000ff;">do</span>: <span style="color: #0000ff;">break</span> <span style="color: #339966;">// return</span>
+         push(stack,[node,<span style="color: #ff0000;">'after-left-traversal'</span>]) <span style="color: #339966;">// store return address</span>
+         push(stack,[node.left,<span style="color: #ff0000;">'entry'</span>]) <span style="color: #339966;">// recursive call</span>
+         <span style="color: #0000ff;">break</span>
+       <span style="color: #0000ff;">case</span> <span style="color: #ff0000;">'after-left-traversal'</span>:
+         <span style="color: #0000ff;">print</span> node.value;
+         <span style="color: #339966;">// tail call : no return address</span>
+         push(stack,[node.right,<span style="color: #ff0000;">'entry'</span>]) <span style="color: #339966;">// recursive call</span>
+      <span style="color: #0000ff;">end
+    endwhile</span> </code></pre>

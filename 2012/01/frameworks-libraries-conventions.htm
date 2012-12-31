@@ -1,0 +1,71 @@
+@title Frameworks, Libraries, Conventions
+@draft
+
+Funkatron came up with the <a href="http://funkatron.com/posts/the-microphp-manifesto.html" target="_blank">MicroPHP Manifesto</a> :
+<blockquote><strong>I am a PHP developer</strong>
+<ul>
+	<li>I am not a Zend Framework or Symfony or CakePHP developer</li>
+	<li>I think PHP is complicated enough</li>
+</ul>
+<strong>I like building small things</strong>
+<ul>
+	<li>I like building small things with simple purposes</li>
+	<li>I like to make things that solve problems</li>
+	<li>I like building small things that work together to solve larger problems</li>
+</ul>
+<strong>I want less code, not more</strong>
+<ul>
+	<li>I want to write less code, not more</li>
+	<li>I want to manage less code, not more</li>
+	<li>I want to support less code, not more</li>
+	<li>I need to justify every piece of code I add to a project</li>
+</ul>
+<strong>I like simple, readable code</strong>
+<ul>
+	<li>I want to write code that is easily understood</li>
+	<li>I want code that is easily verifiable</li>
+</ul>
+</blockquote>
+Without surprise, a large swath of the community did not take it well, for similar reasons to <a href="http://www.nicollet.net/2010/03/why-i-gave-up-on-the-zend-framework/" target="_blank">my earlier piece against Zend Framework</a> — deviation from the commonly accepted norm.
+
+I have come a long way since I wrote that article, and I must have been walking in circles, because I actually ended up where I originally begun : why do we call these things <em>frameworks</em> ?
+
+Zend, Symfony, CakePHP — as well as Node.js, Rails, Django, Ocsigen ... — actually contribute three different things to projects that use them.
+<h4>Libraries</h4>
+A library provides <em>functionality</em> used for solving <em>general problems</em> in a flexible, <em>standalone</em> manner. <code>Zend_Mail</code> is a classic example of the library aspect of Zend Framework: you can plug it into your application and start sending e-mail. The interface you would use is uncluttered by details that are not directly related to sending e-mail.
+
+The core qualities of a library are its power (how many different aspects of a problem does it let me solve — attachments, rich text, bouncing, MIME handling...) and the clarity of its interface. <strong>What problems can you solve, and how fast can you solve them?</strong>
+<h4>Conventions</h4>
+When you hear «conventions» you immediately think of opening brace positions and variable naming rules. It's about more than that.
+
+The Model-View-Controller separation is an example of convention: it has been decided that under no circumstances should HTML rendering occur in Model code, no HTTP or session handling should happen in View code, and no SQL queries happen in Controller code.
+
+Good conventions are designed to let the developers assume interesting properties about the code without having to actually read it. A convention like «no global variables» means I never have to care about global state in my code, ever. A convention like «view code must respect the law of Demeter» means all the data used by the view is right where it is being initialized.
+
+They are also designed to make reuse and interoperability easier by reducing the number of ways in which a possible interface can be implemented. A convention could say the values are passed by assigning them to members post-construction and <strong>not</strong> as constructor arguments, so you have one less point of contention between the object that is initialized and the object that does the initialization.
+
+Last but not least, conventions are usually based on experience of things that could go wrong if certain behavior is allowed. A typical example is the requirement to escape all strings as they are being output — eliminating any ambiguities as to whether the string has already been escaped elsewhere and should be output as-is: it has not.
+
+Zend comes with a variety of useful conventions enforced both through the interface of its tools — <em>this</em> is how you use a view, <em>this</em> is how you define a view helper that should be available from within any view, <em>this</em> is how you bind a piece of code to an URL, and so on. I happen to disagree with many of those conventions myself — because I believe they solve the wrong problems — but they are certainly better than a project with no conventions.
+
+For the reference, my PHP conventions are described in <a href="http://www.nicollet.net/ohm-least-resistance/" target="_blank">the user manual for Ohm</a>.
+<h4>Framework</h4>
+A framework is actually going a step further than mere conventions. They are super-conventions designed to be respected by plugin authors. The point is that if plugin A and plugin B respect the set of conventions provided by the framework, then they can be used together in the same application.
+
+Consider a practical example : a plugin that implements a CAPTCHA field in a form, and a plugin that displays and submits a form through AJAX. On a bad day, it goes like this :
+<ol>
+	<li>When an error occurs, the server-side AJAX-form plugin sends out a small piece of JSON containing the fields that have errors, along with the error messages. A small client-side script applies these.</li>
+	<li>However, the CAPTCHA plugin expected the image to be reloaded when an error occurs.  It may either keep the same image and target word — defeating the purpose of a CAPTCHA — or change the target word without knowing that the image could not be changed.</li>
+	<li>You then need to post on StackOverflow hoping for a solution, search online for a patch to either plugin that could make it work as expected, or try to read the code to either in order to create the patch yourself.</li>
+</ol>
+Had the framework provided a clean notion of « this field must be refreshed on every attempt » as part of their form interface, both plugins would have used it — the CAPTCHA plugin would have marked its field as such, and the AJAX plugin would have implemented a special case for such fields.
+
+As such, the purpose of a framework is to provide a clean, unambigous and extensive <strong>vocabulary</strong> that all the plugins should be able to speak, and that is designed to cover as much real-world situations as possible.
+
+Zend Framework and Symfony in particular do an absolutely great job of this. When you can have a pager component push its data to the page through a progressive enhancement component, and log its performance to FirePHP when an user authentication component  determines that the viewing user is a developer, and all of it works by plugging square pegs into square holes, you know there has been a lot of great work going on below the hood.
+<h4>Back to the point</h4>
+Using a framework is all fun and games until you need to disagree with it. You need to plug out what does not work, and plug your own implementation in its place. The more complex the vocabulary, and the harder it will be to write new code — frameworks make it easy to connect existing components, at the cost of having to deal with more concepts when actually implementing new things.
+
+What it boils down to, in the end, is whether you expect to be reusing a lot of third party components, or to write a lot of your own code. In the latter case, MicroPHP — and lean environments that do not have a heavy framework side to them — is actually an improvement over trying to fit a six-inch wooden square peg into a mini-USB port.
+
+The exception to this is, of course, being so familiar with a particular framework that you immediately know what changes you need to do without fighting against third party code.

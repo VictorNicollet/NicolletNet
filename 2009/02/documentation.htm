@@ -1,0 +1,45 @@
+@title Documentation!
+@draft
+
+First, let's see a short example. Consider Magento's <a href="http://docs.magentocommerce.com/Mage_Catalog/Mage_Catalog_Model_Product.html#methodaddImageToMediaGallery" target="_blank"><em>addImageToMediaGallery</em></a> function, part of the product model class. Here is the complete documentation for that function:
+<blockquote>
+<p class="short-description">Add image to media gallery</p>
+
+<ul class="tags">
+	<li><span class="field">access:</span> public</li>
+</ul>
+<div class="method-signature"><span class="method-result">void</span> <span class="method-name"> addImageToMediaGallery </span> (<span class="var-type">string</span> <span class="var-name">$file</span>, [<span class="var-type">string|array</span> <span class="var-name">$mediaAttribute</span> = <span class="var-default">null</span>], [<span class="var-type">boolean</span> <span class="var-name">$move</span> = <span class="var-default">false</span>], [<span class="var-type">boolean</span> <span class="var-name">$exclude</span> = <span class="var-default">true</span>])</div>
+<ul class="parameters">
+	<li> <span class="var-type">string</span> <span class="var-name">$file</span><span class="var-description">: file path of image in file system</span></li>
+	<li> <span class="var-type">string|array</span> <span class="var-name">$mediaAttribute</span><span class="var-description">: code of attribute with type 'media_image', leave blank if image should be only in gallery</span></li>
+	<li> <span class="var-type">boolean</span> <span class="var-name">$move</span><span class="var-description">: if true, it will move source file</span></li>
+	<li> <span class="var-type">boolean</span> <span class="var-name">$exclude</span><span class="var-description">: mark image as disabled in product page view</span></li>
+</ul>
+</blockquote>
+It's better than most documentation in Magento (and by that, I mean that it actually <em>exists</em>). It's still not very good. A few shortcomings are:
+<ul>
+	<li>I don't need a sentence to tell me that a function named <em>addImageToMediaGallery</em> adds an image to the media gallery of the current product. What I need to know is what the media gallery is (a link to a documentation page about the media gallery could be useful), how I can list all images or remove an image, and so on. Some of these can be guessed (such as <em>getMediaGalleryImages</em>, which I suspect lists all images added to the media gallery so far, or does it?) but others cannot.</li>
+	<li>Telling me that the first argument is a file path is not very helpful, because it does not tell me what a relative path will be relative to. My initial guess would tell me that Magento will use the current file path to resolve relative file paths (just like any other file-using function does), but I would be wrong: developer forum posts tend to indicate that the path is relative to the media/import path within the Magento install instead.</li>
+	<li>Besides, this also does not tell me what happens when I name a file that does not exist. I can guess that an exception is thrown (but I don't know which exception, so I cannot programmatically handle it) or that the script just dies.</li>
+	<li>Now, media attributes? I don't know what a media attribute is (or, more precisely, what is the list of usable media attributes). Can I use any value returned by <em>getMediaAttributes</em> and expect it to work? How do I add or remove media attributes, access them from a template, or simply know what media attributes are associated with a default product? Again, a quick link to a concept page, such as "What are media attributes?" would be helpful.</li>
+	<li>Even assuming that I provide a media attribute argument, what will happen? I can guess the media attribute will be bound to the selected image, but is that all or will something else happen? Can I bind several images to the same attribute? What happens if I unbind an image, does it get deleted? How can I unbind images anyway?</li>
+	<li>Moving the image. What happens if it cannot be moved (for instance, no write-access on the original file)? Where is it moved to? Is the operation failsafe (so that if an exception is thrown after the image is added but before the product is saved, the image is not moved) or does it happen right away and lets me deal with keeping things transactional?</li>
+	<li>Why is the image only disabled in the product page view? Does that mean in other places, such as the catalog or search result views, the image is enabled?</li>
+</ul>
+When I'm working on code that I want to be safe and robust, these are only a few questions that I ask myself. And this happens about every single function I work with. If the documentation isn't up to speed on those questions, I'm going to either lose time tracking down the answer on forums and/or in the source code, or press on without an answer and possibly deliver flawed code that doesn't handle exceptional situations correctly.
+
+As a contrast, consider .NET's MSDN page for <a href="http://msdn.microsoft.com/en-us/library/system.net.httpwebrequest.getresponse.aspx" target="_blank">HttpWebRequest.GetResponse</a>. First, it's too long for me to post it here. Its first section is the equivalent of the entire above Magento documentation: method syntax, parameter types, return type, description of parameter functionality and return value. Then, there's the section on exceptions, which describes everything that could possibly happen while executing that function <em>and</em> the reason for it happening. Then, there's the section on remarks explaining various important details such as references to other parts of the library that could be helpful (such as cookie containers), other methods of the object that alter or depend on the calls to the method, words of caution about the use, and so on. And <em>then</em>, there's a section with typical use examples explaining quickly how the method is expected to be used.
+
+In a similar vein, the PHP documentation itself is also quite detailed. Consider, for instance, <a href="http://fr3.php.net/manual/en/function.array-key-exists.php" target="_blank">array_key_exists</a>. Like MSDN, it contains syntax and basic description, failure case descriptions, general remarks and examples. It also includes user-provided comments about the function that may be useful to developers.
+<h3>Writing Documentation</h3>
+It's not easy. It requires three skills that developers are not necessarily familiar with. First, good documentation is an act of communcation: it must be concise yet explicit and detailed, it must be complete and technical yet simple and clear. It must be written properly, with complete sentences that one can read easily, use simple words where it can and the precise technical or complex word where it must. It must avoid redundant information (such as repeating as-is the name of a function).
+
+Second, good documentation must deal with all the issues at hand. This is difficult because writing the documentation involves deep knowledge about the general design of the software and, in many cases, of the underlying implementation, so that the technical writer may not be aware that the reader will not know what a media gallery is or where more information can be found about it. Adding a search engine to the documentation can be helpful, but it will be of no use if nobody thought about writing a page on media galleries and their basic principles. Documenting code is explaining what is obvious, but thinking about what is obvious is difficult since so much of it seems just natural. In a similar vein, context-dependent behavior (such as relative paths depending on a certain absolute path) should be identified and be made explicit. On the other hand, there are also the parts that nobody thinks about, such as failures. One should always specify in the documentation when a function may fail, and what happens when it fails.
+
+Third, good documentation should serve three different kinds of requests.
+<ol>
+	<li><em>I just saw this function in the code. How does it work? Why doesn't it work?</em> This is the kind of question that a maintenance programmer will ask himself, and information about behavior, invariants and failure cases is always useful.</li>
+	<li><em>I need to do this. Will this function help me?</em> This is what the developer wonders: he has a task, and is looking for a solution. Either the function does what he wants and includes a quick example (and tells him about all the pitfalls of doing it this way) or it references another page that does it.</li>
+	<li><em>So, how does this entire thing work anyway?</em> This is what the architect wonders. The detailed information, he needs not. The bigger picture, such as the main concepts, the general properties of a module or class, he craves.</li>
+</ol>
+Whenever you find yourself writing some documentation, always determine whether all three requests are satisfied accordingly. Include troubleshooting and debugging information, include how-to and tutorial information, and include bigger picture and general design information.

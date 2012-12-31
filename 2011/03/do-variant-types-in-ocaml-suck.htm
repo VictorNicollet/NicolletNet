@@ -1,0 +1,84 @@
+@title Do Variant Types in OCaml Suck?
+@draft
+
+I recently stumbled once more on Tomasz Wegrzanowski's blog, on one of the early articles he wrote in 2006 about Objective Caml — unequivocally titled <a href="http://t-a-w.blogspot.com/2006/05/variant-types-in-ocaml-suck.html" target="_blank">Variant Types in OCaml Suck</a>. Hence the title of this article.
+
+Objective Caml polymorphic variants have the benefit of being created on the fly: you just write <code>` kitten</code> and you have successfully created a value of type <code>[&gt; `kitten]</code> (do note that you have also created a singleton type out of nothing — this can be quite useful in some cases). Of course, the ability to define types on the fly everywhere puts a strain on the type inference algorithm, who must then determine whether you are mistaken or not.
+<h4>Type Inference : Damas-Milner</h4>
+Type inference in ML language strives to determine the type of every value and variable in the code. It does so by giving every variable a completely general type, and then examining any constraints that apply to progressively turn it into the most general type that satisfies all constraints. Let's try a quick example:
+<ul>
+	<li>When you write <code>fun x -&gt; fst x + snd x</code>, the type of <code>x</code> is initially <code>'x</code>.</li>
+	<li>The type of <code>fst</code> is <code>'a * 'b -&gt; 'a</code>, which means that the type of <code>x</code> must have the shape <code>'a * 'b</code> (because it's provided as an argument to <code>fst</code>). So, the constraint implies that <code>'x = 'xa * 'xb</code> (and that <code>fst x</code> is of type <code>'xa</code>).</li>
+	<li>The type of operator <code>+</code> is <code>int -&gt; int -&gt; int</code>, from which the type of <code>fst x</code> is constrained to be <code>'xa = int</code> and thus <code>'x = int * 'xb</code>.</li>
+	<li>The type of <code>snd</code> is <code>'a * 'b -&gt; 'b</code>, but since <code>'b = int</code> in the present context, this means that its actual type is <code>'a * int -&gt; int</code> and thus <code>'x = int * int</code></li>
+</ul>
+So, by applying constraints deduced from the code, the type inference algorithm computes the type of variable <code>x</code>. Applying a type constraint is known as <strong>unification</strong>: two types are determined to be equal, so they are superimposed on top of one another in order to construct a new unified type. This happened in the last step above: <code>x</code> had been determined to be of type <code>int * 'b</code> and this type was unified with type <code>'a * int</code>. Unification is a simple pattern-matching exercise: one explores the two types as if they were trees, and...
+<ul>
+	<li>If identical nodes are encountered (such as a <code>_ * _ </code> 2-tuple node or a leaf-less <code>int</code> basic type node), the unification proceeds recursively.</li>
+	<li>If a type variable (such as <code>'a</code> or <code>'b</code>) is encountered, it is declared equal to the corresponding element in the other type.</li>
+	<li>If two different nodes are encountered (such as a <code>_ * _ </code> constraint being unified with an <code>int</code> variable), an error happens.</li>
+</ul>
+<h4>Polymorphic Variant Types</h4>
+Polymorphic variant types are lists of possible constructors. For instance, <code>[`kitten | `walrus]</code> represents a type that contains the constructors <code>`kitten</code> and <code>`walrus</code>.
+
+When you write <code>`kitten</code>, the resulting type is <code>[&gt; `kitten]</code>: an open variant type that can be unified with other variant types. Consider, for instance, the array <code>[| `kitten ; `walrus |]</code>: it is of type <code>'a array</code> where <code>'a</code> can be unified with both <code>[&gt; `kitten]</code> and <code>[&gt; `walrus]</code>, which results in <code>[&gt; `kitten | `walrus]</code>.
+
+Now, let's consider the reverse operation: pattern matching. You write a simple <code>match animal with `kitten -&gt; "meow" | `walrus -&gt; "bukkit"</code>: the type of <code>`animal</code> will be computed as <code>[&lt; `kitten | `walrus]</code>.
+
+The difference between <code>[&lt; ..]</code>, <code>[..]</code> and <code>[&gt; ..]</code> is obvious in terms of unification:
+<ul>
+	<li><code>[&lt; `a | `b | `c]</code> can only be unified with variant types that contain <em>less</em> constructors than itself. So, it can be unified with <code>[ `a | `b ]</code> (which yields <code>[ `a | `b ]</code>) but not <code>[ `a | `d ]</code>. The reason is quite plain: if you were allowed to introduce <code>`d</code> into the variant type, then you could run the above match with <code>animal = `owl</code> and break the code. In short, <code>[&lt; ..]</code> means "any others are forbidden".</li>
+	<li><code>[&gt; `a | `b | `c ]</code> can only be unified with variant types that contain <em>more</em> constructors than itself (including other open types). So, it could be unified with <code>[&gt; `a | `d]</code> (which yields <code>[&gt; `a | `b | `c | `d]</code>) but not with <code>[ `a | `b ]</code> (which does not allow <code>`c</code>). In short, <code>[&gt; ..]</code> means "these are allowed".</li>
+	<li><code>[`a | `b]</code> (a <em>closed type</em>) is both <code>[&lt; `a | `b]</code> and <code>[&gt; `a | `b]</code> at the same time. It can only be unified with variant types that allow those two but no others, and cannot be unified with any closed types other than itself.</li>
+</ul>
+This works, but it's not perfect.
+
+One major issue is the fact that every variable has a single type. So, suppose you want to transform <code>`b</code> into <code>`c</code> but leave any other constructors untouched. You would then write <code>function `b -&gt; `c | x -&gt; x</code>, but that would be a mistake: being present in the pattern matching means that <code>x</code> is of type <code>[&gt; `b]</code> (it can accept any value, including <code>`b</code>) and being returned means it is unified with the type <code>[&gt; `c]</code> of the other possible return value. So, the type of this function is actually <code>([&gt; `b | `c] as 'a) -&gt; 'a</code>: even though you replaced every <code>`b</code> with a <code>`c</code>, the type inference insists that the result type can still contain a <code>`b</code>... In fact, there is no way to write such a function because <strong>there is no way to express the type of that function in Objective Caml</strong>.
+<h4>Type Coercion</h4>
+Another issue is that sometimes, you need unification between two different closed types. Consider this short example:
+<pre style="padding-left: 30px;"><code>let string_of_vehicle : [`car | `train | `bike]       -&gt; string = (* ... *)
+let is_heavy       : [`car | `bike | `cake | `anvil ] -&gt; bool   = (* ... *)
+
+List.map (fun x -&gt; if is_heavy x then string_of_vehicle x else "") [ `car ; `bike ]</code></pre>
+This code <em>should</em> work, because I'm working on a car and a bike, both of which can be passed safely to both <code>string_of_vehicle</code> and <code>is_heavy</code>. However, due to external factors, the types of <code>string_of_vehicle</code> and <code>is_heavy</code> are closed and <code>x</code> has to unify with both. In such a situation, the solution in Objective Caml is to allow the user to make the conversion explicit by use of type coercion. In this example, it would look like this:
+<pre style="padding-left: 30px;"><code>List.map (fun x -&gt;
+  if is_heavy (x :&gt; [`car | `bike | `cake | `anvil ])
+  then string_of_vehicle (x :&gt; [`car | `train | `bike])
+  else ""
+) [ `car ; `bike ]</code></pre>
+Coercion works by allowing a <code>[&lt;..]</code> to be treated temporarily as a <code>[..]</code> — the solution above works by using two coercions to unify <code>x</code> as being of type <code>[&lt; `car | `bike]</code>, which is compatible with both types that it is coerced to. This is, for all purposes, merely an explicit way to convert a value from a type to a supertype ("any square is a rectangle") that is not otherwise possible in the unification-based world of Objective Caml types — unification can only work with type equality, not with types being supertypes of other types.
+
+Supertypes, and coercion, are intricately tied to loss of information. When you convert from <code>[&lt;`car | `bike]</code> to <code>[`car | `train | `bike]</code>, you are discarding the information that your value can not be a <code>`train</code>. While this loss of information might seem innocuous, it does prevent you from passing that same <code>[&lt;`car | `bike]</code> for a <code>[`car | `bike | `cake | `anvil]</code>, because the latter does not allow <code>`train</code> and you just discarded the information that <code>`train</code> cannot happen...
+
+Since loss of information can be deadly to the soundness of a type inference algorithm, the Objective Caml design decision was that all loss of information (converting a type to a supertype) should happen explicitly (by means of a coercion).
+
+Of course, coercion is only usually required if you have closed types in your program. Try avoiding them as much as you can, and you will find that you don't actually need coercions all that often.
+<h4>The Original Problem</h4>
+Back to Tomasz Wegrzanowski's issue: he was writing a compiler that needed to manipulate both scalars and vectors. So, he defined a value type:
+<pre style="padding-left: 30px;"><code>type value = [`Scalar of float | `Vector of float * float * float]</code></pre>
+He also defined specific types in order to ensure type-safety of some operations:
+<pre style="padding-left: 30px;"><code>type scalar = [`Scalar of float ]
+type vector = [`Vector of float * float * float]
+
+type operation = [ `Muliply of scalar * scalar | `DotProduct of vector * vector ]</code></pre>
+What he wanted to achieve was to extract all the values available within an operation:
+<pre style="padding-left: 30px;"><code>let values : operation -&gt; value list = function
+| `Multiply (a,b) -&gt;  [a;b]
+| `DotProduct (a,b) -&gt; [a;b]</code></pre>
+Of course, this function is discarding precious type information about the values, which requires a type cast. The naive solution would be to individually type-cast <code>a</code> and <code>b</code> throughout the function, but this would be quite tedious. Instead, let's strike at the root by coercing the function argument itself: by discarding information before the pattern matching occurs, we allow the code to compile with a single coercion. So, what do we coerce the argument to?
+
+It's not easy to tell. I guess I could create a copy of the <code>operation</code> type and replace all types with <code>value</code>, but that would be quite tedious. Instead, let's rely on a simple property : when you need to coerce a value in order to pass it to a function, you need to coerce it to the type of that function argument. And the type of the function argument can be obtained through type-inference. Simply write this and compile it:
+<pre style="padding-left: 30px;"><code>let values : 'a -&gt; value list = function
+| `Multiply (a,b) -&gt;  [a;b]
+| `DotProduct (a,b) -&gt; [a;b]
+
+let _ = values ()</code></pre>
+The compiler determines the type of <code>'a</code> through unification, knows that it's not <code>unit</code>, and generates an error that describes the actual expected type. We can copy-paste it from the compiler output directly!
+<pre style="padding-left: 30px;"><code>type general_operation = [ `Multiply of value * value | `DotProduct of value * value ]
+
+let values x = match (a : operation :&gt; general_operation) = with
+| `Multiply (a,b) -&gt;  [a;b]
+| `DotProduct (a,b) -&gt; [a;b]
+
+let _ = values ()</code></pre>
+Should the type <code>operation</code> change, an error will immediately happen in the definition of <code>values</code> (as the coercion from <code>operation</code> to <code>general_operation</code> would fail), which provides the new type that should be pasted on top of <code>general_operation</code>.

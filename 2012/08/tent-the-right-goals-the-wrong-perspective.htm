@@ -1,0 +1,93 @@
+@title Tent - The right goals, the wrong perspective
+@draft
+
+Forgive the brusqueness of the above title — in fact, let me start by congratulating the good people at <strong>Tent</strong> for fighting the good fight against centralized social networks. We need more people like you. Seriously. If you, dear reader, don't know what Tent is, here is an excerpt from their <a href="http://tent.io/" target="_blank">project page</a> :
+<blockquote><small>Tent is a protocol for open, decentralized social networking. Tent users share content with apps and each other. Anyone can run a Tent server, or write an app or alternative server implementation that uses the Tent protocol. Users can take their content and relationships with them when they change or move servers. Tent supports extensible data types so developers can create new kinds of interaction.</small></blockquote>
+The project site goes on to describe a complete protocol replete with JSON snippets, four-letter acronyms and Bootstrap-themed tables. The general idea behind their protocol appears to be answering the question « <em>How can I build a decentralized Twitter/Facebook/Tumblr ? </em>» with as few concepts as possible — and the resulting protocol is indeed quite short by most standards.
+
+<strong>But it's not solving the right problems. </strong>There are <em>four </em>issues with decentralized, large-scale sharing of content between non-technical people :
+<ul>
+	<li><strong>Identity Persistence</strong>: I should be able to move my identity over to another service provider. If this does not make sense, replace « identity » with « phone number » or « e-mail address » to get the idea.</li>
+	<li><strong>Data Persistence</strong>: I should be able to move my data over to another service provider.</li>
+	<li><strong>Publishing</strong>: when I create new content, I should be able to let people know about it.</li>
+	<li><strong>Access Restrictions</strong>: I should be able to create private content and decide who is allowed to see it.</li>
+</ul>
+There is nothing new about these issues — they have been floating around since before the web was born, and there have been countless attempts to deal them in the past. These attempts can and should be leveraged.
+<h3>Identity persistence</h3>
+Online identity is quite a silly thing. <em>Who you are</em> is defined by your exclusive ownership of a short string of characters: an username, an e-mail, a domain, a public key... For instance, I claim ownership of the string « <code>http://nicollet.net</code> » and use it to prefix the URLs of all my blog posts.
+
+The strength of your identity depends on how easily you can defend that claim of ownership against others. From weakest to strongest :
+<ol>
+	<li>I own <code>nicollet.victor@gmail.com</code> only because Google says I do. The same goes for <a href="https://twitter.com/#!/victorNicollet" target="_blank">@victorNicollet</a> and Twitter. Such identities are vulnerable, they can be destroyed by a single company closing my account on a whim or, in case of OpenID providers, being shut down.</li>
+	<li>I own <code>http://nicollet.net</code> because the IANA, ICANN and Verizon all say I do — it would take major tampering or cataclysmic circumstances to counter this claim. I own <code>https://nicollet.net</code> because a Certification Authority says I do, and your browser says that Certification Authority is legitimate. Such identities are less vulnerable that those enforced by a single actor, but they still rely on people not openly trying to destroy it.</li>
+	<li>I own <code><a href="/files/id_rsa.pub" target="_blank">id_rsa.pub</a></code> because I have exclusive access to the corresponding private key. Short of someone stealing that private key from me, this identity is completely safe.</li>
+</ol>
+There is a striking lack of mainstream infrastructure for option 3 — most people are still having trouble with domain names and SSL, so we cannot expect them to understand asymmetric encryption just yet. Maybe the next generation might be able to, with appropriate education, but I doubt it.
+
+Nor can we expect mass adoption of option 2, even though acquiring a domain name is orders of magnitude easier than using public-private key pairs. We can safely assume that as long as using a domain name is not as simple and as cheap as creating a Twitter or Tumblr account, the vast majority of users will not even try it. And buying an SSL certificate ? No way.
+
+I believe the solution here is a mix of options 1 and 2, similar to what has been done for quite a while as far as e-mails and phone numbers are concerned: service providers must let you use your own domain name if you have one (<code>nicollet.net</code>), and they may choose to provide vulnerable identities as well (<code>nicollet.service.com</code>) with a simple condition:
+<p style="text-align: center;"><strong>When your identity is deleted, you should be able to set up a redirection to another identity.</strong></p>
+<strong> </strong>This could be a <code>CNAME</code> record, or it could be a <code>301 Moved Permanently</code>.  What matters is that for a reasonable duration anyone interested by your old identity can update their address book.
+
+So, the first very important step in building a decentralized whatever-o-sphere is not a technical one, it's about convincing all those identity providers that they should set up redirects for you. Maybe we should start a <em>forwarding initiative</em>, write a <em>forwarding manifesto</em>, tweet <em>#forwarding</em> hashtags, build a <em>let-us-forward.com</em> website, and convince all the online services that let us publish things online that we deserve the ability to forward our audience to another location.
+<h3>Data Persistence</h3>
+This is going to be a short paragraph. The data persistence problem has already been solved two decades ago: give every piece of content that you create a unique identifier that looks like...
+<p style="text-align: center;"><code>&lt;protocol&gt;://&lt;domain&gt;/&lt;path&gt;</code></p>
+It is certainly tempting to build on top of this solution by adding more rules: to define what the paths should look like, to describe what the format of the returned data should be, or to require the use of a specific protocol. Resist the temptation. The unprecedented power of the internet came precisely from the fact that the path and protocol can be any damn thing you please — in the decentralized internet world, standards are not designed, they evolve.
+
+I publish new data every day. Here are a few examples:
+<ul>
+	<li>Another article on my blog :
+<a href="http://www.nicollet.net/2012/07/html-rendering-client-or-server/" target="_blank">http://www.nicollet.net/2012/07/html-rendering-client-or-server/</a></li>
+	<li>A facebook post about SVN merge :
+<a href="https://www.facebook.com/victor.nicollet/posts/10150998095069601" target="_blank">https://www.facebook.com/victor.nicollet/posts/10150998095069601</a></li>
+	<li>A twitter post about CouchDB bugs :
+<a href="https://twitter.com/victorNicollet/status/227938204404289536" target="_blank">https://twitter.com/victorNicollet/status/227938204404289536</a></li>
+	<li>A one-year history of my start-up code using Gource, on YouTube :
+<a href="http://www.youtube.com/watch?v=ry-LVbdVbtQ" target="_blank">http://www.youtube.com/watch?v=ry-LVbdVbtQ</a></li>
+</ul>
+If a new communications network intended to let me assume control over my own content, be it Tent or Diaspora or whatever else, then it must deal with the fact that the three links above <em>are</em> my own content. The moment that new networks throws a tantrum along the lines of « It's not your content unless it's hosted on me ! » it has crossed a line it should not cross, because everyone would pick their existing Tumblr-Facebook-Twitter-YouTube mix over the newcomer.
+
+You know what ? I lied. This is not going to be a short paragraph, because there's one specific item I wish to discuss : reactions. Most websites let you react to their content : there's a « comment » or « reply » link below every item. The problem with this is that in almost every single case, your comment will be owned by either that website, or a third party like <a href="http://disqus.com/" target="_blank">Disqus</a>, <a href="http://reddit.com" target="_blank">Reddit</a> or <a href="http://news.ycombinator.com" target="_blank">Hacker News</a>. <strong>You do not own your comments</strong>. I believe this is a bigger issue than ownership of the original post, because while you do have a choice for publishing brand new content, you usually don't have a choice when commenting on existing content from other people.
+
+In this respect, <em>trackbacks</em> were an interesting idea: you would write a response on your own web site, and then post a link to your response in the comments feed. You would retain ownership of your content, but still be a part of the conversation. And for a while, trackbacks were implemented on almost every single blog platform. But they have two major issues:
+<ol>
+	<li>They are harder to read than normal comments, because you have to move over to another page to even know what they are about.</li>
+	<li>They are quickly becoming extinct. There is no way to use trackbacks in most places where comments are allowed.</li>
+</ol>
+The solution to this one is fairly straightforward: in addition to the standard « comment text » text area when commenting, provide an « additional link » comment. If the additional link is provided, use it as the target for a « Read more... » anchor. But, as with the <em>forwarding</em> initiative, the <em>trackback</em> initiative is something we have to push onto Facebook, Disqus, Reddit, Hacker News and every single comment-enabled web site out there.
+
+Until then, there's always the possibility of doing it yourself : paste the additional link at the end of a short comment, and retain ownership of your writing.
+<h3>Publishing</h3>
+When the <em>blogosphere</em> happened, we had to solve the publishing problem: telling readers that there's something new to read. We invented <em>pull publishing</em> — ask the server if there's something new, usually through RSS or similar systems — and <em>push publishing</em> — send your subscribers an e-mail. And it turns out that in most cases the server load for both push and pull publishing is far smaller than the load involved in actually serving the content to visitors.
+
+Tent is dealing with two distinct problems here : first, is push publishing a better choice than pull publishing ? Second, what server-server push protocol should be used ?
+
+There are three possible reasons for using push publishing :
+<ol>
+	<li>The subscriber doesn't know that they should be pulling — a typical example is the trackback scenario where you notify a blog that you have written a comment about one of its articles.</li>
+	<li>Real-time updates are required, and performing a pull every minute just won't cut it.</li>
+	<li>The sheer amount of pull requests is too heavy for the server.</li>
+</ol>
+Let's all agree that case #3 is quite exceptional, given that very few people have enough subscribers to cause such issues. Besides, it can be solved by using one of the many HTTP-compatible cache systems and distribution networks, not to mention good old <code>304 Not Modified</code>.
+
+I believe that case #2 should not be solved. Doing real-time work on the web is a challenge in itself, and I see no need to increase the complexity of any 1.0 protocol by adding real-time support. Is it really a problem if you only see your friends' content one minute after they are posted ?
+
+And if the only reason for push publishing is case #1, then the protocol can be easily simplified by eliminating subscription management and server-server authorization, because the only push notifications are sent to the articles that have been referenced by comments, and involve no authorization at all.
+<h3>Access Restrictions</h3>
+Tent describes a way for users to grant other applications access to their Tent account. I believe it should be the other way around.
+
+Suppose Alice uploads a private video to DerpTube.com and wishes to show it to Bob, but no one else. What should happen is that Bob connects to Alice's Tent-like server using his own identity provider (could be Facebook, could be OpenID, could be his own Tent-like server, <a href="http://www.youtube.com/watch?v=OR4N5OhcY9s&amp;t=2m17s" target="_blank">could even be</a> his DerpTube.com account), and Alice has granted that specific identity access to the video, so her Tent-like server tells DerpTube.com that Bob should be allowed to see that video.
+
+We have already determined that, at first, most data will be stored in third-party locations — blogs, dedicated hosting websites for images/videos/files/code, CDNs — and so it becomes necessary for the Tent-like server to tell those third party locations that the current visitor should be allowed access to a specific resource. A standard protocol would certainly be useful here in the long term (and I think something along the lines of the Amazon S3 HMAC-based access could be great), but it's very likely that <em>ad hoc</em> work will need to be done for most third party applications, because they already exist and they are probably not going to do it themselves.
+<h3>Wrapping It Up</h3>
+Here are what I believe to be some essential changes for Tent to actually penetrate the existing whatever-o-sphere :
+<ul>
+	<li>Allow items to be URLs pointing to other locations, to ensure reverse compatibility with 99% of the web. Hosting content inside the Tent server should be a special case where the URL happens to point to the Tent server.</li>
+	<li>Make the let-application-connect-to-Tent API optional. I don't want to wait for my Blog-Facebook-Twitter-YouTube to implement an API to send things to Tent, I would rather have Tent query my Blog-Facebook-Twitter-YouTube for new content using their own APIs.</li>
+	<li>Make the subscription and push notification APIs optional. If you want to know what's new on my server, you should ask: it won't fall over and die just because it sends out one <code>304 Not Modified</code> per second.</li>
+	<li>Allow RSS for the pull notification API. It has better support than anything you might come up with.</li>
+	<li>Let my friends identify themselves on my server using as many protocols as possible, and grant them individual access to my content stored in other locations based on their identity and my sharing preferences.</li>
+</ul>
+All of these have the benefit of working even if none of your friends use Tent at all: compatibility with existing tools above all else. Yes, I am turning the original idea into some kind of personal aggregation-and-gatekeeper tool, but I really believe this is the best thing to do.

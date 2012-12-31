@@ -1,0 +1,22 @@
+@title Team Naming
+@draft
+
+Names. We programmers see more names in a single session than a phone directory editor will see in their entire career, yet we prove worse at finding names than a fift
+
+Naming is a two-way approach: the name must accurately convey what the thing is, and the name should be easily guessed for that thing. The two sides of the equation are not always of equal importance: guessing the name of a local variable is less useful than guessing the name of a class in a library.
+
+Humans always use context to understand what names mean, in order to disambiguate the many possible meanings of a name. For instance, 'window' could refer to the ubuquitous user interface concept or it could refer to the glass-paned house building block. A sentence like "I open a window" needs a minimum level of context to disambiguate between the two interpretations.
+
+On the other hand, the information must not be made redundant either. For instance, a class named "OpponentTimer" defined within a "Opponent" namespace: it's fairly obvious that the timer is related to an opponent both within the namespace (you're dealing with opponents, so the timer should have something to do with it) and outside the namespace (as it's being referred to as "Opponent.Timer" or something like that). The same goes with file paths, such as '/scripts/invaderScript.py' which could have been named just as well '/scripts/invader.py" with no loss of information due to the context.
+
+This is what I used to think about this issue :
+<blockquote>One thing I have noticed time and time again is that the vast majority of people I work with (or see on the internet, for that matter) are very bad at finding names. So bad, in fact, that I can usually propose better names within seconds of reading them for the first time. At least they agree that the new names are better.</blockquote>
+The reason is, in retrospect, quite obvious : <strong>two brains are better than one</strong>, especially when it comes to looking at things in different contexts to determine if there are any ambiguities. These programmers must have been thinking the same thing when looking at <em>my</em> code.
+
+By now, you should have noticed that "team naming" refers to "working as a team to name things" as opposed to "naming a team"—lack of context does tend to create such misunderstandings :)
+
+So, that would be why pair programming with at least one <em>-ansi -pendantic -Wall</em> programmer in the team tends to create code that is much cleaner than one-programmer code written by either participant.
+
+Short of acquiring some sort of split personality, there's no easy way to achieve that alone : no matter how hard you try, <strong>your brain can only hold one context at a time</strong>. Some programmers might be able to switch contexts faster than others when they think about it, but you generally don't switch contexts when naming a variable. Maybe we should?
+
+Even then, noticing an ambiguity involves thinking about two contexts where the name has different meanings. Merely having two contexts in mind (or minds, when working as a team) doesn't mean you actually found two incompatible contexts.You have to think about all the contexts in which the element can be used. The good news is, all of these are nested and you can reach them by removing information progressively from the innermost context that you have in mind. If your code was laid out correctly, these should match scopes, classes and namespaces/packages.

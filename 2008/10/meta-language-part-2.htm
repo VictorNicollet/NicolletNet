@@ -1,0 +1,164 @@
+@title (Meta) language, Part 2
+@draft
+
+Part one can be found <a href="http://nicollet.net/dev/ocaml/21-meta-lang-1">here</a>, and I strongly suggest reading it first. Among the modifications that will be encountered here, the most important is that modules are now called objects, to improve readability.
+
+This part discusses using names as first-class elements, and the underlying type system.
+<h2>Names as half-class citizens</h2>
+In the vast majority of statically typed languages and compiled languages, names cannot be manipulated. By contrast, most dynamic languages handle names. After all, the very notion of anonymous function, in PHP, is handled by giving the function a name at runtime and then passing that name around. It's perfectly sensible to write the code below, and its result will be the expected one.
+<blockquote>
+<pre>function square($x) { return $x * $x; }
+$func = 'square';
+print $func(10);</pre>
+</blockquote>
+<div>
+
+The PHP language restricts this feature to a few areas: when calling a function (<span style="font-family: courier new,courier; color: #999999;">$name(args)</span> syntax), accessing a member (<span style="font-family: courier new,courier; color: #999999;">$obj -&gt; $name</span> syntax), creating a class (<span style="font-family: courier new,courier; color: #999999;">new $name(args)</span> syntax) and accessing a variable (<span style="font-family: courier new,courier; color: #999999;">$$name</span> syntax). Other examples, such as <span style="font-family: courier new,courier; color: #999999;">function $name(args) {}</span> definitions, are not supported (though they can be achieved using other reflection or evaluation features).</div>
+In practice, knowing the name of an existing object is not useful: pointers, references, closures, factories and member pointers are all superior alternatives to names when referencing an existing object.
+
+Of course, this does not solve the issue of defining new objects by name.
+<h2>The need</h2>
+First, the considered meta-language provides the <span style="font-family: courier new,courier; color: #999999;">use-pattern </span>construct, which applies a pattern to an object. A pattern is allowed to define new members in that object. Depending on the situation, it may or may not be useful to let the new members hide the existing members. Consider for instance a pattern that adds access verification to a function. The result would be that the function is now only callable with an additional key argument that allows identity checking for access verification. The pattern must therefore know the name of the function that must be hidden.
+
+Example source code:
+<blockquote>
+<pre><span style="color: #0000ff;"><strong>pattern </strong></span>AddAccessVerification name valid = 
+  <span style="color: #0000ff;"><strong>exception </strong></span>AccessNotAllowed
+  <span style="color: #0000ff;"><strong>def </strong></span><span style="color: #ff6600;">(name)</span> = 
+  { token -&gt; 
+    <span style="color: #0000ff;"><strong>if </strong></span>! (valid token) <span style="color: #0000ff;"><strong>then </strong><strong>throw </strong></span>AccessNotAllowed ;
+    $.<span style="color: #ff6600;">(name)</span>  
+  }<span style="color: #0000ff;"><strong>
+end-pattern</strong></span></pre>
+</blockquote>
+This example hides the member function with the provided name by requiring an additional argument. If the original function was called as <span style="font-family: courier new,courier; color: #999999;">$.func a b c</span>, it is now called as <span style="font-family: courier new,courier; color: #999999;">$.func token a b c</span>.
+
+A second need is the ability to store arbitrary labels as part of objects without conflicting with existing labels. For instance, if one needs to add an URL value to an entity, then one needs to also redefine the <span style="font-family: courier new,courier; color: #999999;">new </span>built-in function for that entity to also take into account the URL. To avoid having to propagate a new argument, the argument to that built-in function is an object with a predefined set of labels. The URL-adding pattern must therefore create a new label for that object:
+<blockquote>
+<pre><strong><span style="color: #0000ff;">object </span></strong>Page = 
+  <span style="color: #0000ff;"><strong>entity </strong></span>page
+  <span style="color: #0000ff;"><strong>property </strong></span>content[page] : <span style="color: #0000ff;"><strong>string</strong></span>
+  <span style="color: #0000ff;"><strong>def new</strong></span>(page) = 
+  { data -&gt;
+    <span style="color: #0000ff;"><strong>new </strong></span>$.page (<span style="color: #0000ff;"><strong>object</strong></span>) | $.content[_] &lt;- data.content   
+  }
+<span style="color: #0000ff;"><strong>end-object</strong></span> 
+
+<span style="color: #0000ff;"><strong>pattern </strong></span>WithUrl ent label =
+  <span style="color: #0000ff;"><strong>property </strong></span>url[$.<span style="color: #ff6600;">(ent)</span>] : <span style="color: #0000ff;"><strong>string</strong></span>
+  <span style="color: #0000ff;"><strong>def new</strong></span>(<span style="color: #ff6600;">(ent)</span>) = 
+  { data -&gt;
+    <span style="color: #0000ff;"><strong>new </strong></span>$.<span style="color: #ff6600;">(ent)</span> (data <span style="color: #0000ff;"><strong>hide </strong></span><span style="color: #ff6600;">(label)</span>) | $.content[_] &lt;- data.<span style="color: #ff6600;">(label)</span>
+  }
+<span style="color: #0000ff;"><strong>end-pattern </strong></span>
+
+<span style="color: #0000ff;"><strong>object </strong></span>UrlPage <span style="color: #0000ff;"><strong>extends</strong></span> Page = 
+  <span style="color: #0000ff;"><strong>use-pattern</strong></span> WithUrl <span style="color: #ff6600;">`page`</span> <span style="color: #ff6600;">`my_url`</span>
+  <span style="color: #0000ff;"><strong>def </strong></span>createPage = 
+  { text url -&gt;
+    <span style="color: #0000ff;"><strong>new </strong></span>$.page {{ content = text ; my_url = url }}
+  }
+<span style="color: #0000ff;"><strong>end-object</strong></span></pre>
+</blockquote>
+<h2>The solution</h2>
+As illustrated above, names are subject to two rules:
+<ul>
+	<li>A symbol quoted with backticks becomes a name. For instance, <span style="font-family: courier new,courier; color: #ff6600;">`page`</span> is the name <span style="font-family: courier new,courier; color: #999999;">page</span>. Such a name can be manipulated as any other variable. Its type is merely '<span style="font-family: courier new,courier; color: #999999;">name</span>'.</li>
+	<li>A name variable can be used wherever a member name could be used : <span style="font-family: courier new,courier; color: #999999;">def name = ...</span> , <span style="font-family: courier new,courier; color: #999999;">... hide name</span>, <span style="font-family: courier new,courier; color: #999999;">new(name) ...</span>, <span style="font-family: courier new,courier; color: #999999;">property name = ...</span>, <span style="font-family: courier new,courier; color: #999999;">... entity name</span>, <span style="font-family: courier new,courier; color: #999999;">pattern name = ...</span>, <span style="font-family: courier new,courier; color: #999999;">object name = ...</span>, <span style="font-family: courier new,courier; color: #999999;">value.name</span>, <span style="font-family: courier new,courier; color: #999999;">{{ name = value ; ... }}</span> and so on. It must be escaped with brackets. So, for instance, <span style="font-family: courier new,courier; color: #999999;">def xyzzy = { 10 }</span> is equivalent to <span style="font-family: courier new,courier; color: #999999;">def <span style="color: #ff6600;">(`xyzzy`)</span> = { 10 }</span>.</li>
+</ul>
+The main difficulty here is working with a type system that can withstand these issues correctly. In particular, consider code such as this:
+<blockquote>
+<pre><span style="color: #0000ff;"><strong>object </strong></span>Problematic =
+  <span style="color: #0000ff;"><strong>entity </strong></span>url
+  <span style="color: #0000ff;"><strong>use-pattern</strong></span> WithUrl <span style="color: #ff6600;">`url` `url`</span>
+<span style="color: #0000ff;"><strong>end-object</strong></span></pre>
+</blockquote>
+Without any checks, this would attempt to apply pattern <span style="font-family: courier new,courier; color: #999999;">WithUrl</span>, which adds a new member named url (thereby hiding the old url member), then attempts to access the member named url as if it were an entity (because that was the provided name for the wrapped entity). Therefore, this must be caught by the type system (otherwise, the language risks the same dangers as the C++ metaprogramming features : you don't know if you're wrong until you try it).
+
+The proposed type system is constraint-based. It works by associating an atom to every expression, and then expresses a set of constraints on the atoms found within a definition (such as a function, pattern or object). These constraints are verified when the atoms already exist, but when some of the atoms are parameters, the constraints are instead kept and inserted into the constraint system of the location which provides those parameters.
+
+So, the constraint set for the WithUrl pattern would look like this:
+<blockquote>
+<pre>WithUrl : (ent:<strong>name</strong>) -&gt; (label:<strong>name</strong>) -&gt; ($:<strong>object</strong>) -&gt; (result:<strong>object</strong>)
+<strong>with </strong>
+| $.(ent) : <strong>entity</strong> <span style="color: #008000;">
+  obj2 = $<strong> def </strong>url</span>
+| obj2.url : <strong>property</strong>[$.(ent) -&gt;<strong> string</strong>]<strong>
+</strong>| obj2.(ent) : <strong>entity</strong><span style="color: #008000;">
+  result = obj2 <strong>def new</strong>((ent)) </span>
+| <strong>new</strong> result.(ent) : (data:<strong>object</strong>) -&gt; <strong>instanceof</strong>(result.(ent))
+  <strong>with </strong>
+  | data.(label) : <strong>string</strong>
+  | <strong>new</strong> obj2.(ent) (data <strong>hide </strong>label) : <strong>instanceof</strong>(result.(ent))</pre>
+</blockquote>
+And so, providing <span style="font-family: courier new,courier; color: #999999;">`url`</span> as <span style="font-family: courier new,courier; color: #999999;">ent</span> would result in the conflicting constaints that:
+<blockquote>
+<pre>WithUrl : <span style="color: #ff0000;">url</span> -&gt; <strong>name</strong> -&gt; (obj:<strong>object</strong>) -&gt; <strong>object</strong>
+<strong>with </strong>
+<span style="color: #008000;">  obj2 = obj <strong>def </strong>url</span>
+| obj2.url : <strong>property</strong>[obj.<span style="color: #ff0000;">url </span>-&gt;<strong> string</strong>]<strong>
+</strong>| obj2.<span style="color: #ff0000;">url </span>: <strong>entity</strong></pre>
+</blockquote>
+<h2>Readability issues</h2>
+This constraint model is much less readable than the typical ML type, and is in fact getting much closer to the C type system (which works by describing the operations that can be applied to variables). There should be no surprise that such a type system must be complex in order to account for meta-programming. But what does the type system look like when working with non-meta code?
+
+The constraint set for the resulting UrlPage is this:
+<blockquote>
+<pre>UrlPage : <strong>object</strong>
+<strong>with </strong>
+| $.page : <strong>entity</strong>
+| $.content : <strong>property</strong>[$.page -&gt; <strong>string</strong>]
+| $.url : <strong>property</strong>[$.page -&gt; <strong>string</strong>]
+| <strong>new</strong> $.page : (data:<strong>object</strong>) -&gt; <strong>instance-of</strong>($.page)
+  <strong>with </strong>
+  | data.text : <strong>string</strong>
+  | data.url : <strong>string</strong></pre>
+</blockquote>
+This is much more readable. Is this because of the absence of pattern, or because of the absence of names? Forgetting for a short while about names, let's rewrite the WithUrl pattern:
+<blockquote>
+<pre><span style="color: #0000ff;"><strong>pattern </strong></span>WithUrl =
+  <span style="color: #0000ff;"><strong>property </strong></span>url[t] : <span style="color: #0000ff;"><strong>string</strong></span>
+  <span style="color: #0000ff;"><strong>def new</strong></span>(t) = 
+  { data -&gt; <span style="color: #0000ff;"><strong>new </strong></span>$.t (data <span style="color: #0000ff;"><strong>hide </strong></span>url) | $.content[_] &lt;- data.url }
+<span style="color: #0000ff;"><strong>end-pattern </strong></span></pre>
+</blockquote>
+The constraint system for this pattern is:
+<blockquote>
+<pre>WithUrl : ($:<strong>object</strong>) -&gt; (result:<strong>object</strong>)
+<strong>with
+</strong>| $.t : <strong>entity</strong>
+  <span style="color: #008000;">result = $<strong> def </strong>url <strong>def new</strong>(t)</span>
+| result.url : <strong>property</strong>[result.t -&gt; <strong>string</strong>]
+| <strong>new</strong> result.t : (data:<strong>object</strong>) -&gt; <strong>instance-of</strong>(result.t)
+  <strong>with</strong>
+  | data.url : <strong>string</strong>
+  | <strong>new</strong> $.t (data <strong>hide </strong>url) : <strong>instance-of</strong>(result.t)</pre>
+</blockquote>
+While slightly more complex, this remains quite manageable when considering the complexity of patterns. Equivalent systems are either too lax (C++ templates), too restrictive (C# generics) or just as verbose (Objective Caml functors).
+<h2>Introducing Name Constraints</h2>
+The simple solution would be to add name equality constraints. That is, if ent was known not to equal `url` or any of the names used internally by the pattern, then the constraint system would be much simpler. For instance:
+<blockquote>
+<pre><span style="color: #0000ff;"><strong>pattern </strong></span>WithUrl ent label =
+  <span style="color: #0000ff;"><strong>assert</strong></span> { ent &lt;&gt; `url` }
+  <span style="color: #0000ff;"><strong>property </strong></span>url[$.<span style="color: #ff6600;">(ent)</span>] : <span style="color: #0000ff;"><strong>string</strong></span>
+  <span style="color: #0000ff;"><strong>def new</strong></span>(<span style="color: #ff6600;">(ent)</span>) = 
+  { data -&gt;
+    <span style="color: #0000ff;"><strong>new </strong></span>$.<span style="color: #ff6600;">(ent)</span> (data <span style="color: #0000ff;"><strong>hide </strong></span><span style="color: #ff6600;">(label)</span>) | $.content[_] &lt;- data.<span style="color: #ff6600;">(label)</span>
+  }
+<span style="color: #0000ff;"><strong>end-pattern </strong></span></pre>
+</blockquote>
+The assertion protects the following definition of <span style="font-family: courier new,courier; color: #999999;">url </span>of overwriting <span style="font-family: courier new,courier; color: #999999;">$.ent</span>, thereby allowing a more compact constraint set:
+<blockquote>
+<pre>WithUrl : (ent:<strong>name</strong>) -&gt; (label:<strong>name</strong>) -&gt; ($:<strong>object</strong>) -&gt; (result:<strong>object</strong>)
+<strong>with</strong>
+| <strong>assert </strong>{ ent &lt;&gt; `url`}
+| $.(ent) : <strong>entity</strong>
+<span style="color: #008000;">  result = $ <strong>def </strong>url <strong>def new</strong>((ent))</span>
+| result.url : <strong>property</strong>[result.(ent) -&gt; <strong>string</strong>]
+| <strong>new </strong>result.(ent) : (data:<strong>object</strong>) -&gt; <strong>instance-of</strong>(result.(ent))
+  <strong>with</strong>
+  | data.(label) : <strong>string</strong>
+  | <strong>new </strong>$.(ent) (data <strong>hide </strong>(label)) : <strong>instance-of</strong>(result.(ent))</pre>
+</blockquote>
+<h2>To be continued</h2>
+This overview still does not have a concrete description of the actual constraint-solving algorithm (though the actual constraints can be trivially extracted from the expressions, they still need to be grouped, solved and verified). Another possible point of contention is the new-operator, which can be overloaded and thus may cause issues because it is not bound to an object but rather to an entity. A possibility is to remove the possibility to overload it altogether, and instead only allow it to be hidden.

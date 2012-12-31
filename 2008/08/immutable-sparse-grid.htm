@@ -1,0 +1,125 @@
+@title Immutable Sparse Grid
+@draft
+
+<h2>Sparse grids</h2>
+Consider a bidimensional grid filled with values. The most optimal way of storing such a grid in memory is to use an array: a large span of contiguous memory big enough to contain all the values one after another. Accessing the value at coordinates <span style="color: #999999;">(x,y)</span> is done by accessing the index <span style="color: #999999;">(x * height + y)</span> of that array. This is how C and C++ handle multi-dimensional arrays (either the native static ones or those provided <span style="font-family: courier new,courier; color: #999999;">boost::multi_array</span>).
+
+Consider now a mostly empty bidimensional grid: one where less than 10% of the values exist (the others being filled with <span style="color: #999999;">NULL</span>, <span style="color: #999999;">None </span>or whatever does-not-exist option value you choose to use). By storing such a grid as a contiguous array, more than 90% of the allocated space would be wasted for nothing. This situation calls for a different data structure: a sparse grid. Sparse data structures are implemented in such a way that they use less memory when few values exist in a grid, at the cost of a small computing overhead and a large memory overhead when the grid is nearly full.
+
+This article will provide a simple sparse grid implementation based on the concept behind kd-trees.
+<h2>And now, a word from our sponsor</h2>
+The chosen implementation is immutable: this means that once a grid is constructed, it cannot be modified. What is possible, however, is to create a new grid from the old one, with slight differences (such as one more element or one less element). Immutable data structures are to functional programming what mutable data structures are to imperative programming. Where an imperative-style program would write:
+<blockquote>
+<pre> data[i] = new_data_value;</pre>
+</blockquote>
+A functional-style program would write:
+<blockquote>
+<pre>let new_data = set old_data i new_data_value</pre>
+</blockquote>
+Therefore, a functional-style program gets the new data structure while also keeping the old version. This has very clean applications to exception safety and transactional operations, since rolling back is as simple as throwing away the new value. Plus, it gets all the advantages of referential transparency.
+
+But doesn't all this copying around create problems both in terms of memory usage and in terms of runtime performance? Not really: as will be obvious in this article, the overhead related to functional manipulations on tree and list structures is minimal. In terms of Objective Caml code, the interface of our grid will be the following:
+<blockquote>
+<pre>
+</pre><pre style="background: #ffffff none repeat scroll 0% 50%; color: #000000;"><span style="color: #000084; font-weight: bold;">type</span> 'a grid  
+<span style="color: #000084; font-weight: bold;">val</span> empty : <span style="color: #000084; font-weight: bold;">int</span> -&gt; <span style="color: #000084; font-weight: bold;">int</span> -&gt; 'a grid 
+<span style="color: #000084; font-weight: bold;">val</span> size : 'a grid -&gt; <span style="color: #000084; font-weight: bold;">int</span> 
+<span style="color: #000084; font-weight: bold;">val</span> get : 'a grid -&gt; <span style="color: #000084; font-weight: bold;">int</span> -&gt; <span style="color: #000084; font-weight: bold;">int</span> -&gt; 'a 
+<span style="color: #000084; font-weight: bold;">val</span> set : 'a grid -&gt; <span style="color: #000084; font-weight: bold;">int</span> -&gt; <span style="color: #000084; font-weight: bold;">int</span> -&gt; 'a -&gt; 'a grid 
+<span style="color: #000084; font-weight: bold;">val</span> unset : 'a grid -&gt; <span style="color: #000084; font-weight: bold;">int</span> -&gt; <span style="color: #000084; font-weight: bold;">int</span> -&gt; 'a grid</pre>
+
+</blockquote>
+The <span style="font-family: courier new,courier; color: #999999;">empty </span>function creates an empty grid of predetermined dimensions. The <span style="font-family: courier new,courier; color: #999999;">size </span>function returns the number of elements in a grid, and <span style="font-family: courier new,courier; color: #999999;">get </span>returns the element found at a given position in a grid (or raises <span style="font-family: courier new,courier; color: #999999;">Not_found</span> if not set). The <span style="font-family: courier new,courier; color: #999999;">set </span>function returns a copy of the grid containing a certain element at a certain position, while the <span style="font-family: courier new,courier; color: #999999;">unset </span>function returns a copy of the grid with no element at that position.
+<h2>The algorithm</h2>
+Before moving on, I strongly suggest that you get yourself familiar with the notion of kd-trees (for instance, from this <a href="http://en.wikipedia.org/wiki/Kd-tree">wikipedia article</a> on the subject). The key idea is that every node of a kd-tree splits the universe in two halves, with each half being represented by one of the two sub-trees.
+
+Given an empty grid, we choose the virtual tree structure as follows: one splits the grid in two halves of equal size across its longest dimension, then recursively splits the two halves, until the obtained grid contains exactly one tile. However, this is a virtual structure: representing it in memory would be wasteful, since most of the leaves will be empty anyway. Therefore, the program will only display the parts of the tree that are important: the parts of the tree that contain no elements in their leaves are simply represented by a 'hole' value, instead of containing the full set of nodes and the empty leaves.
+<h2>Preliminary definitions</h2>
+To achieve this, it's first necessary to define a few preliminary types and functions. This starts with the tree type, which describes the various slicing steps to reach a certain grid element.
+<blockquote>
+<pre style="background: #ffffff none repeat scroll 0% 50%; color: #000000;"><span style="color: #000084; font-weight: bold;">type</span> 'a step = 
+  | Split   <span style="color: #000084; font-weight: bold;">of</span> 'a step * 'a step 
+  | Element <span style="color: #000084; font-weight: bold;">of</span> 'a 
+  | Hole</pre>
+</blockquote>
+This tree contains no position information: indeed, that information is already available as part of the virtual tree (which was not constructed, but which can be computed on the fly from the width and height of the grid). Therefore, traversing this tree looking for a position will involve passing the width and height around. To factor out all the traversal code can be done with a function :
+<blockquote>
+<pre style="background: #ffffff none repeat scroll 0% 50%; color: #000000;"><span style="color: #000084; font-weight: bold;">let</span> seek ~ifl ~ifr ~ifh ~ife (w,h) (x,y) step = 
+  <span style="color: #000084; font-weight: bold;">let</span> aux (w,h) (x,y) = <span style="color: #000084; font-weight: bold;">function</span> 
+    | Split (l,r) -&gt; 
+        <span style="color: #000084; font-weight: bold;">let</span> t = w/2 <span style="color: #000084; font-weight: bold;">in</span> 
+        <span style="color: #000084; font-weight: bold;">if</span> x &lt; t <span style="color: #000084; font-weight: bold;">then</span> ifl (t,h) (x,y) l r 
+        <span style="color: #000084; font-weight: bold;">else</span> ifr (w-t,h) (x-t,y) r l 
+    | Element e   -&gt; 
+        ife e 
+    | Hole        -&gt; 
+        Lazy.force ifh 
+  <span style="color: #000084; font-weight: bold;">in</span> <span style="color: #000084; font-weight: bold;">if</span> w &gt;= h 
+  <span style="color: #000084; font-weight: bold;">then</span> aux (w,h) (x,y) step 
+  <span style="color: #000084; font-weight: bold;">else</span> aux (h,w) (y,x) step</pre>
+</blockquote>
+This function looks at a node in the tree and returns a certain result based on what type of node it is. In the case of an existing node with a left son and a right son, it compares the sought after position with the coordinates of the separator between the children, and then calls the expected function (ifl for a left child, ifr for a right child) with the dimensions of the child grid and the coordinates within that grid. In the case of a leaf node, it calls the expected function (ife for an element) on the element itself. In the case of a grid node that's missing (because there are no populated children), it returns the expected value (ifh for a hole). The latter is a lazily evaluated value, because one might wish to raise an exception (or otherwise avoid to evaluate it) only if it's actually used.
+
+The clever part of this function is the x-y swap transform. Indeed, the tree remains the same if you swap the x and y coordinates (as well as the corresponding dimensions of the grid). Since splitting always occurs along the longest edge of the grid, swapping the values to ensure that the width is always larger than the height allows the factoring of the splitting code.
+
+Using this helper function, it's possible to write three specific helper functions for getting, setting and unsetting:
+<blockquote>
+<pre style="background: #ffffff none repeat scroll 0% 50%; color: #000000;"><span style="color: #000084; font-weight: bold;">let</span> <span style="color: #000084; font-weight: bold;">rec</span> get_aux dim pos step = 
+  seek 
+    ~ifl:(<span style="color: #000084; font-weight: bold;">fun</span> dim pos step _ -&gt; get_aux dim pos step) 
+    ~ifr:(<span style="color: #000084; font-weight: bold;">fun</span> dim pos step _ -&gt; get_aux dim pos step) 
+    ~ifh:(<span style="color: #000084; font-weight: bold;">lazy</span> (<span style="color: #000084; font-weight: bold;">raise</span> Not_found)) 
+    ~ife:(<span style="color: #000084; font-weight: bold;">fun</span> x -&gt; x) 
+    dim pos step 
+
+<span style="color: #000084; font-weight: bold;">let</span> <span style="color: #000084; font-weight: bold;">rec</span> set_aux dim pos step x = 
+  seek 
+    ~ifl:(<span style="color: #000084; font-weight: bold;">fun</span> dim pos l r -&gt; Split(set_aux dim pos l x, r)) 
+    ~ifr:(<span style="color: #000084; font-weight: bold;">fun</span> dim pos r l -&gt; Split(l, set_aux dim pos r x)) 
+    ~ifh:(<span style="color: #000084; font-weight: bold;">lazy</span> ( 
+      <span style="color: #000084; font-weight: bold;">if</span> dim = (1,1) <span style="color: #000084; font-weight: bold;">then</span> Element x 
+      <span style="color: #000084; font-weight: bold;">else</span> set_aux dim pos (Split(Hole,Hole)) x)) 
+    ~ife:(<span style="color: #000084; font-weight: bold;">fun</span> _ -&gt; Element x) 
+    dim pos step 
+
+<span style="color: #000084; font-weight: bold;">let</span> <span style="color: #000084; font-weight: bold;">rec</span> unset_aux dim pos step = 
+  <span style="color: #000084; font-weight: bold;">let</span> clean = <span style="color: #000084; font-weight: bold;">function</span> 
+      Split (Hole,Hole) -&gt; Hole | other -&gt; other 
+  <span style="color: #000084; font-weight: bold;">in</span> 
+  seek 
+    ~ifl:(<span style="color: #000084; font-weight: bold;">fun</span> dim pos l r -&gt; clean (Split (unset_aux dim pos l, r))) 
+    ~ifr:(<span style="color: #000084; font-weight: bold;">fun</span> dim pos r l -&gt; clean (Split (l, unset_aux dim pos r))) 
+    ~ifh:(<span style="color: #000084; font-weight: bold;">lazy</span> (Hole))     
+    ~ife:(<span style="color: #000084; font-weight: bold;">fun</span> _ -&gt; Hole) 
+    dim pos step</pre>
+</blockquote>
+The get algorithm is fairly straightforward: always go into the side which contains the sought coordinate, raising an exception if it's a hole and returning the value if an element is found. If inlined, this function also happens to be tail-recursive.
+
+The set algorithm digs into the tree looking for the coordinate it's trying to set. If it encounters a hole, either the hole is small enough (and it is then filled with an element) or it's too large and the algorithm creates a new split node at that position and digs further.
+
+The unset algorithm searches for the correct element and, once found, replaces it with a hole. It then moves back up the tree, replacing split nodes with two hole children with a single hole node, thereby removing unused areas of the grid from the tree.
+<h2>Glue code</h2>
+Once the helper functions are implemented, only a little glue is required to implement the module signature:
+<blockquote>
+<pre style="background: #ffffff none repeat scroll 0% 50%; color: #000000;"><span style="color: #000084; font-weight: bold;">type</span> 'a grid = { d : <span style="color: #000084; font-weight: bold;">int</span> * <span style="color: #000084; font-weight: bold;">int</span> ; s : 'a step } 
+
+<span style="color: #000084; font-weight: bold;">let</span> test g x y = 
+  <span style="color: #000084; font-weight: bold;">let</span> w,h = g.d <span style="color: #000084; font-weight: bold;">in</span> 
+  <span style="color: #000084; font-weight: bold;">if</span> x &lt; 0 || x &gt;= w || y &lt; 0 || y &gt;= h <span style="color: #000084; font-weight: bold;">then</span> 
+    invalid_arg <span style="color: #0000ff;">"Out of bounds"</span> 
+
+<span style="color: #000084; font-weight: bold;">let</span> empty   x y   = { d = x, y ; s = Hole } 
+<span style="color: #000084; font-weight: bold;">let</span> size  g       = size_aux 0 g.s 
+<span style="color: #000084; font-weight: bold;">let</span> get   g x y   = test g x y ; get_aux g.d (x,y) g.s 
+<span style="color: #000084; font-weight: bold;">let</span> set   g x y v = test g x y ; { g <span style="color: #000084; font-weight: bold;">with</span> s = set_aux g.d (x,y) g.s v } 
+<span style="color: #000084; font-weight: bold;">let</span> unset g x y   = test g x y ; { g <span style="color: #000084; font-weight: bold;">with</span> s = unset_aux g.d (x,y) g.s }</pre>
+</blockquote>
+A test function ensures that the requested coordinates are valid, and the functions merely forward their arguments to the appropriate helper function.
+<h2>The end result</h2>
+Let us look at overhead versus a plain array. First, assuming that the grid is not sparse (all values are provided), then the resulting tree would contain the entire set of values, plus that many leaves, plus that many internal nodes, which weight much heavier
+
+Of course, if the system is sparse, then the reverse is true. With zero elements, there is almost no memory usage. With a single element, the amount of memory used is logarithmic in the area of the grid, and this increases sub-linearly with the number of stored elements. This means that, if storing 100 elements in a 100x100 grid, the used memory would be below 1300 nodes worth of memory (and increasingly lower as the elements were clustered together), as opposed to the 9900 useless grid locations in a non-sparse implementation.
+
+What about modifications? Again, adding or removing an element in a 100x100 grid results in at most 13 new nodes being created (since all the other nodes are not modified, and can thus be reused as-is from the previous grid).
+
+How does this compare to the core Map module of Objective Caml ? It depends. On the one hand, the depth required is a function of the grid area, instead of the number of elements, making the sparse grid marginally more memory-hungry for very small amounts of values (but those would be better stored as an associative list anyway). On the other hand, the sparse grid is always balanced (never requiring the need for balancing like Map does) and does not need to store the keys, since those are made implicit by the slicing. Finally, the sparse grid tends to be adapted to clustered situations which reduce the effective depth of branches, whereas a Map is adapted when the grid elements used are uniformly spread out.

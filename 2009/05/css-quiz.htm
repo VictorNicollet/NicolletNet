@@ -1,0 +1,84 @@
+@title CSS Quiz
+@draft
+
+How good of a CSS expert are you? Here would be a few interesting questions for you... all of these should be answered with CSS 2.1 in mind.
+
+<strong>You need to paint a div</strong>, which can be defined in XHTML in three different ways:
+<blockquote>
+<pre>&lt;div class="blue"&gt;         Blue   &lt;/div&gt;
+&lt;div class="yellow"&gt;       Yellow &lt;/div&gt;
+&lt;div class="blue yellow"&gt;  Green  &lt;/div&gt;</pre>
+</blockquote>
+The blue one is painted blue, the yellow one is painted yellow and the blue-and-yellow one is painted green. What would be the shortest way of doing this?
+
+<a id="1" class="show">(click to see answer)</a>
+<div id="d1">
+<blockquote>
+<pre>div.blue        { background : #0FF }
+div.yellow      { background : #FF0 }
+div.blue.yellow { background : #0F0</pre>
+</blockquote>
+Whitespace was added for clarity, you can remove all of it to further compress the stylesheet. Also note the missing end brace, which is not mandatory.</div>
+<strong>You see the following rules</strong> in a CSS file:
+<blockquote>
+<pre>body { font-size: 10px }
+p {
+  line-height: 2em;
+  font-size: 2em
+}</pre>
+</blockquote>
+What are, in pixels, the line height and font size of a paragraph element that appears directly in the body of the document?
+
+<a id="2" class="show">(click to see answer)</a>
+<div id="d2">The font size is computed from the inherited font size (in this case, 1em = 10px). Every other property using em will use the element font size (in this case, 1em = 20px). So, the font size will be 20px and the line height will be 40px.</div>
+<strong>In XHTML 1.0 Strict DTD</strong>, the button element has a "type" attribute that is "submit" by default (although don't rely on Internet Explorer for that). Keeping that in mind, is there any difference between these two buttons as far as CSS is concerned?
+<blockquote>
+<pre>&lt;button&gt;Send!&lt;/button&gt;
+
+&lt;button type="submit"&gt;Send!&lt;/button&gt;</pre>
+</blockquote>
+<a id="3" class="show">(click to see answer)</a>
+<div id="d3">Default values defined by the DTD are not necessarily taken into account by CSS (although they could). A conforming CSS implementation could have the second button match <code>button[type="submit"]</code>, whereas the first wouldn't match. This is why it is advised to provide a default CSS rule for the default value of the attribute.</div>
+<strong>The first-letter CSS pseudo-element</strong> lets you apply specific properties to the first letter of an element. The question is, assuming no other stylesheet rule attempts to change the color of the text, under which circumstances does the following rule affect the letter "W" in the document below it?
+<blockquote>
+<pre>div:first-letter { color : red }
+
+&lt;div&gt;&lt;em&gt;Welcome&lt;/em&gt;, whispered the ghost.&lt;/div&gt;</pre>
+</blockquote>
+<a id="4" class="show">(click to see answer)</a>
+<div id="d4">The first letter of the first child element (or of the first child of the first child, and so on) is matched by the first-letter pseudo-element, which means the rule would apply to that letter and make it red. However, if the emphasis element is displayed as an inline block (<code>em { display:inline-block }</code>) its first letter cannot be affected by the first-letter pseudo-element of a parent. In that case, none of the letters in the example would be red.</div>
+<strong>Consider this set of nested div blocks</strong>, and five CSS rules (present as such in the author's stylesheet) that all apply to the contents of the innermost block.
+<blockquote>
+<pre>.blue .blue   { color : blue }
+* * *         { color : black }
+div div div   { color : yellow }
+.or.red * *   { color : red }
+div.green * * { color : green }
+
+&lt;div class="green or red"&gt;
+  &lt;div class="blue"&gt;
+    &lt;div class="blue"&gt;
+      What color?
+    &lt;/div&gt;
+  &lt;/div&gt;
+&lt;/div&gt;</pre>
+</blockquote>
+What is the color of the text?
+<a id="5" class="show">(click to see answer)</a>
+<div id="d5">The text is <em>red</em>. The five rules all apply to the same element, so they have to be sorted by order of precedence, and the one with the highest precedence applies. Since they all belong to the author stylesheet and none are important, they are sorted by specificity, then by order of appearance. The first rule has precedence (0,0,2,0) since it contains two class specifiers and zero element specifiers. The second rule has precedence (0,0,0,0) since it has no specifiers at all. The third rule has precedence (0,0,0,3) since it has three element specifiers. The fourth rule has precedence (0,0,2,0) as well. The fifth rule has precedence (0,0,1,1). This means two rules (first and fourth) are tied for highest precedence, so the last one to appear is used (in this case, the fourth).</div>
+<strong>A designer constructs two nested div blocks</strong> using the following template:
+<blockquote>
+<pre>&lt;div id="outer"&gt;
+  &lt;div id="inner"&gt;
+  &lt;/div&gt;
+&lt;/div&gt;</pre>
+</blockquote>
+And he gives them the following stylesheet rules:
+<blockquote>
+<pre>#outer { width : 200px ; height : 100px ; margin : 0px ; background : blue }
+#inner { width : 20px ; height : 20px ; margin : 10% ; background : red }</pre>
+</blockquote>
+What would be the relative position of the top-left corner of the red square to the top-left corner of the blue rectangle? What would happen if the outer block received a black border?
+
+<a id="6" class="show">(click to see answer)</a>
+<div id="d6">The relative horizontal position would be 20 pixels from the left edge, as expected (10% of 200px is 20px). The relative vertical position is zero: overlapping vertical margins merge, so the red square would move up until its top edge hit the top edge of the blue rectangle, and the top margin of the blue rectangle would be equal to <em>max(inner top margin, outer top margin)</em>. Adding a black border to the blue rectangle would prevent the margins from overlapping (since the red square margin cannot cross the blue rectangle border) so the relative vertical position would be 20 pixels from the top edge: percentage margins (including vertical ones) are all computed from the width of the container, which in this case gives 10% of 200px, or 20 pixels.</div>

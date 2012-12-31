@@ -1,0 +1,14 @@
+@title Agnosticism
+@draft
+
+It is a good idea (as far as code extension and maintenance) to separate responsibilities as much as possible, and to restrict use of shared data. Consider a situation where a video game developer is writing an <em>Opponent </em>object: that opponent should be able to shoot a <em>Rocket</em>. However, a rocket object on its own does not have a lot of purpose: it needs to be handled by the model code so that it moves around and explodes when it hits something, and it needs to reference some audio and video resources. The problem is that the opponent object cannot and should not have access to either the model code (quite the opposite: model code has access to the opponent instead) or a resource management entity able of providing <em>rocket-related assets</em>.
+
+Of course, if the objective was to keep code as simple as possible, a quick solution is possible: make the resource management entity and the model code globally accessible, and let the opponent code access them. Even without going as far as globals, one could provide the opponent code with references to them. But the problem of separation is quite annoying, because now the opponent has more powers over the game than it should—if all that is required is to shoot rockets, then the opponent should only be provided with the ability to shoot rockets. This also makes the "shoot rocket" logic independent of the opponent (because it has to somehow be provided by the model  code) and thus more easily reusable.
+
+In a pure object-oriented approach, there's at least one easy answer: provide the opponent code with an instance implementing all the operations it ever needs to perform, including the "shoot rocket" operation. The opponent then calls the appropriate methods of that instance, and the instance is actually an adapter that forwards the calls to the appropriate sections of the model code.
+
+There are two ways of eliminating the dependency of a module User on a module Used (though they may not be applicable in all cases):
+<ul>
+	<li>Hide the model Used behind an interface IUsed and have User call methods of IUsed.</li>
+	<li>Have Used accept messages as a data type independent of both Used and User, have User return the necessary messages, and forward the returned messages to Used.</li>
+</ul>

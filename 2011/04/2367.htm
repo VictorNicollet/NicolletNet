@@ -1,0 +1,114 @@
+@title CouchDB-OCaml 
+@draft
+
+I spent two days upgrading from the previous CouchDB library to a new one. The change involved eliminating a lot of kinks that made writing code a bit awkward, as well as a massive transition from previous imperative style to a new monadic style. As a result, the code became shorter and more elegant.
+
+As a simple example, this is a standard library module from the Ozone framework that was originally implemented on top of the old CouchDB library. It's a library for atomically upholding an uniqueness constraint on a value :
+<ul>
+	<li><code>module MyUnique = Unique(MyDatabase)</code> initializes the unique constraint in the provided database.</li>
+	<li><code>MyUnique.get "Hello"</code> gets an unique identifier bound to the <em>Hello</em> string, or uses an existing one if available, as an atomic operation. The software is then expected to work with the document tied to that unique identifier (to take advantage of CouchDB transactions).</li>
+	<li><code>MyUnique.get_if_exists "Hello"</code> only returns the identifier if it exists.</li>
+	<li><code>MyUnique.remove "Hello"</code> releases the value, so that subsequent calls will receive a different unique identifier. This is has the elegance of a sledgehammer.</li>
+	<li><code>MyUnique.remove_atomic "Hello" old_id</code> releases the value only if it is still owned by <code>old_id</code> (if it is not, then it does nothing).</li>
+</ul>
+The original code for the module looked like this:
+<pre style="padding-left: 30px;">type id    = Id.t
+type value = string
+
+<span style="color: #008000;">(* We're manually constructing a format that we will need to pass to
+   every database function. Not elegant. *)</span>
+type json join = &lt; id : Id.t &gt; ;;
+let fmt = json_of_join, Fmt.protect "Unique.join" join_of_json
+
+module Make = functor (DB:CouchDB.CONNECTED) -&gt; struct
+
+  let get_if_exists value =
+<span style="color: #008000;">    (* Also, we need to turn every value into an identifier, because this is
+       what the database expects... *)</span>
+    let id = Id.of_string value in
+    match DB.get fmt id with None -&gt; None | Some join -&gt; Some (join # id)
+
+  let get value =
+    let id = Id.of_string value in
+<span style="color: #008000;">    (* Transactions are raw "apply this function to the existing data" hammers,
+       even though "insert if not exists" is not a nail, it's a screw, and
+       a common one too. *)</span>
+    DB.transaction fmt id begin function
+      | None -&gt; let newid = Id.gen () in
+                newid, CouchDB.Put (object method id = newid end)
+      | Some o -&gt; o # id, CouchDB.Keep
+    end
+
+  let remove value =
+    let id = Id.of_string value in
+    <span style="color: #008000;">(* Deletion is fairly common, too... *)</span>
+    DB.transaction fmt id (fun _ -&gt; (), CouchDB.Delete)
+
+  let remove_atomic value current_id =
+    let id = Id.of_string value in
+    DB.transaction fmt id begin function
+      | None -&gt; (), CouchDB.Keep
+      | Some o -&gt; if o # id = current_id then (), CouchDB.Delete else (), CouchDB.Keep
+    end
+
+end</pre>
+The new version looks like this instead:
+<pre style="padding-left: 30px;"><span style="color: #008000;">(* For the |&gt;&gt; operator *)</span>
+open Breathe.Include
+
+type id    = Id.t
+type value = string
+
+<span style="color: #008000;">(* Now, formats are represented as modules *)</span>
+module Join = Fmt.Make(struct
+  let name = "Unique.Join.t"
+  type json t = &lt; id : Id.t &gt;
+end)
+
+<span style="color: #008000;">(* And there's a wrapper to perform the value-to-id conversion
+   automatically *)</span>
+module Value = struct
+  type t = value
+  let to_id = Id.of_string
+  let of_id = Id.to_string
+end
+
+module Make = functor (DB:Breathe.DATABASE) -&gt; struct
+
+<span style="color: #008000;">  (* Instead of relying on low-level "use identifiers and formats on
+     every call" primitives as was done previously, we can now 
+     define a table with its identifier and value types described by
+     modules, so conversions happen automatically. *)</span>
+  module MyTable = Breathe.Table(DB)(Value)(Join)
+
+  let id_of x = x # id
+
+  let get_if_exists value =
+    <span style="color: #008000;">(* Using tables and a map operator makes this shorter. *)</span>
+    MyTable.get value |&gt;&gt; BatOption.map id_of
+
+  let get value =
+<span style="color: #008000;">    (* The ensure primitive eliminiates the need for specific code
+       to handle this case. *)</span>
+    let fresh = lazy (object method id = Id.gen () end) in
+    MyTable.transaction value (MyTable.ensure fresh) |&gt;&gt; id_of
+
+  let remove value =
+<span style="color: #008000;">    (* So does the remove primitive... *)</span>
+    MyTable.transaction value MyTable.remove |&gt;&gt; ignore
+
+  let remove_atomic value current_id =
+    <span style="color: #008000;">(* And the remove_if primitive... *)</span>
+    let has_id uniq = uniq # id = current_id in 
+    MyTable.transaction value (MyTable.remove_if has_id) |&gt;&gt; ignore
+
+end</pre>
+
+Using a monadic style for the code also has a number of advantages that did not exist with the imperative:
+<ul>
+	<li>There is now a cache for values retrieved from the database. This cache is carried around when the monad-based code is evaluated, so its lifetime and scope are closely guarded by the <code>Breathe.execute</code> function that actually runs everything. There is no risk of an element staying in cache for hours, as the cache is discarded after every HTTP request. It also means several caches can co-exist within the application without stepping on each other.</li>
+	<li>Database failures are now handled by the monad : as soon as an error is encountered, monad evaluation stops and <code>Breathe.execute</code> reports the error instead of the expected result. This lets write-only operations report errors and interrupt the flow even though they return <code>unit</code> without spamming exceptions around.</li>
+	<li>Individual operations can be collected together and batched with the bulk API. This is something that is theoretically possible given the architecture of the library, but not implemented yet. </li>
+	<li>Code that involves database access is now clearly indicated as such, which helps increase its visibility and the propagation of "this might access the database" hints across the software.
+</li></ul>
+

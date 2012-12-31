@@ -1,0 +1,100 @@
+@title How to build a page client-side?
+@draft
+
+The basic philosophy of jQuery is to start with some existing HTML sent over vanilla HTTP by the server. That HTML should be all you need (so that people without a JavaScript-enabled browser can still use the web site). Then, jQuery enhances that HTML by adding new behavior (usually changing the properties of existing elements, sometimes adding new elements).
+
+This is very useful for small pieces of behavior, but writing complete and complex components is hard for several reasons:
+<ul>
+	<li>A partial view strategy is required on the server side to insert the appropriate HTML in the appropriate location (as opposed to leaving an empty hole and having the component generate its own HTML).</li>
+	<li>If the behavior of your component is complex, then there will be a lot of parsing going on. A typical example would be sorting a table by a "date" column—since the date format in itself cannot be parsed (culture-dependent and may contain "Yesterday", "13 seconds ago" and similar shortcuts).</li>
+	<li>Sometimes, the server needs to add information that is not visible, but is needed by the JavaScript. The format for sending this data (attribute, hidden field...) is difficult to document and type-check.</li>
+	<li>Selecting precisely the right fields in a blob of HTML, without hitting any others, is hard, especially for components that may later contain sub-components. Class-based selection is slow, id-based selection involves heavy logistics to move the identifiers around, and complete traversal takes a while and breaks if the HTML changes.</li>
+</ul>
+My preferred approach to JavaScript components is to receive JSON-formatted data from the server (easy to parse) from which I construct the DOM elements I need and capture them at the same time.
+<pre style="background: #ffffff none repeat scroll 0% 0%; color: #000000; padding-left: 30px;"><span style="color: #000084; font-weight: bold;">var</span> $comment = $(<span style="color: #0000ff;">'&lt;div&gt;&lt;img/&gt;&lt;span/&gt;&lt;div/&gt;&lt;/div&gt;'</span>)
+  .addClass(<span style="color: #0000ff;">"comment"</span>);
+
+<span style="color: #000084; font-weight: bold;">var</span> obj =
+{
+  $self : $comment,
+
+  $img  : $comment.children(<span style="color: #0000ff;">'img'</span>)
+          .attr(<span style="color: #0000ff;">'src'</span>,data.imgUrl),
+
+  $name : $comment.children(<span style="color: #0000ff;">'span'</span>)
+          .text(data.authorName)
+          .addClass(<span style="color: #0000ff;">'authorName'</span>),
+
+  $body : $comment.children(<span style="color: #0000ff;">'div'</span>)
+};
+
+$.each(data.text,<span style="color: #000084; font-weight: bold;">function</span>(k,t){
+  $(<span style="color: #0000ff;">'&lt;p/&gt;'</span>).text(t).appendTo(obj.$body);
+});
+
+<span style="color: #000084; font-weight: bold;">return</span> obj;</pre>
+The point is that you then have access, through the returned object, to all the relevant elements within the comment, so that you may target them with effects without any risky selector-based magic. Besides, if the HTML format of comments changes, you will only have to change the code above and nothing else.
+
+And of course, using <code>text()</code> escapes any dangerous HTML you might have.
+
+To make the above appear in your code, all you have to do is:
+<pre style="background: #ffffff none repeat scroll 0% 0%; color: #000000; padding-left: 30px;"><span style="color: #000084; font-weight: bold;">var</span> $commentsList = $(<span style="color: #0000ff;">'#my-comments-list'</span>);
+
+$.each (comments, <span style="color: #000084; font-weight: bold;">function</span>(i,c){
+  <span style="color: #000084; font-weight: bold;">var</span> obj = $comments[i] = renderComment(c);
+  obj.$self.appendTo($commentsList);
+});</pre>
+This is usually where you hit a performance wall, because this is one of <a href="http://www.artzstudio.com/2009/04/jquery-performance-rules/" target="_blank">the slowest ways of using jQuery</a> on a web page.
+
+I've been in this situation recently on a smallish website that basically displays a list of contacts invited to various events as a 10-column/300-row table that includes additional functionality such as:
+<ul>
+	<li>Dynamically add or remove new rows (with server-side confirms)</li>
+	<li>Rows are grouped together, and groups can be collapsed and expanded</li>
+	<li>Clicking on rows opens a modal editor, modifications are propagated back to the table</li>
+	<li>The data and formatting for certain rows depend on some other rows</li>
+</ul>
+The initial approach was exactly as described above: every cell was constructed as <code>$('&lt;td/&gt;')</code>, classes and attributes were applied to it, then all cells were inserted into rows constructed as <code>$('&lt;tr/&gt;')</code>, and these in turn were appended to the table tbody. Since some parts of the table were clickable to achieve various effects, jQuery's <code>click()</code> function was used to add the appropriate event handlers, and the event handlers were closures that contained all relevant information about what row had to be collapsed or what element had to be removed.
+
+The average time for rendering all of this was a solid <strong>2200</strong>ms on Firefox 3.5, which felt about as dynamic as a dead tortoise nailed to a slab of concrete. For comparison purposes, rendering the data server-side and sending it to the client took about <strong>390</strong>ms on average (arguably, the server would have scaling issues as it would have to render the HTML for all clients, but still).
+
+<strong>2200</strong>ms means about <strong>7</strong>ms per row. The problem here isn't that the jQuery code is slow, but rather that it's executed so many times to add up to a pretty large number.
+
+My first attempt to improve performance was to avoid constructing rows cell by cell, instead building the final HTML of the row in one shot and then selecting clickable elements inside the row through their class to apply event handlers. Rows were then inserted into the table body using jQuery's DOM functions. The new rendering time was <strong>1800</strong>ms, which was not as good as I hoped my improvement to be.
+
+The second step was to move away from selecting clickable elements to apply event handlers. This meant that I could either insert the event handler code in the HTML (but this meant no closures, so I would have to rely on global, non-garbage-collected behavior) or add a click event to the entire table and determine what element had been clicked (and parsing the DOM for information about what to do with the click, which was annoying).
+
+I went with the first way, rewriting my code as global handlers and eliminating all the select-child-with-class overhead. Rows were still constructed independently and inserted independently. The improvement was sensible, as the rendering time was then <strong>980</strong>ms.
+
+The last wave of optimizations consisted in making sure the HTML for the entire table body was generated in one shot and concatenated as an array (using <code>[a,b,c].join('')</code> instead of <code>a+b+c</code>). This creates 5223-element array, concatenated into a string containing 72357 characters, which is then inserted into the table body using jQuery's <code>html()</code> function. The entire process, including preliminary processing of the data to be displayed, takes about <strong>160</strong>m (a 13.7× performance increase).
+
+The change was mostly moving from this design pattern:
+<pre style="background: #ffffff none repeat scroll 0% 0%; color: #000000; -moz-background-clip: -moz-initial; -moz-background-origin: -moz-initial; -moz-background-inline-policy: -moz-initial; padding-left: 30px;"><span style="color: #000084; font-weight: bold;">function</span> renderRow(data)
+{
+  $tr = $(<span style="color: #0000ff;">'&lt;tr/&gt;'</span>);
+
+  $(<span style="color: #0000ff;">'&lt;td/&gt;'</span>)
+    .addClass(<span style="color: #0000ff;">'name'</span>)
+    .append($(<span style="color: #0000ff;">'&lt;a/&gt;'</span>)
+      .text(data.name)
+      .click(<span style="color: #000084; font-weight: bold;">function</span>(){ frobnicate(data.id); }))
+    .appendTo($tr);
+
+  <span style="color: #808080;">// ...</span>
+
+  <span style="color: #000084; font-weight: bold;">return</span> $tr;
+}</pre>
+To this one:
+<pre style="background: #ffffff none repeat scroll 0% 0%; color: #000000; -moz-background-clip: -moz-initial; -moz-background-origin: -moz-initial; -moz-background-inline-policy: -moz-initial; padding-left: 30px;"><span style="color: #000084; font-weight: bold;">function</span> renderRow(data,html)
+{
+  html.push(
+    <span style="color: #0000ff;">'&lt;tr&gt;&lt;td&gt;'</span>,
+    <span style="color: #0000ff;">'&lt;a href="javascript:frobnicate('</span>,
+    data.id,
+    <span style="color: #0000ff;">')"&gt;'</span>,
+    esc(data.name),
+    <span style="color: #0000ff;">'&lt;/a&gt;&lt;/td&gt;'</span>,
+    <span style="color: #808080;">// ...</span>
+    <span style="color: #0000ff;">'&lt;/tr&gt;'</span>
+  );
+}</pre>
+Again, this is an extreme situation where page-generation goes way out of hand because a lot of rows are generate—the net benefit, as far as rendering a single row is concerned, is around 6ms. If your page contains only a small number of complex components, you can ignore the performance issues to get the components done, and only optimize if it turns out to be noticeable.

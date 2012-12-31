@@ -1,0 +1,57 @@
+@title An Object Philosophy : The Mindset
+@draft
+
+Last week, I discussed the main tools available in Object-Oriented Programming. If you haven't already done so, I suggest that you read the <a href="http://www.nicollet.net/2009/01/an-object-philosophy" target="_blank">article</a> before starting.
+
+A lot of OOP advocates (or compiler marketers, for that matter) state the main benefits of using it as being extensibility, maintainability, and reuse. Some would also add into the mix the ability to split up large problems into smaller problems, but <em>functions</em> have allowed precisely that for a long time, even in plain old modular but not object-oriented programming. Others mention the ease of gathering user requirements, but if your software architecture determines the way you gather requirements then I feel sorry for you regardless of what your methodology is—understanding the user requirements in terms of "I do this and this should happen" is the least you can do, and it's architecture-independent.
+
+The problem with such advocacy is that many are left with the impression that merely using the tools (classes, objects, methods) automatically yields the advertised benefits. Which, of course, isn't the case. In fact, it's a little worse than that: Object-Oriented Programming, in itself, is not fast to write. There's the development time required to design each class, write the appropriate two-line functions to translate the various messages and send them to sub-objects, rewrite the parts that didn't represent the solution appropriately, and so on. A lot of time, doing so is still a good idea because the benefits outweigh the costs. But if used improperly, a software project may be forced to bear the costs of using OOP without actually reaping the benefits, and that is usually a huge waste of time and resources.
+
+I tend to believe that a developer becomes a good object-oriented developer the day he starts asking himself a simple question: "<em>how?</em>"
+
+So they say that using a class here will allow me to reuse code, decrease maintenance effort, and improve extensibility. How is this going to happen? Can I imagine a credible situation where this code can be successfully reused? What maintenance situation will benefit from this piece of code being a class? How will this class improve the extensibility of this code. All of these need <em>practical</em> answers, not theoretical "this is just what OOP does" circular reasoning.
+<h2>Looking at the World</h2>
+One of the earliest and most compelling arguments in favor of OOP is the fact that everyday humans think about the world in terms of objects. A table, a chair, a computer, a file, all of these are objects that have defined properties. So, it seems obvious to model real-life objects in terms of OO objects, if only to benefit from the modeling abilities of the developer's brain.
+
+This argument holds, to a degree. Humans are, indeed, better at manipulating black boxes where a lot of uninteresting details are abstracted away and a clean set of properties are selected and accessed. This is why encapsulation (placing all data and functions related to a concept in the same location) helps programmers work on larger programs: hidden information is information you don't have to think about, and related things grouped together are things you won't have to search for.
+
+The analogy stops there, however. Real-life objects are incredibly complex: they have a shape, color, texture, aspect, granularity. Then, there's the illumination, the weight, the speed, the position. Then, the various electrical currents and other energy flows going in and out of the object. Shape deformations. Elementary chemistry. Sound, smell and taste. Moving pieces. Ownership, authorship and other legal meta-information about the object. The end result is that, even though a simple rocket in a video game models a real-life object, most video games will separate it into a rendering sub-object, a local model object and a remote model object (to say nothing of audio and collision detection). That is, in order to be able to correctly manipulate objects, one has to split them into parts that are smaller than the average real-life object.
+
+Another flaw in the analogy appears at the interaction level. Objects in the real world tend to evolve on their own in-between interactions with other objects (an egg thrown at a wall doesn't need someone to push it along the way until it hits the wall) and have spontaneous symmetrical interactions with each other instead of messages propagating through an object graph.
+<h2>Extending Software</h2>
+Another strong point of Object-Oriented Programming is the ability to easily extend existing software. This is handy when, some time after the source code was originally written, additional requirements appear.
+
+Changing or extending the behavior of a program invariably involves changing the code of that program, whether the program is object-oriented or not. Developers write some brand new code then some change the existing program so that it references and executes the new code—a few exceptions happen, such as when the entry point of the new code replaces (and calls) the entry point of the new code, but most of the time the old program has to be modified.
+
+Avoiding modification of the old program is possible through polymorphism—and Object-Oriented Programming provides a tool to achieve polymorphism. The basic idea is that, instead of altering the program to take into account the new code, the program is changed to automatically take into account any piece of code it finds that fits certain requirements. In an object-oriented setting, this might mean using all <em>objects</em> that fit a certain <em>interface</em>. This is the basis of a plugin system: you don't have to change the original program, you merely have to put the plugin code somewhere and change a configuration file to tell the program where to find the new plugin (you could also decide to use all the files in a certain location as plugins, but this can be a security risk).
+
+So, if you want to add support for PDF generation to your application, and your application already supports several export plugins, then you can create and distribute the PDF generator as a plugin without having to alter and redistribute your original application.
+
+However, this also happens on a smaller scale. Instead of working with entire programs, you work with functions or objects: nobody wants to change the code of an object, especially if that object is used in many locations in your program. So, again, polymorphism is used to allow a given object to interact with as many situations as possible: instead of expecting objects of a particular overly specific kind, the code merely expects an object that provides what is required to do the work.
+
+The important element here is: <strong>every object and every function should be able to work in as many situations as possible</strong>. This often leads to massive use of interfaces: if a given piece of code requires that an object accepts a certain message, then it implicitly defines the interface of all objects it can work on as the objects accepting that message.
+
+But that's not all: sometimes, no matter how much effort you poured into writing extremely extensible objects, you run into a feature that just has to change a lot of code in order to work. This is where another benefit of Object-Oriented Programming can be helpful: encapsulation, or the ability to group together in small packages bits of related functionality. By storing together bits of code that depend on each other, changing one piece will usually alter other pieces within the same area, but leave alone the pieces elsewhere.
+
+This, however, requires clever separation. Objects must be kept small: if there's too much functionality in a given object, then any change will require a lot of work. By contrast, small objects can change more easily.
+<h2>Reusing code</h2>
+Reusing code is often seen as ripping out a class from a project and placing it in another. That's an excellent situation that everyone wishes to be in. However, a lot of code has too many dependencies to simply be moved around like that, which has led many to conclude that code reuse is an utopia that cannot be reliably achieved with Object-Oriented Programming.
+
+However, such a definition as moving code between projects is a bit too strong, and does not cover the ability to reuse code <em>within the same project</em>.
+
+One does not need objects to reuse code that is already in the project—the code is usually grouped as part of functions, and you can always decide to call a function if you want to. What the Object-Oriented can provide, however, is a means of making such code <em>useful</em> in other parts of the project.
+
+Consider a system which manipulates three kinds of objects: Users, Orders, and Products. There's already a system for displaying a list of users, and a distinct system for displaying a list of orders. To display a list of products, one cannot rely on the existing code, which is strongly tied to users and orders (respectively), so a third system is developed for displaying orders.
+
+By contrast, an object-oriented program might consider that displaying lists merely involves having a way of drawing a single element, and repeating that operation for all the elements. So, there would be code to display a single user, code to display a single order, code to display a single product, and a single system which displays a list of things (whether these things are users, orders or products is irrelevant).
+
+There's a strong connection between code reuse and code extension: one cannot rely on reusing code that does exactly what is required, because it's quite rare to require the exact same thing twice within a program. To reuse code on a larger scale, one has to extend what that code can do so that it becomes useful in the current context, and this extension can happen through polymorphism: divide your task in two parts, have one of the parts be made by a function or object that performs that task in many places (so that you reuse it) and have the other part be executed by an ad hoc small object.
+
+Be very careful with inheritance as a way of performing reuse: this makes the code marginally easier to manipulate on the short term, but harder to extend on the long term.
+<h2>Summary</h2>
+The main benefits of object-oriented programming are reusing code and extending code, which in turn are merely facets of being able to write adaptable code that can be used in many situations. To achieve such code, use objects carefully:
+<ul>
+	<li>Is any piece of this object's functionality already present in another object? If it is, then that piece should be separated into its own function or object, leaving three small objects instead of two large ones.</li>
+	<li>Are the parameters to this function of the correct type, or could the function be made more versatile by using a more general interface?</li>
+	<li>Are these two pieces of functionality related, or are they just grouped there because of a subjective observation? If there is no reason for the two to work together, separate them so that everyone can use one but not the other.</li>
+</ul>

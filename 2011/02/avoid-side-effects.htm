@@ -1,0 +1,62 @@
+@title Avoid Side Effects
+@draft
+
+Perhaps one of the single most useful aspects of functional programming is the absence of side-effects. In a pure functional language, there is no assignment — once created, you cannot change the members of an object or the value of a variable. All you can do is create new values based on old values. Advocates of these so called <em>immutable values</em> argue that there are many benefits related to what you can do with them: you can keep around both the new version <em>and</em> the old version (implementing an "undo" feature of sorts), often at a reduced memory cost due to sharing of sub-elements between the two versions.
+
+While I agree with these, I believe there's something far more interesting about immutable values — what you <em>cannot</em> do with them, and the consequences this has on feeling <em>secure</em> about your code.
+
+In my current project, I use a coding style that absolutely forbids any form of side-effects with the exception of 1° a clearly delimited set of create/update functions that affect the database, 2° any side-effects that affect local variables and 3° during initialization. These are of course <em>exceptions</em> — while allowed, they are avoided in the vast majority of the code.
+<h4>Reordering code</h4>
+One simple consequence: the order in which calls are made is only constrained by things that the compiler can detect — the function that uses <em>x</em> is called after the function that returns <em>x</em> — instead of subtle «open must be called before send» errors, simply because there's no way for «open» to affect «send» unless the former returns a value used by the latter. So, I can rearrange lines freely because the compiler <em>will</em> warn me when I make a mistake.
+<h4>Protecting against invalid states</h4>
+A corrolary of the above is that it becomes possible to design your types so that only valid states can be represented. For instance, consider a list that must contain at least one element — in a mutable context, there is no way to represent this within the type system because I could always write this:
+<pre style="padding-left: 30px;">for (i = 0 ; i &lt; 10 ; i++)
+  list.pop();</pre>
+There is no way here for the pop function to indicate that it might cause a problem, because it returns nothing — the only way out is an exception, and this happens outside the type system in most languages. On the other hand, if we keep the original list unmodified and return the new list, this opens the opportunity for indicating whether additional pops are available:
+<pre style="padding-left: 30px;">type 'a one_or_more =
+  | One of 'a
+  | More of 'a two_or_more
+
+and 'a two_or_more = 'a * 'a one_or_more
+
+let pop : 'a two_or_more -&gt; 'a one_or_more = function (_,rest) -&gt; rest</pre>
+By design, the pop function will never attempt to pop from a one-element list because it can only be called on a <em>two_or_more</em> value, and it returns a value which may or may not be a <em>two_or_more</em> — the code needs to check this, and the compiler will detect if you forget it:
+<pre style="padding-left: 30px;">let pop_n n list =
+  if n = 0 then list else pop_n (n - 1) (pop list)</pre>
+Here, the type of the list variable is inferred to be <em>two_or_more</em> (because it's passed as an argument to <em>pop</em>) which means that <em>pop list</em> (of type <em>one_or_more</em>) is not a valid argument to <em>pop_n</em>. An appropriate solution (popping up to <em>n</em>, if available) takes this into account:
+<pre style="padding-left: 30px;">let pop_n n = function
+  | (One _) as keep -&gt; keep
+  | more -&gt; if n = 0 then more else pop_n (n - 1) (pop more)</pre>
+Let's summarize what happened here: I used a different representation for one-element lists and more-than-one-element lists, which let me selectively define a pop operation only for more-than-one-element lists, and this allowed the compiler to detect when the «must contain at least one element» constraint might be violated. Have fun achieving this in your non-functional language of choice! Using a different representation in this way was made possible by the fact that pop returns a new list instead of altering its argument — so the new list can be of a different type than the old one.
+
+This is a fundamental principle in compiled functional languages: <strong>if a given state is not valid, design your types so that it may not be represented</strong>. When this is done correctly, not only does it become harder to write code that tries to create an invalid state, but when that code is written, the compiler rejects it.
+<h4>Memoization</h4>
+If you are certain that a given function is pure but involves computations that you would rather not repeat too often (such as database reads), you can resort to memoization: wrap the function in a piece of code that memorizes the result of every call. In my current project, this is as simple as:
+<pre style="padding-left: 30px;">let get_pic_url = Util.memoize Picture.get_url</pre>
+From then on, asking ten times for the URL of a given picture will result in a single database request. Had the function involved a side-effect, memoization would have changed the program behavior: knowledge that the function is pure lets me apply memoization without any risk of creating a bug.
+<h4>Retry until successful</h4>
+Yet another situation is when dealing with CouchDB transactions, which involve the following process:
+<ol>
+	<li>Fetch current version of the document from the database</li>
+	<li>Modify the document</li>
+	<li>Write the document back to the database</li>
+	<li>If a collision happened, repeat from 1.</li>
+</ol>
+In short, the application must repeat steps 1-2-3 until a write succeeds. Correctness of these algorithms is difficult to test because development servers seldom have enough active users to actually cause conflicts (and when conflicts do happen, they are hard to trace). By deciding that steps 1-2-3 are handled by pure functional code, I have the guarantee that the loop can be executed any number of times and yield the expected result. Right now, a transaction looks like this:
+<pre style="padding-left: 30px;">let accept id = DB.transaction id
+  begin function
+  | None -&gt; (* No object in database *) DB.Keep
+  | Some post -&gt;
+    if post # accepted then
+      (* Post is already accepted *) DB.Keep
+    else
+      (* Accept post *)
+      DB.Put (object
+        method accepted = true
+        method author   = post # author
+        method text     = post # text
+      end)
+  end</pre>
+By applying a "never use side-effects" convention, I know without even looking at the function contents that there are no side-effects inside.
+
+These four examples are original in that they don't try to showcase the <em>power</em> of immutable values and how they can be <em>used</em>. Instead, they simply illustrate how a program <em>without mutable values</em> has interesting properties that make refactoring easier, help the compiler detect many more errors, and allows the application of patterns that can only be safely applied in the absence of side-effects. Like the monks of old, I write my software without the mundane facilities of mutable values, but I derive significant benefits out of it.

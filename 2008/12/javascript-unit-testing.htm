@@ -1,0 +1,24 @@
+@title Javascript Unit Testing
+@draft
+
+It has recently come to my attention that a new unit testing framework for Javascript had become available : <a href="http://ejohn.org/blog/fireunit/" target="_blank">FireUnit</a> is a Firefox extension that integrates with Firebug to allow automatic testing. It includes features such as pretty-printing of test results in the Firebug console and simulation of user-side events.
+
+I'm marginally skeptical about this. I can see where the thing can be useful: you have a standalone data model that should evolve according to certain rules when manipulated in certain ways. In those cases, writing an unit test happens like in any other programming language and everyone is happy.
+
+But, like in other programming languages, whatever is related to user interaction (reading input, displaying things) is inevitably much harder to test:
+<ul>
+	<li>it's hard to determine whether a result is displayed correctly or if something's off, it's even harder to determine whether the result will be displayed correctly in other configurations (including, for instance, other browsers), and animations are hellish to check because of time-dependence,</li>
+</ul>
+<ul>
+	<li>third party frameworks often allow ways of changing states but not of querying them (for instance, jQuery allows setting a movement queue for animation, but querying the current movement queue is harder, and does not allow checking whether an element is shown, hidden or in-between),</li>
+</ul>
+<ul>
+	<li>many elementary errors rely on race conditions (press two buttons in short sequence while the server is busy) because of the lack of synchronization, and these are an order of magnitude harder to test than single-threaded behavior,</li>
+</ul>
+<ul>
+	<li>most of the AJAX interaction has a lot of special cases that take a while to be mocked, because of all the possible server response issues and delays,</li>
+</ul>
+<ul>
+	<li>like many user interfaces, JavaScript code on pages tends to change frequently as designers and usability experts change their minds about particular parts, making unit tests an investment harder to amortize</li>
+</ul>
+My opinion on this is: if your JavaScript codebase is mostly made up of libraries and isolated components that have a cleanly described API, you can test the "put this in, get this out" rules documented by the API using unit tests, and you will be happy. On the other hand, if your usage of JavaScript is one-shot dynamization of pages using adapted libraries (and I suspect the vast majority of JavaScript development occurs in these cases) then there isn't really a lot to be tested: the test cases are <em>very</em> complex and would take a lot of time to be implemented to begin with, and might change the next day anyway.

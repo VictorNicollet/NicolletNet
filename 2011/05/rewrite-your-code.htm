@@ -1,0 +1,28 @@
+@title Rewrite Your Code
+@draft
+
+<p style="text-align: center;"><img class="size-full wp-image-2389 aligncenter" title="backhoe" src="http://www.nicollet.net/wp-content/uploads/2011/05/backhoe.png" alt="" width="650" height="100" /></p>
+Writing code relies on four kinds of decisions:
+<ul>
+	<li>What algorithm can implement this feature?</li>
+	<li>How is that algorithm best written in that specific language?</li>
+	<li>What platform quirks and subtle edge cases must be accounted for?</li>
+	<li>How does this code fit in with the rest of the application?</li>
+</ul>
+Regardless of team experience or preliminary analysis, some of these decisions will be incorrect. Maybe the algorithm failed to take into account the unusual distribution of real-world data ; maybe there was a better way to write it ; maybe there's a subtle bug that will not be discovered for weeks ; maybe a possible code reuse has not been identified during the design phase... or maybe the customer requirements that the feature was based on were not actually adapted to the customer needs.
+
+Such bad decisions get in the way of users, but they also hinder developers, who have to regularly work around existing bad decisions, which in turn causes more bad decisions to be made in recurrent "lesser of two evils" situations.
+
+It is a good idea to go back on your bad decisions and make new ones instead. They will not necessarily be good, but at least they will address some of the problems with the old ones.
+
+<strong>Don't try to go back on everything at once</strong>. Most of the time, the shortcomings of a decision can be identified in hindsight, change too many things at once and hindsight will be lost. In particular, throwing away non-trivial portions of code (anything beyond a single function) in order to rewrite it from scratch is quite risky, especially since it might also discard good decisions that would be hard to retrieve.
+
+<strong>Don't make your code difficult to change</strong>. Going back on your decisions will involve rewriting code. Lots of it. So far, most of the code in the RunOrg project has been rewritten at least three times. Make sure your language, frameworks, libraries and unit tests all work together to make it easy to evolve specific parts of your code to change decisions. The worst situation for a project to be in is <em>code freeze</em> — changing code is forbidden because it's too risky and it might break something. If you suspect that your project might be heading that way, immediately drop everything you are doing and bring your project back to an acceptable state ; if you are not allowed to do so, make sure you send out a warning to anyone who might need to know.
+
+<strong>Don't make too many decisions</strong>. This is usually spelled out as YAGNI : You Ain't Gonna Need It. If there is currently no need for a given feature, other than the fact that it should remain possible in the future, then don't implement it. Implementing it will involve making many decisions about how it should happen, and lack of practical application will increase the odds that those decisions are wrong.
+
+<strong>Don't be afraid to go back on huge decisions</strong>. Weeks ago, an initial decision we made on the RunOrg project turned out to have huge performance implications. I was faced with two choices : keep that decision, and manually optimize the locations where the performance suffered the most (this involved manually handling caching and batches) ; or go back on that decision, re-architecture the entire database access system and propagate those changes throughout literally half the project, in order to allow automatic caching and batch construction in ways that manual optimization could never allow. The rewrite took me four days, with some aftershocks being felt several days afterwards (strangely enough, changing 20k lines of code resulted in only four fairly obvious bugs).
+
+What does your decision-making process or pipeline look like? What does your <em>decision postmortem and reversal process</em> look like? How often do you go back on your decisions?
+
+<small>Article image © Barb Crawford – <a href="http://www.flickr.com/photos/barbcrawford/2602483620/" target="_blank">Flickr</a></small>

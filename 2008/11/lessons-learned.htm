@@ -1,0 +1,145 @@
+@title Lessons Learned
+@draft
+
+Let's face it: functional programming has never been a mainstream trend in the development world. Of course, there's always the odd contender, such as Objective-Caml-hiring <a href="http://www.janestreet.com/" target="_blank">Jane Street Capital</a>, but the vast majority of job listings and lines of code remains written in the mainstream family of languages descended from C: C++, Java, C# and the little brothers, PHP and Javascript. Things might change change with the advent of F# as an official language in the .NET framework, but the change is yet to be seen.
+<h2>The Dangers of Expressive Freedom</h2>
+Why are non-initiates so reluctant to try out functional programming languages as a whole? One common feature of Objective Caml, Haskell and LISP is the unusual syntax, completely distinct from the tried-and-true statement-based program. And <em>that</em> is downright scary when you're not used to it.
+
+The elementary approach of BASIC, COBOL, Fortran, C, C++, Java, C# and PHP is to construct programs by listing statements. A statement is an operation that exists only to perform a certain side-effect, elegantly and reliably terminated by a token such as the now-omnipresent semicolon.
+<blockquote>
+<pre>do this;
+then do that;</pre>
+</blockquote>
+There is a clear and simple mapping between the code and the operations executed at runtime, which is both helpful (debuggers can work statement-by-statement) and reassuring (because the programmer can <em>see</em> what the code does, in the right order). In fact, average C and C++ programmers often become so attuned to this top-to-bottom execution order that they tend to assume left-to-right execution as well, leading to such malformed statements as <span style="font-family: courier new,courier;">a[i] = i++;</span> where sequencing rules break any expectations.
+
+Another clear visual cue in C family languages is the block. A block starts with { and ends with } or any similar pair of open-close symbols distinct from those used in expressions (because Expressions Are Not Statements). Blocks are cleanly delimited sets of instructions which further improve the basic readability of code.
+
+Ultimately, the basic syntax follows a simple, easily recognizable and easily understood pattern:
+<blockquote>
+<pre>{
+  statement;
+  statement;
+  block-options
+  {
+    statement;
+    statement;
+  }
+  statement;
+  statement;
+}</pre>
+</blockquote>
+Execution flows from the top to the bottom, every statement depends only on the statements that are above it (and, in some special cases, on the statements in the same block as itself). This is mainly useful because it allows one-pass compilers to work correctly (as there is never any necessity to jump back and forth within the program, merely using a symbol/label/block table to implement the correct addressing and jumps within the output code without actual jumping back while compiling. The consequence is that the language is easier for programmers who are still in their learning stages, or those who don't want to spend time and effort moving on to the later stages, because the syntax does not get in the way of understanding the code (such a rigid structure does, of course, get in the way of <em>writing</em> code).
+
+Compare this with the free-flowing structure of LISP code:
+<blockquote>
+<pre>(atom '(atom atom atom)
+  (atom atom) (atom atom)
+  (atom
+    '(atom atom atom)
+    '(atom atom atom)))</pre>
+</blockquote>
+In LISP, there are no statements and no blocks. Instead, everything is composed of lists grouped together into trees called S-Expressions. The benefits of this approach in terms of expressiveness are both obvious and widely documented: since LISP provides primitives for manipulating S-Expressions, a piece of LISP code is first and foremost a piece of data which may be manipulated in various ways. Execution of code is one among many other possible manipulations, and consists in turning a complex S-Expression into a simpler one through evaluation.
+
+But then, the clear mapping between the code and the behavior disappears. Sure, there is still a mapping, but it loses the clarity of "statements are executed one after another, in order" and is instead, by design of the language, potentially defined by the user itself. When looking at a piece of LISP code, it's sometimes hard to determine whether that code is a piece of hard-coded data or a custom program which will be interpreted by an user-defined evaluator (and in the latter case, it does not convey any information about what that custom evaluator would do).
+
+And so, in functional languages, the user cannot deduce runtime behavior from the layout of the code: an additional translation step is required to plug together the abstract syntax tree, determine the direction of data flows based on the functions being used, and finally deduce what will happen. People who are not used to it require a short time to adapt, and beginners (or programmers who are not used to abstract thinking in general) will encounter serious difficulties because of this.
+<h2>Cross-Language Experience</h2>
+Of course, the reverse is also true: since understanding a functional program is difficult and requires abstraction skills in order to imagine the runtime behavior of what the code hints at, then anyone who can reliably understand and write functional programs has those abstraction skills, and can apply them to a wide variety of programming problems. Functional programming advocates say these skills also help when working with non-functional programming languages.
+<div>
+<blockquote><em>Yeah right. I can implement recursion with a stack and loop if I want to.</em>
+- Joe Clueless</blockquote>
+</div>
+Precisely, Joe. Functional constructs are often tightly related to the programming language they were defined in. It's often difficult to apply, say, Haskell Monads to LISP or Objective Caml, so imagine applying them to Java or C. The point is not, of course, to transliterate functional concepts as-is to non-functional languages. Every language has its own constructs and idioms, as well as techniques for improving performance or reducing the amount of code required to implement a given feature, and these carry with difficulty across languages.
+
+On the other hand, whipping out a stack-and-loop solution out of thin air is not something programmers tend to do. And when they do, implementing a recursion-like solution without thinking about it in terms of recursive solving is quite difficult, because recursive solutions impose certain constraints on how the stack is uses within the loop that are quite helpful when deciding what should go into the stack.
+
+For instance, consider a typical recursive structure: the tree. Let's define a tree and add the elements in the nodes, in Objective Caml:
+<blockquote>
+<pre style="background: #ffffff none repeat scroll 0% 50%; color: #000000;"><span style="color: #000084; font-weight: bold;">type</span> tree = Tree <span style="color: #000084; font-weight: bold;">of</span> <span style="color: #000084; font-weight: bold;">int</span> * (tree <span style="color: #000084; font-weight: bold;">list</span>)
+<span style="color: #000084; font-weight: bold;">let</span> <span style="color: #000084; font-weight: bold;">rec</span> sum (Tree (x,children)) = List.fold_left (+) x (List.map sum children)</pre>
+</blockquote>
+Now, let's consider a similar tree structure in C:
+<blockquote>
+<pre style="background: #ffffff none repeat scroll 0% 50%; color: #000000;"><span style="color: #000084; font-weight: bold;">typedef</span> <span style="color: #000084; font-weight: bold;">struct</span> _Tree
+{
+  _Tree *first_child, *next_sibling;
+  <span style="color: #000084; font-weight: bold;">int</span> value;
+} Tree;</pre>
+</blockquote>
+Looping through all elements in a tree with a stack is not straightforward, because one has to consider what will be pushed on the stack: the nodes to be explored for children? The nodes to be explored for siblings? Something else? When using a recursive approach, one can consider that, for instance, <span style="font-family: courier new,courier;">sum(value,child,sibling) = value + sum(child) + sum(sibling)</span>. The naive approach is to push every call on the stack and use the associative properties of addition to add everything up. Yielding the solution:
+<blockquote>
+<pre style="background: #ffffff none repeat scroll 0% 50%; color: #000000;"><span style="color: #000084; font-weight: bold;">int</span> sum(Node *node)
+{
+  <span style="color: #000084; font-weight: bold;">int</span> total = 0;
+  push(node);
+  <span style="color: #000084; font-weight: bold;">while</span> (node = pop())
+  {
+    total += node -&gt; value;
+    <span style="color: #000084; font-weight: bold;">if</span> (node -&gt; first_child) push(node -&gt; first_child);
+    <span style="color: #000084; font-weight: bold;">if</span> (node -&gt; next_sibling) push(node -&gt; next_sibling);
+  }
+  <span style="color: #000084; font-weight: bold;">return</span> total;
+}</pre>
+</blockquote>
+A slightly better approach is to use tail recursion by moving the node to its next sibling in-between loop iterations instead of pushing to the stack:
+<blockquote>
+<pre style="background: #ffffff none repeat scroll 0% 50%; color: #000000;"><span style="color: #000084; font-weight: bold;">int</span> sum(Tree *node)
+{
+  <span style="color: #000084; font-weight: bold;">int</span> total = 0;
+  <span style="color: #000084; font-weight: bold;">while</span> (node || node = pop())
+  {
+    total += node -&gt; value;
+    <span style="color: #000084; font-weight: bold;">if</span> (node -&gt; first_child) push(node -&gt; first_child);
+    node = node -&gt; next_sibling;
+  }
+  <span style="color: #000084; font-weight: bold;">return</span> total;
+}</pre>
+</blockquote>
+To write this code directly, all that is required is 1° experience of recursive solutions (for instance, from functional programming languages) and 2° knowledge of the usual tricks to implement recursive solutions in C.
+<div>
+<blockquote><em>Those are classic tree algorithms. You would either learn these in school or pull them out of a book. </em>
+- Joe Clueless</blockquote>
+</div>
+Let's ignore for a moment that the Objective Caml implementation of the "sum" function is two lines long and pretty much described anything there is to know about the algorithm in general (which you can translate to C if you know the elementary translation primitives).
+
+It's true that anyone with reasonable knowledge of <a href="http://en.wikipedia.org/wiki/Depth-first_search">depth-first search</a> could design the unoptimized traversal above (though experience of tail recursion is about the only of thinking up the optimized version, short of a stroke of genius). It's also true that most courses in C teach how to manipulate trees. But there is more to recursion than only trees: why teach individually every application of recursion, when learning the fundamental principles allows deriving those applications by hand just as fast?
+
+The same pattern applies to dynamic programming: of course, the classic dynamic problems (matrix multiplication, Levenshtein distance) are fairly easy to understand if you set your mind to it, but this does not help in the general case because the algorithms are hand-compiled implementations of a higher-order concept: memoization. For instance, applying memoization to the recursive definition of the Levenshtein distance leads to using a triangular matrix for storing the intermediary values, and a quick analysis of the call tree shows that all values in the matrix will have to be computed eventually, leading to the correct dynamic implementation.
+
+Several other classic concepts in mainstream programming are in fact merely translation tips for existing functional concepts:
+<ul>
+	<li>The <a href="http://www.dofactory.com/Patterns/PatternCommand.aspx" target="_blank">Command</a> design pattern corresponds to monads in general and currying mutators in particular.</li>
+	<li>The <a href="http://www.dofactory.com/Patterns/PatternAbstract.aspx" target="_blank">Abstract Factory</a> design pattern corresponds to currying generators.</li>
+	<li>The <a href="http://www.dofactory.com/Patterns/PatternMemento.aspx" target="_blank">Memento </a>design pattern replicates backtracking in languages with mutable values.</li>
+	<li>The <a href="http://www.dofactory.com/Patterns/PatternObserver.aspx" target="_blank">Observer</a> design pattern is a function.</li>
+	<li>The <a href="http://www.dofactory.com/Patterns/PatternPrototype.aspx" target="_blank">Prototype</a> design pattern corresponds to the original when there are no mutable values.</li>
+</ul>
+So, several design patterns are the functional equivalent of a for-loop from 1 to N. Because of this, identifying design patterns in code becomes easier when one is thinking in functional terms: even if the program itself is written in a non-functional programming language, functional experience improves the quality of the program by refining its design.
+<div>
+<blockquote><em>Even then, designing things in a functional language, then translating them, loses clarity and performance.</em>
+- Joe Clueless</blockquote>
+</div>
+That's true. If translating a functional design into an imperative program was easy, then optimizing compilers could reach the performance levels of good C implementations from high-level Haskell code. However, even if it's not easy, it's still easier than having to design things by hand from scratch using primitive low-level tools.
+<h2>Hand-Compiling Functional Code</h2>
+There's a thin shared membrane between imperative programming and functional programming. This membrane is related to the representation of mutability in functional languages:
+<ul>
+	<li>Values cannot be changed.</li>
+	<li>One can simulate a changing object by creating a slightly different copy of that object.</li>
+</ul>
+However, that is a functional view of that representation. The imperative view would be:
+<ul>
+	<li>You can always undo any modifications you perform.</li>
+	<li>When you change an object, only the current reference you hold sees those modifications.</li>
+</ul>
+Of course, you have two ways of achieving this in an imperative program. The first is to use a functional-like approach where backtracking information is stored in objects. The second is to simply avoid any cases where the imperative programming mutable version differs from the functional programming version. That is:
+<ul>
+	<li>Never backtrack. If you have to, store either the original value (on small scales) or a diff (on large scales).</li>
+	<li>Never change an object unless you are the only owner of that object.</li>
+	<li>Never store a reference to an object unless you know it is going to remain constant.</li>
+</ul>
+This eliminates a lot of constructs from both imperative programming and functional programming. Of course, this makes it extremely restrictive, which is both good and bad. It's good, because you now have full functional benefits for a portion of your code: that code does not change the state of anything it doesn't own (though objects may change themselves, of course, as long as only the caller function owns them), performs well in multi-threaded environments because it requires no locks, and can be tested in isolation simply by providing the right arguments.
+
+It's bad, because developing programs this way is harder. You lose a lot of benefits from imperative programming (such as the ability to change a value you don't own, which is an excellent communication device between objects in a mutable environment) yet don't gain any of the expressive power of functional language because many imperative languages simply don't have these.
+
+As such, this hybrid programming style is best kept for small self-contained sections of your program, in particular for small utility classes and in bottom-up implementation approaches.     <span class="article_separator">
+</span>

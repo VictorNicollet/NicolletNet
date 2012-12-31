@@ -1,0 +1,68 @@
+@title PHP-CLI
+@draft
+
+CLI is the command line interface to the PHP interpreter. Instead of running scripts when viewed from the web, this lets PHP run as a standard shell scripting language.
+
+Let's assume that:
+<ul>
+	<li>You have a web server running PHP</li>
+	<li>You also have command-line access to that server (for instance, the server is running Linux, and you have SSH access).</li>
+	<li>The command-line interface is installed (or you can install it or have it installed)</li>
+</ul>
+Then you might want to consider using a command-line back-end for your dynamic web site instead of using a web back-end.
+
+<em>What</em>, you think, <em>move back to the prehistoric era of command lines and white-on-black terminals when we have AJAX and Flex</em>?
+
+I certainly don't deny that command line interfaces are ugly (I pride myself of having a colorful zsh prompt, but that's about as far as things go), and if you expect non-developers to be administrators then a web administration tool is an absolute necessity.
+
+Still, if the site administrators are all developers (or can be quickly taught how to use the command-line) or if the time to design an interface is short, then command-line interfaces have some advantages.
+<ul>
+	<li>No need to secure access to the back-end, since the command-line access to the server is already secure.</li>
+	<li>No need to design and debug a complete HTML view, or write and debug javascript to improve a click-based editor.</li>
+	<li>You have access to all the typical command-line tools: make/sed/cron/grep/awk/sort/..., shell scripting, loading data from files, and all other automation tools that can improve administration speed.</li>
+	<li>The administration tool runs with your user rights, not the web server rights, meaning you can increase the paranoia of the web server rights without restricting the capabilities administration tool.</li>
+	<li>You can even invoke <a href="http://nicollet.net/blog/php/22-zend-controllers">external tools</a> that have no point being part of the web site, which serve development purposes (such as diagnosis tools or optimization tools).</li>
+</ul>
+<h2>How-to</h2>
+On your typical debian-based LAMP stack, installing the CLI is as easy as an <span style="font-family: courier new,courier; color: #999999;">apt-get install php5-cli</span> (or the equivalent for your distribution). Running a PHP program on the command line is done with <span style="font-family: courier new,courier; color: #999999;">php5 script.php -- arg1 arg2</span>. Anything the script outputs is printed to the output stream, and the arguments are available as the global variable <span style="font-family: courier new,courier; color: #999999;">$argv</span>.
+
+For instance, a sample script that takes a single argument and outputs that argument squared would be written as:
+<blockquote>
+<pre style="background: #ffffff none repeat scroll 0% 50%; color: #000000;"><span style="background: #ffffe8 none repeat scroll 0% 50%; color: #7f0055;">&lt;?php</span><span style="background: #ffffe8 none repeat scroll 0% 50%; color: #000000;"> </span><span style="background: #ffffe8 none repeat scroll 0% 50%; color: #000084; font-weight: bold;">echo</span><span style="background: #ffffe8 none repeat scroll 0% 50%; color: #000000;"> </span><span style="background: #ffffe8 none repeat scroll 0% 50%; color: #000000;">$argv</span><span style="background: #ffffe8 none repeat scroll 0% 50%; color: #000000;">[</span><span style="background: #ffffe8 none repeat scroll 0% 50%; color: #000000;">1</span><span style="background: #ffffe8 none repeat scroll 0% 50%; color: #000000;">]</span><span style="background: #ffffe8 none repeat scroll 0% 50%; color: #000000;"> </span><span style="background: #ffffe8 none repeat scroll 0% 50%; color: #000000;">*</span><span style="background: #ffffe8 none repeat scroll 0% 50%; color: #000000;"> </span><span style="background: #ffffe8 none repeat scroll 0% 50%; color: #000000;">$argv</span><span style="background: #ffffe8 none repeat scroll 0% 50%; color: #000000;">[</span><span style="background: #ffffe8 none repeat scroll 0% 50%; color: #000000;">1</span><span style="background: #ffffe8 none repeat scroll 0% 50%; color: #000000;">]</span><span style="background: #ffffe8 none repeat scroll 0% 50%; color: #000000;">;</span><span style="background: #ffffe8 none repeat scroll 0% 50%; color: #000000;"> </span><span style="background: #ffffe8 none repeat scroll 0% 50%; color: #7f0055;">?&gt;</span></pre>
+</blockquote>
+Additional details are of course best read from the <a href="http://fr.php.net/features.commandline">PHP documentation</a> itself.
+<h2>Tips and tricks</h2>
+<ul>
+	<li><strong>Mind your relative paths</strong>. Usually, the administration scripts will want to behave as if they were part of the web server, which means that the appropriate paths must be added to the path. A good idea is to share configuration files between the administration scripts and the web site itself, and choose a root path from where all relative paths should be handled (the script should then <span style="font-family: courier new,courier; color: #999999;">cd</span> to that root path before doing anything else).</li>
+</ul>
+<ul>
+	<li><strong>Provide shell-friendly data</strong>. This involves placing one row of data per line, and using a common separator (such as a colon) between fields. Non-data lines can be used, but it is best if they are prefixed with a comment symbol, such as <span style="font-family: courier new,courier; color: #999999;">#</span> or <span style="font-family: courier new,courier; color: #999999;">--</span>. If only one piece of data is required, provide it with no other decoration (except whitespace) so that it can be used as a shell variable.</li>
+</ul>
+<ul>
+	<li><strong>Make everything transactional</strong>. This is usually a no-brainer, but it's easy to forget. When a set of operations must be performed, either check beforehand that all of them will be done without error, or use a transaction system to avoid failing in the middle of a database or filesystem modification.</li>
+</ul>
+<ul>
+	<li><strong>Include a help page</strong>. You will inevitably forget how to use certain commands. A general help page (display the list of commands with a summary of their usage) and specific help pages for every non-trivial command are always useful later on.</li>
+</ul>
+<ul>
+	<li><strong>Rely on PHP introspection</strong>. PHP can determine if an object has a certain member, so scripts which can support several operations (such as create/view/list/edit) can be turned into objects with the appropriate members.</li>
+</ul>
+<ul>
+	<li><strong>Use CRUD if your underlying model allows it</strong>. The typical manipulations performed by an administrator are the creation, retrieval,modification and deletion of individual pieces of data from the persisten model. Also be ready to provide complete lists of elements with relevant information, but don't reimplement wheels such as searching by e-mail (<span style="font-family: courier new,courier; color: #999999;">grep</span>) or sorting by age (<span style="font-family: courier new,courier; color: #999999;">sort</span>).</li>
+</ul>
+<ul>
+	<li><strong>Log everything</strong>. You can write to a file every command that is executed using a script. Incorporate a logging system which prints out the current date, the script arguments, and interesting environment variables (for instance, the current user).</li>
+</ul>
+<ul>
+	<li><strong>Standardize argument retrieval</strong>. For instance, if the script user writes <span style="font-family: courier new,courier; color: #999999;">makeuser -name foo -pass bar</span>, then the script should be able to access the arguments as <span style="font-family: courier new,courier; color: #999999;">array( "name" =&gt; "foo", "pass" =&gt; "bar" )</span> and not as <span style="font-family: courier new,courier; color: #999999;">array("makeuser", "-name", "foo", "-pass", "bar")</span>.</li>
+</ul>
+<ul>
+	<li><strong>Standardize column printing</strong>. For instance, if you need to print data as columns of fixed widths, separated by colons, it should be written as <span style="font-family: courier new,courier; color: #999999;">$printer = new Printer(5,10,10,50,10); $printer -&gt; print($id, $created, $label, $content, $hits);</span> and not anything more complex. Don't mix content and formatting.</li>
+</ul>
+<ul>
+	<li><strong>You're safe, so take advantage of it</strong>. Disable running the scripts as CGI (meaning they can only be run with access to the local machine from the appropriate user groups) and feel free to display any useful data. If your application is directory-driven (it could be using the Zend Framework) apply <span style="font-family: courier new,courier; color: #999999;">glob()</span> all over the place to display a clean diagnosis of what the application can use or find.</li>
+</ul>
+<h2>A little warning</h2>
+Don't get overzealous. While it may be interesting to control every single aspect of the web site from the command line, reinventing common wheels (such as database backups or version control) will take more time than it's worth, and safety must be a constant concern in order to prevent executing any administration script from the web.
+
+Also avoid creating non-elementary operations. These are ultimately best implemented as shell scripts (in the language of your choice, including PHP) that exist outside the application and only interact with the application through the administration tools, thereby saving you the time wasted on reimplementation and security checks.

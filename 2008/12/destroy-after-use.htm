@@ -1,0 +1,24 @@
+@title Destroy After Use
+@draft
+
+Exceptions make the control flow of a program quite complex, since any call could possibly create an exception and thus leave the currently executing function. Even with a garbage collector, certain resources (such as files) have to be manually released. Some languages use destructors and RAII (for instance, C++) to handle scope-based release, others use an explicit using(){} or finally {} block to also add a scope to such resources.
+
+None of this exists in OCaml.
+
+It can be rather easily reconstructed using existing language semantics, however:
+<blockquote>
+<pre style="background: #ffffff none repeat scroll 0% 50%; color: #000000;"><span style="color: #000084; font-weight: bold;">let</span> scoped user resource clean =  
+  <span style="color: #000084; font-weight: bold;">try</span>  
+    <span style="color: #000084; font-weight: bold;">let </span>result = user resource <span style="color: #000084; font-weight: bold;">in</span>    
+    clean resource ;
+    result 
+  <span style="color: #000084; font-weight: bold;">with</span> exn -&gt;  
+    clean resource ;  
+    <span style="color: #000084; font-weight: bold;">raise</span> exn 
+
+<span style="color: #000084; font-weight: bold;">let</span> with_input name f =  
+  scoped f (open_in_bin name) close_in 
+
+<span style="color: #000084; font-weight: bold;">let</span> with_output name f =  
+  scoped f (open_out_bin name) close_out</pre>
+</blockquote>

@@ -1,0 +1,130 @@
+@title (Meta) language, Part 3
+@draft
+
+<h2>Specification attempt</h2>
+<p>This article attempts to chalk up a specification of the main syntax elements of the (meta)language being designed. The language codename chosen here is <em>Xed</em>.</p>
+<p>Xed is an expression language (meaning that all syntax constructs in the language are expressions). It's also a pure functional language, and although some expressions may appear to behave as side-effects for readability purposes they are ultimately implemented as pure functional operations.</p>
+<p>Every expression in the language executes in a context. That context is composed of a table of local variables (with the associated values), including the special values <span style="font-family: courier new,courier; color: #999999;">_</span> and <span style="font-family: courier new,courier; color: #999999;">$</span>, a list of persistent entities and relationships and their initial values (as read from persistent storage when the script is executed) and a table of modifications applied to those persistent entities (commited to the persistent storage when the script finishes executing).</p>
+<h2>Value types</h2>
+<p>Xed can manipulate several types of objects :</p>
+<ul>
+<li>Base scalar types (integers, booleans), support the common arithmetic and boolean operators.</li>
+<li>Base vector types (strings, streams), support size-of, access, shift/push, traversal and concatenation.</li>
+<li>Base associative types (hashes), support size-of, access, set/unset, traversal and merge. Setting a new binding for a value hides the old one instead of replacing it.</li>
+<li>Objects, mostly equivalent to hashes except that the types of values that are associated are not restricted to a single type.</li>
+<li>Variants, equivalent to the polymorphic variant type in Objective Caml.</li>
+<li>Persistent data types, used when defining relationships.</li>
+<li>Closures (including patterns).</li>
+<li>Names.</li>
+</ul>
+<h2>Syntax and semantics</h2>
+<p>The syntax, with its associated semantics, of all relevant elements are detailed below.</p>
+<h3>Object semantics</h3>
+<p>The most fundamental semantics are those of objects. An object is an association that binds arbitrary values to names. Adding a new binding merely hides the existing binding for that name, so that removing a binding restores the previous one.</p>
+<ul>
+<li><strong>[obj.empty]</strong><br />
+The empty object : <span style="font-family: courier new,courier; color: #999999;">{ }</span> is an expression that creates an empty object.</li>
+</ul>
+<ul>
+<li><strong>[obj.make]</strong><br />
+Create an object by defining its members, using shorthand notation. Uses the form <span style="font-family: courier new,courier; color: #999999;">{ name = expr; ... }</span> to bind an expression to each member. This form is best used when defining objects that contain simple values.</li>
+</ul>
+<ul>
+<li><strong>[obj.add.short]</strong><br />
+Add members to an object using shorthand notation. Uses the form <span style="font-family: courier new,courier; color: #999999;">expr .+ { name = expr ; ... }</span> to bind an expression to each member. This form is best used when extending objects that contain simple values.</li>
+</ul>
+<ul>
+<li><strong>[obj.add.def]</strong><br />
+Add a member to an object using the definition syntax. Uses the form <span style="font-family: courier new,courier; color: #999999;">expr <strong><span style="color: #0000ff;">def </span></strong>name args = expr <strong><span style="color: #0000ff;">end</span></strong></span> to bind the second expression to the provided name in the object created by the first expression. If arguments are present, defines a closure. In the second expression, the special variable <span style="font-family: courier new,courier; color: #999999;">$</span> refers to the object created by the first expression.</li>
+</ul>
+<ul>
+<li><strong>[obj.add.rec]</strong><br />
+Add a member to an object using the recursive definition syntax. Uses the form <span style="font-family: courier new,courier; color: #999999;">expr <span style="color: #0000ff;"><strong>def rec</strong></span> name args = expr <span style="color: #0000ff;"><strong>and</strong></span> name args = expr ... <span style="color: #0000ff;"><strong>end</strong></span></span><span style="color: #0000ff;"><strong> </strong></span>to add all the specified members to the object defined by the first expression. The special variable <span style="font-family: courier new,courier; color: #999999;">$</span> refers to the object being created, and not the old one.</li>
+</ul>
+<ul>
+<li><strong>[obj.undef]</strong><br />
+Un-define a member of an object. Creates a new object where that member does not exist anymore. If an earlier definition was hidden by the undefined member, that definition becomes available again. Uses the syntax <span style="font-family: courier new,courier; color: #999999;">expr <strong><span style="color: #0000ff;">undef </span></strong>name</span>, or the abbreviated syntax<span style="font-family: courier new,courier; color: #999999;"> expr .- name</span>. Causes an error if no such definition exists. This approach is used to implement private members and data hiding.</li>
+</ul>
+<ul>
+<li><strong>[obj.undef.all]</strong><br />
+Un-define a member of an object completely. Creates a new object where that does not have that member anymore (effectively removes the member and all the members hidden by it). Uses the syntax <span style="font-family: courier new,courier; color: #999999;">expr <span style="color: #0000ff;"><strong>undef-all</strong></span> name</span>.</li>
+</ul>
+<ul>
+<li><strong>[obj.ext.add]</strong><br />
+Add an object as a member of another object. <span style="font-family: courier new,courier; color: #999999;">expr <span style="color: #0000ff;"><strong>object </strong></span>name = <span style="color: #0000ff;"><strong><span style="color: #ff9900;">&lt;text&gt;</span></strong><strong> </strong><strong>end-object</strong></span></span> is equivalent to <span style="font-family: courier new,courier; color: #999999;">expr <span style="color: #0000ff;"><strong>def </strong></span>name = { $ = $ } <strong><span style="color: #ff9900;">&lt;text&gt;</span></strong> <span style="color: #0000ff;"><strong>end</strong></span></span>. This syntax is an extension that is not available by default.</li>
+</ul>
+<ul>
+<li><strong>[obj.mem]</strong><br />
+Extracts the selected member, using the syntax <span style="font-family: courier new,courier; color: #999999;">expr.name</span>. Generates an error if the member does not exist.</li>
+</ul>
+<h3>Closure semantics</h3>
+<p>Closures carry with them state information extracted from the context. They do not, however, keep the list of modifications to the persistent state, which is provided to them when they are called and not when they are created. All local variables referring to the above context are carried over.</p>
+<ul>
+<li><strong>[fun.make] </strong><br />
+Create a new closure, using the syntax <span style="font-family: courier new,courier; color: #999999;">{ args -&gt; expr }</span>.  There is no limit on the number of arguments, but pattern matching is not allowed.</li>
+</ul>
+<ul>
+<li><strong>[fun.match]</strong><br />
+Create a new closure, using the syntax <span style="font-family: courier new,courier; color: #999999;">{ pattern -&gt; expr | pattern -&gt; expr }</span>. This function accepts a single argument, but that argument is pattern-matched. Patterns may be either variant type patterns or regular expression patterns, which bind variables that are available in the expressions.</li>
+</ul>
+<ul>
+<li><strong>[fun.call]</strong><br />
+A function is called on an argument using the syntax <span style="font-family: courier new,courier; color: #999999;">expr expr</span>.</li>
+</ul>
+<h3>Pipe semantics</h3>
+<p>A lot of operations are performed using pipes, which serve as a shorthand notation for many elementary operations.</p>
+<ul>
+<li><strong>[pipe.call]</strong><br />
+A pipe can be used to call a function on an argument. For instance, <span style="font-family: courier new,courier; color: #999999;">a |&gt; f</span> is rewritten to <span style="font-family: courier new,courier; color: #999999;">f a</span>. The exception is if <span style="font-family: courier new,courier; color: #999999;">f</span> contains the special variable <span style="font-family: courier new,courier; color: #999999;">_</span>, at which point it is rewritten as if it were equivalent to <span style="font-family: courier new,courier; color: #999999;">{ _ -&gt; f } a</span>. This specificity of the right-hand operator is called the <em>implicit lambda rule</em>.</li>
+</ul>
+<ul>
+<li><strong>[pipe.map]</strong><br />
+The expression <span style="font-family: courier new,courier; color: #999999;">s |: f</span>, where <span style="font-family: courier new,courier; color: #999999;">s</span> is a stream or hash, creates a new stream or hash (the same as the input) by applying f to every element of <span style="font-family: courier new,courier; color: #999999;">s</span>. This expression is subject to the implicit lambda rule. If the input was a hash, the key-element association is unchanged.</li>
+</ul>
+<ul>
+<li><strong>[pipe.filter]</strong><br />
+The expression <span style="font-family: courier new,courier; color: #999999;">s |? f</span> keeps only the elements of the input stream or hash such that <span style="font-family: courier new,courier; color: #999999;">f x</span> is true. This expression is subject to the implicit lambda rule. The key-element association of hashes is kept.</li>
+</ul>
+<ul>
+<li><strong>[pipe.hash.filter]</strong><br />
+The expression <span style="font-family: courier new,courier; color: #999999;">s |# f</span> filters a hash based on its keys instead of its values.</li>
+</ul>
+<p>Note that the combination of the pipe.call operation and the fun.math operation allows an operation equivalent to the match-with or switch-case pattern-matching constructs.</p>
+<h3>Name, Variant, Exception semantics</h3>
+<p>The universal variant type works on the same basis as Objective Caml polymorphic variants. Exceptions are thrown and caught based on their name, and they may carry associated values. They are ultimately members of the variant type, and so they do not have to be defined. <strong><br />
+</strong></p>
+<ul>
+<li><strong>[name.fresh]</strong><br />
+Creates a fresh name, different from all the other names in the program. The syntax is simply <span style="font-family: courier new,courier; color: #0000ff;"><strong>fresh</strong></span>.</li>
+</ul>
+<ul>
+<li><strong>[name.lit]</strong><br />
+Creates a name literal. The syntax is <span style="font-family: courier new,courier; color: #ff6600;">`name`</span></li>
+</ul>
+<ul>
+<li><strong>[name.use]</strong><br />
+In any situation where a (syntactical) name is expected and a (semantical) name is available, one can use the approach (name) to instantiate it. For instance, <span style="font-family: courier new,courier; color: #ff6600;"><span style="color: #999999;">obj </span><span style="color: #0000ff;"><strong>undef </strong></span>(name)</span> or <span style="font-family: courier new,courier; color: #ff6600;">`new[(name)]`</span> or even <span style="font-family: courier new,courier; color: #ff6600;">`(name)`</span>.</li>
+</ul>
+<ul>
+<li><strong>[var.make] </strong><br />
+A new member of a variant type is created with <span style="font-family: courier new,courier; color: #999999;">expr::name</span>, where the name can be chosen on the spot (no definition required). This may be used in pattern-matching expressions. Note that in orderto support variants bound to an unit value, a cleaner syntax is <span style="font-family: courier new,courier; color: #999999;">:name</span> (equivalent to <span style="font-family: courier new,courier; color: #999999;">()::name</span>).</li>
+</ul>
+<ul>
+<li><strong>[exn.throw]</strong><br />
+Throws a variant object as an exception. The syntax is merely <span style="font-family: courier new,courier; color: #999999;"><span style="color: #0000ff;"><strong>throw </strong></span>expr</span>. The current execution context is completely lost (with the exception of any values referenced by the thrown expression), meaning in particular that any modifications applied to the persistent data model are thrown away.</li>
+</ul>
+<ul>
+<li><strong>[exn.catch]</strong><br />
+Catches an exception if it matches a certain variant name, using the syntax <span style="font-family: courier new,courier; color: #999999;"><strong><span style="color: #0000ff;">try </span></strong>expr <strong><span style="color: #0000ff;">catch </span></strong>{ pattern -&gt; expr | ... }</span>. If an exception is thrown by the first expression, then pattern-matching finds the corresponding expression. If one is found, it's evaluated in the context of the try-catch expression. Otherwise, the exception is propagated upwards.</li>
+</ul>
+<p>Note that the language is fully exception-safe: when an exception is thrown, no trace of the execution of the throwing code is left behind, except whatever is saved by the exception itself. This means that any side-effects are automatically rolled back, removing the need for a "finally" clause. Another important element is the fact that all exceptions must be caught before the escape the script (meaning no script will be interrupted by an unexpected exception).</p>
+<h3>Pattern semantics</h3>
+<p>Patterns are functions which map objects to objects. Such functions can be created and called by basic means, but the following syntactic sugar is available:</p>
+<ul>
+<li><strong>[pattern.ext.def]</strong><br />
+Defines a pattern as a member of an object. The expression is <span style="font-family: courier new,courier; color: #999999;">expr <span style="color: #0000ff;"><strong>pattern </strong></span>name args = <span style="color: #0000ff;"><strong><span style="color: #ff9900;">&lt;text&gt;</span></strong><strong> </strong><strong>end-pattern</strong></span></span> is equivalent to <span style="font-family: courier new,courier; color: #999999;">expr <span style="color: #0000ff;"><strong>def </strong></span>name args $ = $ <strong><span style="color: #ff9900;">&lt;text&gt;</span></strong> <span style="color: #0000ff;"><strong>end</strong></span></span>. This syntax is an extension that is not available by default.</li>
+</ul>
+<ul>
+<li><strong>[pattern.ext.use]</strong><br />
+Uses a pattern of an object. The expression is<span style="font-family: courier new,courier; color: #999999;"> expr <span style="color: #0000ff;"><strong>use-pattern</strong></span> name args </span>and is equivalent to <span style="font-family: courier new,courier; color: #999999;">expr |&gt; name args</span>. This syntax is an extension that is not available by default.</li>
+</ul>

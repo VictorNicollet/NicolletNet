@@ -1,0 +1,79 @@
+@title Looking for Minima
+@draft
+
+Annealing is a process to harden metals: by repeatedly heating and freezing metal, atoms within the metallic structure are dislodged and then moved back into place, which moves those atoms that were not part of a regular structure to more correct positions, resulting in a stronger metal piece.
+
+The underlying process is that of energy reduction: an atom in a non-regular position within a crystalline lattice has a high potential energy, but is kept into place because it has reached a local energy minimum (so moving away requires more energy than it has). By imcreasing the available energy, the atom is allowed to move out of the local minimum, and so it ends up in a location with lower energy (with a reasonable probability, though this is by no means certain). By applying this process a high enough number of times, the global minimum can be reached.
+<h2>Simulated Annealing</h2>
+In computer science, that process can be applied to minimization techniques: instead of exploring the problem space completely, annealing is simulating by moving around randomly in that space. In order to move towards minima, every move which increases the value can be canceled with a certain probability that increases as time passes.
+
+For example:
+<blockquote>
+<pre style="background: #ffffff none repeat scroll 0% 50%; color: #000000;"><span style="color: #000084; font-weight: bold;">let</span> annealing steps energy initial =  
+  <span style="color: #000084; font-weight: bold;">let</span> <span style="color: #000084; font-weight: bold;">rec</span> aux n best best_energy current =  
+    <span style="color: #000084; font-weight: bold;">if</span> n = 0 <span style="color: #000084; font-weight: bold;">then</span> best <span style="color: #000084; font-weight: bold;">else</span>  
+      <span style="color: #000084; font-weight: bold;">let</span> current = random_move current <span style="color: #000084; font-weight: bold;">in</span> 
+      <span style="color: #000084; font-weight: bold;">let</span> new_energy = energy current <span style="color: #000084; font-weight: bold;">in</span> 
+      <span style="color: #000084; font-weight: bold;">if</span> new_energy &lt; best_energy <span style="color: #000084; font-weight: bold;">then</span>  
+        aux (n-1) current new_energy current 
+      <span style="color: #000084; font-weight: bold;">else</span> <span style="color: #000084; font-weight: bold;">if</span> Random.<span style="color: #000084; font-weight: bold;">int</span> steps &lt; n <span style="color: #000084; font-weight: bold;">then</span>  
+        aux (n-1) best best_energy best 
+      <span style="color: #000084; font-weight: bold;">else</span>  
+        aux (n-1) best best_energy current 
+  <span style="color: #000084; font-weight: bold;">in</span> aux steps initial (energy initial) initial</pre>
+</blockquote>
+This is by no means the only possible approach: other variations can involve checking whether the move is upwards since the last position (instead of the best position so far) or using a different probability approach for preventing up-moves.
+<h2>Genetic Computing</h2>
+A common problem found in simulated annealing and genetic algorithms is the implementation of solutions as programs: since these approaches require the ability to randomly mutate a solution, and a program is usually a fickle and weak construct that can easily die if one of its parts is forcibly removed, representing programs as randomly altered entities is difficult.
+
+One possible solution is to consider stack based-languages: these languages have very light syntax requirements and can be represented mostly as a sequence of words. Besides, the only way for a program in these languages to die is to underflow the stack (which can be easily solved by stating that reading from an empty stack yields a reasonable value, such as zero or one. My concept was to use a language which reads a single integer variable 'x' and manipulates a stack 's', and outputs a stack of numbers. These numbers are then multiplied together to yield the final result. The available instructions are:
+<blockquote>
+<pre style="background: #ffffff none repeat scroll 0% 50%; color: #000000;"><span style="color: #000084; font-weight: bold;">let</span> operations = 
+  [| 
+    <span style="color: #0000ff;">"nop"</span>, (<span style="color: #000084; font-weight: bold;">fun</span> (s,_) -&gt; s); 
+    <span style="color: #0000ff;">"pop"</span>, (<span style="color: #000084; font-weight: bold;">fun</span> (s,_) -&gt; !s) ; 
+    <span style="color: #0000ff;">"dup"</span>, (<span style="color: #000084; font-weight: bold;">fun</span> (s,_) -&gt; t s :: s); 
+    <span style="color: #0000ff;">"div"</span>, (<span style="color: #000084; font-weight: bold;">fun</span> (s,_) -&gt; (t s /. t !s) :: !!s); 
+    <span style="color: #0000ff;">"two"</span>, (<span style="color: #000084; font-weight: bold;">fun</span> (s,_) -&gt; 2. :: s); 
+    <span style="color: #0000ff;">"mul"</span>, (<span style="color: #000084; font-weight: bold;">fun</span> (s,_) -&gt; (t s *. t !s) :: !!s); 
+    <span style="color: #0000ff;">"add"</span>, (<span style="color: #000084; font-weight: bold;">fun</span> (s,_) -&gt; (t s +. t !s) :: !!s); 
+    <span style="color: #0000ff;">"cos"</span>, (<span style="color: #000084; font-weight: bold;">fun</span> (s,_) -&gt; cos (t s) :: !s); 
+    <span style="color: #0000ff;">"sin"</span>, (<span style="color: #000084; font-weight: bold;">fun</span> (s,_) -&gt; sin (t s) :: !s); 
+    <span style="color: #0000ff;">"sub"</span>, (<span style="color: #000084; font-weight: bold;">fun</span> (s,_) -&gt; (t s -. t !s) :: !!s); 
+    <span style="color: #0000ff;">"min"</span>, (<span style="color: #000084; font-weight: bold;">fun</span> (s,_) -&gt; min (t s) (t !s) :: !!s); 
+    <span style="color: #0000ff;">"max"</span>, (<span style="color: #000084; font-weight: bold;">fun</span> (s,_) -&gt; max (t s) (t !s) :: !!s); 
+    <span style="color: #0000ff;">"avg"</span>, (<span style="color: #000084; font-weight: bold;">fun</span> (s,_) -&gt; ((t s +. t !s) *. 0.5) :: !!s); 
+    <span style="color: #0000ff;">"var"</span>, (<span style="color: #000084; font-weight: bold;">fun</span> (s,x) -&gt; x :: s); 
+    <span style="color: #0000ff;">"bra"</span>, (<span style="color: #000084; font-weight: bold;">fun</span> (s,_) -&gt; (<span style="color: #000084; font-weight: bold;">if</span> t s &gt; 0. <span style="color: #000084; font-weight: bold;">then</span> t !s <span style="color: #000084; font-weight: bold;">else</span> t !!s) :: !!!s); 
+    <span style="color: #0000ff;">"zer"</span>, (<span style="color: #000084; font-weight: bold;">fun</span> (s,_) -&gt; 0. :: s); 
+    <span style="color: #0000ff;">"one"</span>, (<span style="color: #000084; font-weight: bold;">fun</span> (s,_) -&gt; 1. :: s); 
+    <span style="color: #0000ff;">"neg"</span>, (<span style="color: #000084; font-weight: bold;">fun</span> (s,_) -&gt; -1. :: s); 
+    <span style="color: #0000ff;">"opp"</span>, (<span style="color: #000084; font-weight: bold;">fun</span> (s,_) -&gt; -. (t s) :: !s); 
+    <span style="color: #0000ff;">"dp2"</span>, (<span style="color: #000084; font-weight: bold;">fun</span> (s,_) -&gt; t s :: t s :: s); 
+  |]</pre>
+</blockquote>
+I have altered the meaining of '!' to represent the tail of the list (or, if the list is empty, the empty list), and defined 't' as the top of the list (or 0. if the list is empty).
+
+The evaluation algorithm is extremely straightforward:
+<blockquote>
+<pre style="background: #ffffff none repeat scroll 0% 50%; color: #000000;"><span style="color: #000084; font-weight: bold;">let</span> run p x = 
+  List.fold_left ( *. ) 1. 
+    (Array.fold_left (<span style="color: #000084; font-weight: bold;">fun</span> s (_,o) -&gt; o (s,x)) [] p)</pre>
+</blockquote>
+I then apply simulated annealing to such programs (using a program size of 10 instructions) for 10000 iterations. The energy function is simply the error between the value computed by the program and the expected value. For instance, with the function 'fun x -&gt; x', simulated annealing gives me the program:
+<blockquote>
+<pre>cos dup pop nop bra cos dp2 nop var nop</pre>
+</blockquote>
+Which can be rewritten as:
+<blockquote>
+<pre>let t = cos (if 0 &gt; (cos 0) then 0 else 0) in t *. t *. t *. x</pre>
+</blockquote>
+This is a fairly convoluted way of saying "x". Another example, with the function 'fun x -&gt; x +. x *. x':
+<blockquote>
+<pre>max bra one dup nop max add var add var</pre>
+</blockquote>
+The infix form here would be:
+<blockquote>
+<pre>((if max 0 0 &gt; 0 then 0 else 0) + (max 1 1) + x) * x</pre>
+</blockquote>
+Which is just '(1+x)*x'.

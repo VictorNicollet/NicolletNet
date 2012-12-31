@@ -1,0 +1,32 @@
+@title Global side-effects
+@draft
+
+Functional programming languages do not allow global state—they don't really allow any kind of state, but at least local state can be simulated by function arguments. The only way to handle "global" state would be to pass the global variable as an additional parameter (and additional return value) to every function. And it wouldn't play nice with exceptions either, so every exception would have to carry the values of all global variables.
+
+Besides, global state has the annoying habit of creating hidden dependencies between program parts, which lead to coupling that is hard to break and code that is not re-entrant.
+
+On the other hand, global variables have the clear benefit of making code shorter by making many dependencies implicit. Why pass around data as an argument or a member variable if making it global works just as well?
+
+Some kind of middle ground here would be self-propagating implicit function arguments and return values.
+
+Such arguments would have to be declared at global scope, since they have to be globally accessible. On the other hand, since they are merely arguments, they have no value until a function is called with one, which means the declaration would probably end up looking like:
+<pre style="padding-left: 30px;">channel total : int</pre>
+This would declare an implicitly progated integer argument named "<em>total</em>". Then, functions could be made to read and write to that channel implicitly as if it were a normal variable.
+<pre style="padding-left: 30px;">let rec sum = function 
+  | [] -&gt; 
+      ()
+  | head :: tail -&gt; 
+      total &lt;- total + head ;
+      sum tail</pre>
+Since the presence of the channel can be determined statically (it happens at name resolution time)  it can also be made a part of the function's type signature, which has the double benefit of allowing compile-time checking of channel usage and letting the programmer know which channels must be provided for a function to work:
+<pre style="padding-left: 30px;">sum : int list [total] -&gt; unit</pre>
+The presence of a list of channels before a function means the function must be called in an environment where the channel is available. This means either the environment's type is inferred to contain that channel, or a conflict appears and the channel must be explicitly defined:
+<pre style="padding-left: 30px;">let a = 0 in
+bind a as total in
+  sum [ 1 ; 2 ; 3 ] ;
+  print_int a ; 
+  sum [ 4 ; 5 ; 6 ] ; 
+  print_int a</pre>
+The bind instruction creates an environment where the named variable or expression is automatically updated in the local scope (as if it were applied the principles of assignment I explored last week). That is, every time a function call writes to the channel, the modification is propagated back to the bound variable as soon as the function returns (and the channel always reflects the value of the variable). So the example above would print 6 and 21.
+
+Channel implementation is fairly straightforward : every function that accesses a channel takes an implicit final argument representing the input value of that channel (if the channel is read) and returns an implicit value (if the channel is written to). That value is then locally bound, in the calling function, to either a similar constructor that propagates the use of the channel, or an explicit bind operation for the channel.

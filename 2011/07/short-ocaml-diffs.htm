@@ -1,0 +1,26 @@
+@title Short OCaml Diffs
+@draft
+
+<img class="aligncenter size-full wp-image-2464" title="bond" src="http://www.nicollet.net/wp-content/uploads/2011/07/bond.png" alt="" width="675" height="99" />
+
+I'm working on some wiki functionality right now, and one of the basic properties of a wiki is that history is kept for all pages. And this should be done elegantly, without actually keeping a copy of every version, especially since many changes are actually just small fixes. This is usually done by keeping a <em>diff</em> — a small piece of data that stores the changes needed to get from version A to version B. Computing an arbitrary diff is a fairly easy task, but computing a diff that is as small as possible is actually challenging, because there are many ways in which a diff can be created and only a few of these are optimal.
+
+The standard approach to computing diffs is to find the longest common subsequence — a non-contiguous sequence of characters that is found in both versions, such that one may turn version A into the sequence only by removing characters, and then turn that sequence into version B only by adding characters. The list of additions and removals is what is commonly referred to as a <em>diff</em>, because this is how the UNIX program <code>diff</code> works.
+
+I am not happy with this solution. For one, it works based on lines, which is fairly acceptable for source code that is cleanly split into many lines, but the average wiki page is not as clean. Instead, every paragraph tends to stay on its own line and is only word-wrapped for convenience. Using a line-based diff tool on such data would cause the removal and addition of entire paragraphs, which is certainly not optimal if the change was a minor typo fix on a single word. And since the <em>diff</em> algorithm itself is quadratic, it cannot be coaxed to work on characters instead of lines : a one-millisecond line-based run would take ten seconds on characters !
+
+Another shortfall of the longest common subsequence approach is that it fails to detect sentence or paragraph swaps, yet these happen quite frequently in the rewriting stages of a wiki page. Indeed, regardless of how clever the diff algorithm is, the diff <em>format</em> itself provides no primitives for moving data around, only "add this" and "remove that" are supported.
+
+I have designed and implemented a custom diff algorithm. Instead of working based on "add" and "remove" primitives, it carries a data segment where all the new content is stored, and works with "blit from old" and "blit from data segment" instructions to construct the new version from the old. Its format is optimized to be stored as JSON, and the diff application algorithm is simple enough to be handled by a short piece of JavaScript if necessary. <a href="https://github.com/VictorNicollet/MiniDiffs" target="_blank">It's on GitHub, by the way</a>.
+
+For instance, consider the sentences "<code>The quick brown fox</code>" and "<code>Brown foxes are quick</code>", and how the former can be transformed into the latter.
+
+A longest common subsequence approach (on characters, assuming this is sane) would determine that the LCS is the seven characters "<code>e quick</code>", and so it would be written as "<code><del datetime="2011-07-29T20:13:42+00:00">Th</del><ins datetime="2011-07-29T20:13:42+00:00">Brown foxes ar</ins>e quick<del datetime="2011-07-29T20:13:42+00:00"> brown fox</del></code>" which is indeed the shortest diff you can get using the LCS approach.
+
+My algorithm instead determines that contiguous substrings "<code>rown fox</code>" and "<code>e quick</code>" are present in both sentences, so the diff would be written as "<code><ins datetime="2011-07-29T20:13:42+00:00">B</ins>rown fox<ins datetime="2011-07-29T20:13:42+00:00">es ar</ins>e quick</code>". The corresponding JSON is quite short, too:
+<pre style="padding-left: 30px;">["Bes ar",1,[10,8],5,[-12,7]]</pre>
+The first element is the data segment (the five new characters), single integers are blit-from-data-segment (length) instructions, and integer pairs are blit-from-old (offset,length) instructions.
+
+The theoretical algorithm complexity is O(m+n), the actual implementation on GitHub is worst-case O(mn) because I used lists instead of hash tables at one point, but should actually be O(m+n) on any input that happens to be written in a human language because working on a human language almost guarantees that those lists will contain zero or one elements in most situations.
+
+The algorithm itself relies on statistical properties of character pairs to quickly match up sequences from both strings, such as by finding out that the <code>ox</code> pair only appears once in each sentence, or that the <code>Br</code> pair only appears in the new sentence. On medium-sized texts (up to 50,000 characters), there are several character pairs that are unique or missing, which helps the algorithm guess correctly where each piece came from. Once the source of the pieces is identified, generating the diff is extremely simple.

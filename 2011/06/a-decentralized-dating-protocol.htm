@@ -1,0 +1,27 @@
+@title A Decentralized Dating Protocol
+@draft
+
+<p style="text-align: center;"><img class="aligncenter size-full wp-image-2426" title="heart" src="http://www.nicollet.net/wp-content/uploads/2011/06/heart.png" alt="" width="675" height="99" /></p>
+I've been wondering about how a decentralized dating protocol could be implemented.
+
+Here's the idea : Alice would love to date Bob, and Bob would also love to date Alice, but both of them are too shy to actually ask the other out. The good news is, Alice and Bob are the protagonists of almost every single cryptography protocol out there, and they naturally have asymmetric encryption keys. So, they resort to using the MAP (Mutual Attraction Protocol) to reveal whether they are interested in each other, but only if the feeling is indeed mutual.
+
+An elementary implementation of the protocol could behave as such:
+<ol>
+	<li>Bob wishes to tell Alice about his feelings. He concatenates a fixed <code>ILOVEYOU</code> prefix and random suffix <code>RAND</code>, encrypts it with Alice's public key <code>APub</code>, then with his private key <code>BPriv</code>, This creates the cipher <code>BPriv(APub(ILOVEYOU || RAND))</code>.</li>
+	<li>He then publishes the cipher to a public location in a way that can be easily found by anyone looking for it — such as a database indexed by the public key of the uploader.</li>
+	<li>Alice wishes to know whether Bob has feelings about her. She scours the public databases for any items matching Bob's public key, and stumbles upon the aforementioned <code>BPriv(APub(ILOVEYOU || RAND))</code> cipher.</li>
+	<li>Shen then decrypts it with Bob's public key, and uses her own private key to decrypt the result. She ends up with <code>ILOVEYOU || RAND</code> and determines, based on the presence of the initial <code>ILOVEYOU</code> that there's indeed a love interest around.</li>
+</ol>
+The protocol is of course symmetrical: when you wish to express your interest, you <em>should</em> both publish it to the public database and look through that database for a reciprocal interest.
+
+This version of MAP has the following interesting properties:
+<ul>
+	<li>Only Bob can publish Bob's feelings on the public database, because doing so requires encrypting them with Bob's private key.</li>
+	<li>Only Alice can determine whether a given entry on the public database is about her, because doing so involves her own private key.</li>
+</ul>
+However, it assumes that Alice will only search for Bob's message if she is herself interested in him. This is not necessarily true : Alice might be running some software that automatically searches through the public database for people who like her. This clearly violates the constraint that the feelings should only be revealed if they are indeed mutual — that, before Alice can determine whether Bob posted an "I'd date Alice" message, she <em>must</em> post an "I'd date Bob" message herself for Bob to read.
+
+The question I am stuck on is, can these constraints be implemented without involving a <strong>trusted</strong> third party ?
+
+<small>Article image © Nattu — <a href="http://www.flickr.com/photos/nattu/4085398562/">Flickr</a></small>

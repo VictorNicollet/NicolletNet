@@ -1,0 +1,44 @@
+@title Initial Sequence
+@draft
+
+Let's play another little game. I'll give you a few integers, for instance 225, 318, 529 and 713. I need you to compute all numbers that can be computed by adding those integers together any number of times (for instance, 450 = 225 + 255, 543 = 225 + 318 ...). Of course, there's an infinite number of them, so I just want you to be able to provide me with, say, the 1000 smallest ones.
+
+How can one solve this? There's no simple formula for determining what number comes next, so it boils down to computing enough numbers to be certain that the 1000 smallest values have all been computed, and then sort the result to extract the first 1000.
+
+Finding these numbers looks a lot like exploring a map or maze. From every number, there are four paths one can follow, which consist in adding one of the four initial integers to the current number. So, the paths from 225 lead to 450, 543, 754 and 938. <i>Exploring a number</i> means to write down all four destinations on the map, to be explored later. By definition, all paths lead to higher numbers, which provides a helpful property: if the 1000 smallest integers on the map are all explored, then no path from an unexplored integer can lead to a number smaller than one of those already explored (because that unexplored integer is greater than those 1000 explored ones, and so the path would lead to an even greater integer).
+
+So, the algorithm consists in keeping a list of unexplored numbers and then repeating the following process a thousand times: pick the smallest integer, explore it (adding new numbers to the list of unexplored numbers) and add it to the list of explored items. In the end, the explored list contains 1000 items, sorted from least to greatest, with the guarantee that no unexplored integers can lead to smaller ones.
+
+You might recognize this as a variation on <a href="http://en.wikipedia.org/wiki/Dijkstra%27s_algorithm"><b>Dijkstra's Algorithm</b></a>.
+
+Writing this down in Objective Caml requires a preliminary decision: how are we going to extract the smallest number from the unexplored list? One way is to keep the list sorted at all times&mdash;this makes extraction easy (pick the first element) but insertion hard (you have to keep the list sorted). Conversely, one may keep the list in random order&mdash;this makes insertion easy (just prepend) but extraction hard (you have to find and remove the minimum). Since the latter is marginally harder than the former, I'll go with the first option. Inserting an element into a sorted list is a textbook example of recursive function:
+<pre style='color:#000000;background:#ffffff;'><span style='color:#7f0055; font-weight:bold; '>let</span> <span style='color:#7f0055; font-weight:bold; '>rec</span> insert sorted element =
+  <span style='color:#7f0055; font-weight:bold; '>match</span> sorted <span style='color:#7f0055; font-weight:bold; '>with</span>
+    | [] -> [element]
+    | head :: tail -> <span style='color:#7f0055; font-weight:bold; '>if</span> element &lt; head <span style='color:#7f0055; font-weight:bold; '>then</span> element :: sorted
+                      <span style='color:#7f0055; font-weight:bold; '>else</span> <span style='color:#7f0055; font-weight:bold; '>if</span> element = head <span style='color:#7f0055; font-weight:bold; '>then</span> sorted    
+                      <span style='color:#7f0055; font-weight:bold; '>else</span> head :: insert tail element</pre>
+
+The algorithm is fairly straightforward: if the list is empty, return a one-element list containing only the element ; if the first item in the list is greater than the element, then the element goes in first and the rest of the list follows ; if the element is equal to the first item in the list, then return the list as-is to avoid duplicated ; if the element is greater than the first item in the list, then insert recursively that element in the remainder of the list and prepend the original first element to the result.
+
+Then, there's the exploration function, which is recursive as well, and expects two arguments: the number of items left to explore, and the list of unexplored elements. The list of explored elements is returned. It is written as:
+<pre style='color:#000000;background:#ffffff;'><span style='color:#7f0055; font-weight:bold; '>let</span> values = [ 225; 318; 529; 713 ]
+
+<span style='color:#7f0055; font-weight:bold; '>let</span> <span style='color:#7f0055; font-weight:bold; '>rec</span> explore n = <span style='color:#7f0055; font-weight:bold; '>function</span>
+  | [] -> []
+  | current :: unexplored ->
+    <span style='color:#7f0055; font-weight:bold; '>if</span> n = 0 <span style='color:#7f0055; font-weight:bold; '>then</span> [] <span style='color:#7f0055; font-weight:bold; '>else</span>
+      <span style='color:#7f0055; font-weight:bold; '>let</span> new_values = List.map ((+) current) values <span style='color:#7f0055; font-weight:bold; '>in</span>
+      current :: explore (n-1) (List.fold_left insert unexplored new_values)</pre>
+The exploration function extracts the first element of the unexplored list (if that is empty for some reason, it returns no elements, because there's nothing to explore) and computes <code>new_values</code> by adding all the original values to the explored element. This uses the built-in <code>List.map func list</code> which calls <code>func</code> on every item of the list and places it in a new list that is then returned. Here, the function is <code>(+) current</code>, which is a function that adds "current" to its argument. So, if the explored element was 225, the returned list would contain 450, 543, 754 and 938.
+
+The code then inserts those four values into the unexplored list by using <code>List.fold_left</code> (which I have already covered yesterday), and recursively calls <code>explore</code> (asking for one less element). It then prepends the current element to the returned list (because it's smaller than all the elements to be explored next) and returns everything.
+
+That's all! To find the 20 smallest values, one writes:
+<pre style='color:#000000;background:#ffffff;'><span style='color:#7f0055; font-weight:bold; '>let</span> smallest_20 = explore 20 values</pre>
+
+These are:
+<pre>[225; 318; 450; 529; 543; 636; 675; 713; 754; 768; 847; 861; 900; 938; 954;
+ 979; 993; 1031; 1058; 1072]</pre>
+
+Any questions? Ask away in the comments section!

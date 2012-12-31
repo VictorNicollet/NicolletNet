@@ -1,0 +1,122 @@
+@title PHP 5.3 Closures as Block Literals?
+@draft
+
+I explained earlier a few things about <a href="http://www.nicollet.net/2010/02/reusable-css/" target="_blank">writing reusable CSS code</a>, and how it interacted with PHP. Let's start with this basic HTML for generating two columns, with the right one being flexible and resizing to fill all available space:
+<pre style="padding-left: 30px;"><span style="color: #0000ff;">&lt;div class="col2"&gt;</span>
+  <span style="color: #008000;">&lt;div class="col2-l"&gt;</span>
+    [Content of left column]
+  <span style="color: #008000;">&lt;/div&gt;</span>
+  <span style="color: #ff6600;">&lt;div class="col2-r"&gt;</span>
+    <span style="color: #ff0000;">&lt;div class="col2-ri"&gt;</span>
+      [Content of right column]
+    <span style="color: #ff0000;">&lt;/div&gt;</span><span style="color: #800080;">
+</span><span style="color: #ff6600;">  &lt;/div&gt;
+</span>  <span style="color: #800080;">&lt;div class="clearer"&gt;&lt;/div&gt;
+</span><span style="color: #0000ff;">&lt;/div&gt;
+
+</span><span style="color: #0000ff;">.col2    { }</span>
+<span style="color: #008000;">.col2-l  { float: left ; padding: 0 ; margin: 0 ; width: 120px }</span>
+<span style="color: #ff6600;">.col2-r  { padding: 0 0 0 120px ; margin: 0 ; width:auto }</span>
+<span style="color: #ff0000;">.col2-ri { float: left ; width : 100% }</span>
+<span style="color: #800080;">.clearer { clear: both }</span></pre>
+<h4>Elementary PHP</h4>
+How does this translate to PHP? Basically as a series of constants (plus documentation detailing what the column HTML should look like):
+<pre style="padding-left: 30px;">class CSS_Col2
+{
+  const ROOT = "col2";
+  const LEFT = "col2-l";
+  const RIGHT = "col2-r";
+  const RIGHT_INNER = "col2-ri";
+}</pre>
+This serves both as documentation for the existence of this component, and as an entry in the auto-completion tool to avoid typing incorrect classes by mistake. However, you still have to get the actual code right:
+<pre style="padding-left: 30px;">&lt;div class="&lt;?=CSS_Col2::ROOT?&gt;"&gt;
+  &lt;div class="&lt;?=CSS_Col2::LEFT?&gt;"&gt;
+    [20 lines of left column here]
+  &lt;/div&gt;
+  &lt;div class="&lt;?=CSS_Col2::RIGHT?&gt;"&gt;
+    &lt;div class="&lt;?=CSS_Col2::RIGHT_INNER?&gt;"&gt;
+      [40 lines of right column here]
+    &lt;/div&gt;
+  &lt;/div&gt;
+  &lt;?CSS::CLEARER?&gt;
+&lt;/div&gt;</pre>
+Did I write everything correctly? Did I forget or misplace a clearer? Forgetting about the inner container in the right column is an easy mistake, and you won't notice it until you put a clearing element in that column. And if your script is long enough, you won't be able to see which opening tag matches which closing tag. Surely there must be a way to improve this.
+<h4>Using HTML constants</h4>
+A possibility is using constants to contain the relevant HTML:
+<pre style="padding-left: 30px;">class CSS_Col2
+{
+  // as above ...
+  const _BEGIN_LEFT = '&lt;div class="col2"&gt;&lt;div class="col2-l"&gt;';
+  const _BEGIN_RIGHT = '&lt;/div&gt;&lt;div class="col2-r"&gt;&lt;div class="col2-ri"&gt;';
+  const _END = '&lt;/div&gt;&lt;/div&gt;&lt;div class="clearer"&gt;&lt;/div&gt;';
+}</pre>
+This makes code shorter, and you can't mismatch or misplace tags as easily:
+<pre style="padding-left: 30px;">&lt;?=CSS_Col2::_BEGIN_LEFT?&gt;
+  [20 lines of left column here]
+&lt;?=CSS_Col2::_BEGIN_RIGHT?&gt;
+  [40 lines of right column here]
+&lt;?=CSS_Col2::_END?&gt;</pre>
+However, all benefits of a nice and clean HTML editor are lost, because HTML constants don't react as code, and there is therefore no validation performed. At least Eclipse could detect mismatching open/closing tags on raw HTML. Now, if you forget to "_END" your columns, your life is pain.
+<h4>Using helpers</h4>
+A common technique is to use a helper function for such rendering tasks. The function accepts some arguments that let it configure what ought to be displayed, then renders the wrapper HTML and inserts the data. Staying within the previous code:
+<pre style="padding-left: 30px;">class View_Helper_Col2
+{
+  static function Render(<span style="color: #008000;">$left</span>, <span style="color: #ff0000;">$right</span>)
+  {
+    ?&gt;
+&lt;div class="&lt;?=CSS_Col2::ROOT?&gt;"&gt;
+  &lt;div class="&lt;?=CSS_Col2::LEFT?&gt;"&gt;
+    <span style="color: #008000;">&lt;?php call_user_func($left); ?&gt;</span>
+  &lt;/div&gt;
+  &lt;div class="&lt;?=CSS_Col2::RIGHT?&gt;"&gt;
+    &lt;div class="&lt;?=CSS_Col2::RIGHT_INNER?&gt;"&gt;
+      <span style="color: #ff0000;">&lt;?php call_user_func($right); ?&gt;</span>
+    &lt;/div&gt;
+  &lt;/div&gt;
+  &lt;?CSS::CLEARER?&gt;
+&lt;/div&gt;&lt;?
+  }
+}</pre>
+I used callbacks here to do the rendering, because they are the most versatile (it sure beats having to instantiate a "renderable" class for each column). This approach provides the obvious benefit that now the entire rendering is taken care of by a single function, so there is no risk of forgetting or misplacing a tag, and the auto-completion tool can now help check which arguments are provided and in what order.
+
+Still, this means that one should create two functions to render the two columns, and that any necessary data should be made available to them (due to the absence of closures in PHP &lt; 5.3, this often means calling a member function of a view object containing the appropriate data). In the Zend Framework, for instance, one would just write two helpers, and provide them as callbacks knowing that they will have access to the data of the current view:
+<pre style="padding-left: 30px;">&lt;?php 
+  $this-&gt;render2col(
+    array($this,'myLeftCol'),
+    array($this,'myRightCol')
+  );
+?&gt;</pre>
+Of course, it's questionable whether moving a three-line for-each loop to a helper of its own actually increases the readability of the code. If defining a new class for every view, there's the possibility of defining the columns as member functions within that same class, but it's still somewhat awkward.
+<h4>Helpers and Closures</h4>
+PHP 5.3 introduces closures and optional arguments. This means that one can now write the behavior inline:
+<pre style="padding-left: 30px;"><code><span style="color: #000000;"><span style="color: #0000bb;">&lt;?php
+ $self </span><span style="color: #007700;">= &amp;</span><span style="color: #0000bb;">$this</span><span style="color: #007700;">;
+ </span><span style="color: #0000bb;">$this</span><span style="color: #007700;">-&gt;</span><span style="color: #0000bb;">render2col</span><span style="color: #007700;">(
+   function() use(</span><span style="color: #0000bb;">$self</span><span style="color: #007700;">)
+   {
+     </span><span style="color: #0000bb;">?&gt;</span>&lt;h1&gt;<span style="color: #0000bb;">&lt;?=esc</span><span style="color: #007700;">(</span><span style="color: #0000bb;">$self</span><span style="color: #007700;">-&gt;</span><span style="color: #0000bb;">user</span><span style="color: #007700;">-&gt;</span><span style="color: #0000bb;">name</span><span style="color: #007700;">)</span><span style="color: #0000bb;">?&gt;</span>&lt;/h1&gt;<span style="color: #0000bb;">&lt;?php
+   </span><span style="color: #007700;">}, 
+   function() use(</span><span style="color: #0000bb;">$self</span><span style="color: #007700;">)
+   {
+     </span><span style="color: #0000bb;">?&gt;</span>&lt;ul&gt;<span style="color: #0000bb;">&lt;?php </span><span style="color: #007700;">foreach (</span><span style="color: #0000bb;">$self</span><span style="color: #007700;">-&gt;</span><span style="color: #0000bb;">items </span><span style="color: #007700;">as </span><span style="color: #0000bb;">$item</span><span style="color: #007700;">): </span><span style="color: #0000bb;">?&gt;
+      </span> &lt;li&gt;<span style="color: #0000bb;">&lt;?php $self</span><span style="color: #007700;">-&gt;</span><span style="color: #0000bb;">render</span><span style="color: #007700;">(</span><span style="color: #0000bb;">$item</span><span style="color: #007700;">); </span><span style="color: #0000bb;">?&gt;</span>&lt;/li&gt;
+     <span style="color: #0000bb;">&lt;?php </span><span style="color: #007700;">endforeach; </span><span style="color: #0000bb;">?&gt;</span>&lt;/ul&gt;<span style="color: #0000bb;">&lt;?php
+   </span><span style="color: #007700;">}
+ );</span><span style="color: #0000bb;"></span></span></code></pre>
+However, making those functions inline creates a new issue: its not so obvious anymore what exactly a function is doing (because it's too far away from the original call to the helper function). This can be solved by using a command pattern (while simultaneously noticing that one can get rid of the use keyword by providing $self as an argument (the helper does that):
+<pre style="padding-left: 30px;"><code><span style="color: #000000;"><span style="color: #0000bb;">&lt;?php
+ View_Col2</span><span style="color: #007700;">::</span><span style="color: #0000bb;">start</span><span style="color: #007700;">(</span><span style="color: #0000bb;">$this</span><span style="color: #007700;">)
+
+ -&gt;</span><span style="color: #0000bb;">left</span><span style="color: #007700;">(function(</span></span></code><code><span style="color: #000000;"><span style="color: #0000bb;">$view</span></span></code><code><span style="color: #000000;"><span style="color: #007700;">){
+   </span><span style="color: #0000bb;">?&gt;</span>&lt;h1&gt;<span style="color: #0000bb;">&lt;?=esc</span><span style="color: #007700;">(</span><span style="color: #0000bb;">$view</span><span style="color: #007700;">-&gt;</span><span style="color: #0000bb;">user</span><span style="color: #007700;">-&gt;</span><span style="color: #0000bb;">name</span><span style="color: #007700;">)</span><span style="color: #0000bb;">?&gt;</span>&lt;/h1&gt;<span style="color: #0000bb;">&lt;?php
+</span><span style="color: #007700;"> })
+
+ -&gt;</span><span style="color: #0000bb;">right</span><span style="color: #007700;">(function(</span></span></code><code><span style="color: #000000;"><span style="color: #0000bb;">$view</span></span></code><code><span style="color: #000000;"><span style="color: #007700;">){
+   </span><span style="color: #0000bb;">?&gt;</span>&lt;ul&gt;<span style="color: #0000bb;">&lt;?php </span><span style="color: #007700;">foreach (</span><span style="color: #0000bb;">$view</span><span style="color: #007700;">-&gt;</span><span style="color: #0000bb;">items </span><span style="color: #007700;">as </span><span style="color: #0000bb;">$item</span><span style="color: #007700;">): </span><span style="color: #0000bb;">?&gt;
+ </span>    &lt;li&gt;<span style="color: #0000bb;">&lt;?php $view</span><span style="color: #007700;">-&gt;</span><span style="color: #0000bb;">render</span><span style="color: #007700;">(</span><span style="color: #0000bb;">$item</span><span style="color: #007700;">); </span><span style="color: #0000bb;">?&gt;</span>&lt;/li&gt;
+   <span style="color: #0000bb;">&lt;?php </span><span style="color: #007700;">endforeach; </span><span style="color: #0000bb;">?&gt;</span>&lt;/ul&gt;<span style="color: #0000bb;">&lt;?php
+ </span><span style="color: #007700;">})
+
+ -&gt;</span><span style="color: #0000bb;">render</span><span style="color: #007700;">();
+</span></span></code></pre>
+Labels are now clearly mentioned, allowing empty lines to be inserted to separate the columns without forgetting what they are, so that the code looks cleaner overall.

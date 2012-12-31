@@ -1,0 +1,45 @@
+@title NoSQL Is A Premature Optimization
+@draft
+
+<img class="aligncenter size-full wp-image-2442" title="bulb" src="http://www.nicollet.net/wp-content/uploads/2011/07/bulb.png" alt="" width="675" height="100" />
+
+<a href="http://smoothspan.wordpress.com/2011/07/22/nosql-is-a-premature-optimization/" target="_blank">Or so Bob Warfield writes</a>. I happen to agree with the title — optimization using NoSQL means using a server cluster to split the load and scale up, and such an optimization is premature unless you are already having the millions of visits it takes to feel growing pains. If I start off on a new project and decide «<em>I'm going to use NoSQL so that it will scale when my project will have millions of users</em>» then I am prematurely assuming that your initial NoSQL strategy will fit the actual million-user scenario that will come up years from now. In fact, the bottleneck will probably be in a feature I didn't even think of yet, and making it work will probably involve changes in the persistence model. But Bob Warfield goes further than the premature optimization argument:
+<blockquote><strong>Point 2:  There is no particular advantage to NoSQL until you  reach scales that require it.  In fact it is the opposite, given Point  1.</strong>
+
+It’s harder to use.  You wind up having to do more in your  application layer to make up for what Relational does that NoSQL can’t  that you may rely on.  Take consistency, for example.  As Anand says in  his video, “Non-relational systems are not consistent.  Some, like  Cassandra, will heal the data.  Some will not.  If yours doesn’t, you  will spend a lot of time writing consistency checkers to deal with it.”   This is just one of many issues involved with being productive with  NoSQL.</blockquote>
+My current SaaS project pivoted from MySQL to CouchDB nearly at the beginning, certainly before we had any customers or any features worth showing. My greatest fear when settling on CouchDB was that I would have to <em>work around</em> the NoSQL lack of transactions, joins, consistency or whatever else you expect from a database system.
+
+I was sorely mistaken, and so is Bob Warfield.
+
+Even though NoSQL fails to solve many of the <em>low-level</em> problems that SQL eats for breakfast, this does not make it incapable of solving the same <em>high-level</em> problems as traditional relational strategies, you just need to understand how to do it, in the same way that you had to understand relational algebra, joins, indexes and transactions before doing anything worthwhile with <strong> </strong>SQL. Coming to NoSQL and expecting to solve your problems with those same strategies that you used in the relational world is as silly as using a hammer to drive screws in.
+
+For instance, CouchDB has no global consistency, only eventual consistency — there is an <em>inconsistency window</em> where state spread across multiple documents can be inconsistent. This will make any relational programmer scream bloody murder. And yes, if you absolutely and positively need to have that state stay consistent, then you will need some application-side code to do it, and it will ruin your productivity.
+
+But most applications don't <em>need</em> global consistency, in fact an inconsistency window of a few seconds is acceptable in most situations. It is the programmers who need global consistency, because they do not have the mental tools required to work with eventual consistency. But once you get the hang of it, there is no working around, no overhead, no additional steps or checks required to make your application work. It is a different route, but not a longer one.
+
+In addition to the above, from my experience, <strong>there are clear and significant benefits to using CouchDB over MySQL that are not related to scalability or performance</strong>. These benefits may well be useless to your specific situation, but they do exist.
+<h3>1. Schema changes are painless and non-locking</h3>
+<a href="http://highscalability.com/blog/2010/5/17/7-lessons-learned-while-building-reddit-to-270-million-page.html" target="_blank">This (lesson 3)</a> is what brought me to NoSQL in the first place.
+
+CouchDB does not implement a schema in the way an SQL product rigidly delineates tables, columns and relationships. Of course, it would be foolish to actually have no schema concept at all, so there is a dedicated schema layer in our application architecture that describes what the CouchDB "tables" look like, in terms of serialization and deserialization. Schema changes are therefore a simple change to the deserialization process, which needs to be able to read the old data format.
+
+For simple changes, such as adding a field with a constant value, no work is required as the deserialization layer can fill in the missing field on the fly. For complex changes that involve application-provided data, such as adding a "file size" field that needs to be initialized with the actual file size, there is a clear benefit to having the application itself perform the schema change, as opposed to application-independent ALTER scripts.<strong></strong>
+<h3>2. Document contents can be dynamic</h3>
+This was the actual reason we settled on CouchDB: our application lets users add their own custom fields to objects, and then filter/sort based on these fields. This requires almost no programming effort (aside, of course, from the user interface involved in doing so) and is nearly as efficient as using static programmer-provided fields.
+
+I have had in the past some experience with managing arbitrary fields on a SQL platform, mostly when I was working with open source e-commerce platform Magento. Dynamic fields involve some significant boilerplate (such as entity-attribute-value tables) and clever tricks to perform filtering efficiently.
+<h3>3. The application-database impedance is lower</h3>
+A typical SQL schema contains two kinds of relationships: natural relationships such as «<em>an article has an author</em>» between two entities that can and will usually be queried independently, and accidental relationships such as «<em>an article has several tags</em>» that are only present because SQL cannot store the tags in the post table. As such, extracting a post from an SQL database counter-intuitively requires one query to grab the post itself, and another query to grab its tags.
+
+CouchDB does away with accidental relationships completely by storing JSON documents. While this might allow a performance in some cases, the main benefit is that object <em>composition</em> as described by the programmer in the application code is persisted intuitively, without jumping through the intellectual hoops typical in relational storage.<strong></strong>
+<h3>4. An identifier-centric application architecture is possible<strong>
+</strong></h3>
+What does it mean to be identifier-centric or object-centric? A function to get the full URL of an article, in an <em>object-centric</em> application, is a function that takes an article object as an argument (or possibly a member function of the article object) and returns the article's full URL. In an identifier-centric application, it would be a function that takes an article identifier as an argument (or possibly a member function of the article identifier class) and returns the full URL.
+
+Identifier-centric architectures have major design benefits over object-centric ones, with clear consequences in terms of productivity and correctness, but have a major performance problem as the <em>same</em> data is read from the database several times unless some very complex caching strategies are applied — that data might be read using a quite complex SQL query that is hard to keep in cache correctly.
+
+From my experience, the vast majority of queries in a CouchDB application will either query a document by its identifier, or query a view for several key-identifier-document pairs. In short, most of the data manipulated by the application can be easily traced back to an identifier without any specific design effort. And get-document-by-id requests are far easier to cache and optimize than arbitrary SELECT requests, both at the application level (we have a temporary cache that lasts the lifetime of the HTTP request) and with key-value caches like Memcache.
+
+This may sound like a performance argument, but it isn't, or at least not in the traditional «<em>NoSQL is faster than SQL</em>» sense. It just means that using NoSQL makes an identifier-centric architecture <em>acceptable</em> in terms of performance.
+
+<small>Article image © Satoru Kikuchi — <a href="http://www.flickr.com/photos/satoru_kikuchi/4461605065/">Flickr</a></small>

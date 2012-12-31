@@ -1,0 +1,8 @@
+@title JITBrain - The Graph
+@draft
+
+Lo and behold: all the modules available in JITBrain so far, and their interdependencies:
+
+[caption id="" align="aligncenter" width="453" caption="Click to enlarge"]<a href="http://jitbrain.nicollet.net/files/modules.png"><img title="JITBrain Modules" src="http://jitbrain.nicollet.net/files/modules.png" alt="" width="453" height="645" /></a>[/caption]
+
+These modules have been automatically extracted from the source code by <a href="http://en.wikipedia.org/wiki/Grep" target="_blank">grep</a>ping for "(.*)::" and "new (.*)", then the class-file associations have been determined using the autoloader code, and the result was fed to dot (from <a href="http://www.graphviz.org/" target="_blank">Graphviz</a>) to generate the graph.

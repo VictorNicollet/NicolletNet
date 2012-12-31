@@ -1,0 +1,82 @@
+@title Adobe Flash 10 : 3D in your browser
+@draft
+
+A short while ago, Adobe set loose the newest version of the <a href="http://labs.adobe.com/technologies/flashplayer10/" target="_blank">Flash player</a>, along with the development SDK.
+
+Among the advertised benefits of this new player, there is the ability to use native support for drawing three-dimensional objects. Nothing on the scale of <a href="http://blog.papervision3d.org/" target="_blank">Papervision3D</a>, though: the programming interface is extremely limited in its scope and, although a great step from what Flash supported natively in earlier versions, it's still a long way from what desktop 3D programmers have grown accustomed to. We can only hope for existing engine developers (or new teams) to harness the low-level primitives of Flash Player 10 into high-level drawing primitives.
+<h2>Graphics Processing Units</h2>
+I suspect that many readers, especially those with a Flash/Flex background, are not familiar with the modern graphics pipeline found in the hardware of most reasonably recent computers,  so a quick primer on the subject could be helpful.
+
+The CPU in a typical computer is a general-purpose piece of hardware: it can handle 3D as well as it can handle spreadsheets or web browsing. This led to the creation of a new class of software which was specifically designed to perform computations related to 3D: it could only do these computations, but it did them <em>darn fast</em>. So, video games and CAO programs started delegating some processing to this hardware, which slowly evolved over time into our modern GPU hardware.
+
+Early on, the GPU could only handle elementary functions such as projecting 3D triangles on a 2D screen, but quickly gained new features, such as mapping textures on triangles or handling lights (this is what the TnL revolution was: <span style="text-decoration: line-through;">Texture and Lighting</span> the availability of Transform and Lighting in hardware), and more recently the ability to apply an arbitrary amount of operations independently to every pixel drawn on the screen. Today's GPUs are massive beasts, able to handle thousands of pixels in parallel where a CPU could only handle one or two.
+<h3><img class="alignright" style="border: 0pt none; margin-left: 5px; margin-right: 5px;" src="/images/cpu-gpu.png" border="0" alt="CPU and GPU architectures" hspace="5" width="323" height="530" align="right" /> How does it work?</h3>
+The CPU collects or creates the data that should be displayed. This is generally composed of 3D data (triangles that are to be drawn) and 2D data (textures to be mapped onto triangles). Most of the time, these are sent to the GPU during an initialization step and stored in the GPU memory. Sometimes, new data is computed at runtime and is sent asynchronously (that is, the GPU receives the new data while drawing the old data, so that no time is wasted).
+
+Once the required data is present on the GPU, the CPU sends rendering instructions. These instructions are usually quite small ("Draw object #3 at position (x,y,z) using textures #5 and #7") but result in massive amounts of work (Object #3 contains thousands of triangles and fills millions of pixels on the screen) so that the majority of data transfers happen between the GPU local memory and the GPU local processor using high-speed connections on the video card.
+
+The result is that the CPU can send a few dozen cheap rendering instructions, then handle whatever it needs to handle (gathering user input, performing physics simulations, handling the network connections), while the the GPU toils away at running the provided instructions on thousands of polygons and millions of pixels with amazing performance.
+
+A common techique to improve performance is <strong>batching</strong>. Once the multiprocessors start working on a new instruction, they work fast, but starting a new task takes some time. As such, drawing 600 polygons in one instruction is significantly slower than drawing 300 polygons twice with two instructions. Batching consists in grouping as many polygons as possible in a single batch that can be drawn with a single instruction, and is the backbone of performance improvement.
+
+The exact details of what happens on the GPU has changed over time, with the addition of textures, lighting, instancing, bump-mapping, arbitrary pixel shaders and vertex shaders, 64-bit numbers, integer support, the unified shader model of DirectX 10, and a whole lot of other esoteric names for esoteric features. The core processes delegated to the GPU, however, have not really changed:
+<ul>
+	<li>Vertex operations involve gathering 3D data from various sources (usually, local memory that has been initialized with data from the CPU) and then transforming it according to certain sets of rules, so that it ends up as a 2D shape projected onto the screen.Various additional operations at this stage involve:
+<ul>
+	<li>Lighting: for every point of the 3D shape, the illumination is computed and stored.</li>
+	<li>Instancing: creating many copies of a single piece of 3D data, such as soldiers in an army or trees in a forest.</li>
+	<li>Tessellation: transforming non-polygonal curved surfaces into polygons.</li>
+</ul>
+</li>
+	<li>Pixel operations involve filling the projected 3D data with on-screen pixels, using predefined rules for deciding what the color will be or whether the pixel is to be drawn.A large number of additional operations at this stage can be performed:
+<ul>
+	<li>Blending: instead of replacing existing color on the screen, a mix is computed to achieve transparency or illumination effects.</li>
+	<li>Textures: data for every pixel is collected from one or more textures.</li>
+	<li>Lighting: using the illumination stored in the 3D shape, as well as other sources (normal maps, bump maps) illumination is computed for every pixel.</li>
+	<li>Depth: if the pixel being drawn is behind the pixel present at the same location on the screen, it's not drawn.</li>
+	<li>Stencils: using a screen-sized boolean texture, rendering can be limited to only certain areas.</li>
+</ul>
+</li>
+</ul>
+The result of these operations can be displayed or kept in an off-screen buffer for use as a source of 2D data later on.
+<p align="center"><img class="alignnone" style="border: 0pt none; margin: 5px;" src="/images/gpu-steps.png" border="0" alt="Two steps in GPU processing" /></p>
+
+<h2>Back to Flash Player 10</h2>
+Flash Player 10 allows the programmer to control the pixel operations level. That is, the programmer provides the 2D data and the Shapes, and the Flash player performs the required pixel operations and outputs the resulting pixels to a Graphics object. The function to perform this is the raw <a href="http://help.adobe.com/en_US/AS3LCR/Flash_10.0/?flash/display/Graphics.html#drawTriangles%28%29" target="_blank"><span style="font-family: courier new,courier;">Graphics.drawTriangles()</span></a>, or the combination of <span style="font-family: courier new,courier;"><a href="http://help.adobe.com/en_US/AS3LCR/Flash_10.0/flash/display/Graphics.html#drawGraphicsData%28%29" target="_blank">Graphics.drawGraphicsData()</a></span> and the <a href="http://help.adobe.com/en_US/AS3LCR/Flash_10.0/flash/display/GraphicsTrianglePath.html" target="_blank"><span style="font-family: courier new,courier;">GraphicsTrianglePath</span></a> class.
+
+I see two problems with this:
+<h3>There is no Depth Buffering</h3>
+This is the biggest problem, in my opinion: drawing projected data does not handle the depth of pixels at all, which makes it impossible to tell whether a certain triangle stands in front of another. As a consequence, the <span style="font-family: courier new,courier;">Graphics.drawTriangles()</span> function assumes that the triangles it is asked to draw are ordered from the furthest to the nearest using the <a href="http://en.wikipedia.org/wiki/Painter%27s_algorithm" target="_blank">Painter's Algorithm</a>. Since triangles have no reason to be in the correct order to begin with, the programmer is forced to <a href="http://help.adobe.com/en_US/ActionScript/3.0_ProgrammingAS3/WS18334A17-3F85-4d5a-ADB4-F5BF6196774C.html" target="_blank">sort triangles by hand</a>. This has two obvious performance-related consequences:
+<ul>
+	<li>No caching of the polygon data on the GPU is possible: since the order of polygons might change from one frame to the next, the CPU-GPU transfer lines are used to send the polygon data every frame, which decreases performance.Even worse, general batching is impossible: if polygons from two batches are interleaved, then the batches must be split to respect the order of the polygons. This means that instead of sending 600-polygon batches to the GPU like a video game would, the Flash Player will be sending a whole lot of 2-polygon or 4-polygon batches instead.
+
+Of course, smart programmers might still achieve batching as a custom trick in specific situations, but common rendering techniques which automatically achieve high amounts of batching tend to rely on depth buffering to work, and as such might not be carried over as easily.</li>
+</ul>
+<ul>
+	<li>Instead of being done on the GPU (often in a highly optimized fashion), sorting has to happen on the CPU. Polygon-based sorting is either incorrect (sorting polygon centers might result in overlap problems with polygons that are not facing the eye), or complex (using a BSP tree to determine optimal rendering order). Not to mention the problem of overlapping or crossing polygons in the Painter's Algorithm which can only be solved by slicing the inconvenient polygons beforehand.</li>
+</ul>
+<h3>Vertex operations remain on the CPU</h3>
+In order to know where to render things, one needs to project 3D shapes onto a 2D screen. This task is traditionally performed by the GPU in classic desktop applications, but has to be done on the CPU in Flash 10. This is usually done by constructing a view-and-projection matrix, and then using <a href="http://livedocs.adobe.com/flex/3/langref/flash/geom/Matrix3D.html#transformVector%28%29" target="_blank"><span style="font-family: courier new,courier;">Matrix3D.transformVector()</span></a> to transform vectors individually, then <strong>manually</strong> extracting the x and y coordinates of the resulting vectors and plugging them in an array that is compatible with <span style="font-family: courier new,courier;">Graphics.drawTriangles()</span>.
+
+Resist the temptation of using <a href="http://livedocs.adobe.com/flex/3/langref/flash/geom/Matrix3D.html#transformVectors%28%29" target="_blank"><span style="font-family: courier new,courier;">Matrix3D.transformVectors()</span></a> to transform an array of vectors in one shot: while this may result in higher performance, it is not equivalent: if your matrix incorporates projection (which is required for projecting 3D shapes on 2D screens) that projection will not be applied, only the affine transform will be. Besides, you will still have to manually extract the x and y coordinates.
+
+My choice was to use <span style="font-family: courier new,courier;">Matrix3D.transformVectors()</span> to apply the entire affine transform, then applying the projection manually using arithmetic operators:
+<blockquote>
+<pre style="background: #ffffff none repeat scroll 0% 50%; color: #000000;">matrix.transformVectors(triangles, transformed); 
+
+<span style="color: #000084; font-weight: bold;">for</span> (<span style="color: #000084; font-weight: bold;">var</span> i : <span style="color: #000084; font-weight: bold;">int</span> = 0; i &lt; vertices; ++i)
+{
+    <span style="color: #000084; font-weight: bold;">var</span> z : Number = transformed[3*i+2];
+    projected[2*i]   = ((transformed[3*i] / z) + 1) * <span style="color: #000084; font-weight: bold;">width</span>;
+    projected[2*i+1] = ((transformed[3*i+1] / z) + 1) * <span style="color: #000084; font-weight: bold;">height</span>;
+}</pre>
+</blockquote>
+This choice was dictated by another fun fact: unlike OpenGL or Direct3D, there is no simple and obvious way of creating a projection matrix in Flash 10. In fact, when I tried to use <span style="font-family: courier new,courier;">Matrix3D.rawData</span> to create a projection matrix from its mathematical definition, the program complained that the matrix was not invertible (which is often the point of a <em>projection</em> matrix).
+<h3>A step forward</h3>
+Reading my above disappointments, it would be easy to conclude that Flash Player 10 is a worthless technology with only marginal improvements over previous versions and limited lip service to the ressurection of browser-based 3D. This is not the case, and there are massive benefits to Flash Player 10. Even if there is still no batching or GPU-based geometry transforming, and even if the user has to sort polygons by hand, there is a high-performance way to map a texture using texture coordinates, which should definitely improve the performance of several existing 3D engines from the Flash Player 9 era within a matter of weeks. An active engine undergoing continued development efforts, such as Papervision3D, should be able to integrate the new features quite easily.
+
+Besides, Flash 10 is not aimed at rivaling high-end 3D video games (or at least, I <em>hope</em> it wasn't) but rather to apply simple 3D effects to <span style="font-family: courier new,courier;">DisplayObject</span>s, thereby leveraging existing 2D codebases in a fresh new direction. And this, it does quite well: sorting works quite simply (as long as you have no overlaps), transforming is handled internally using matrices, and so on.
+
+Still, a better interface could have been chosen to support general 3D. I could understand that depth buffering cannot work on every possible piece of phone hardware, but sacrificing what is a de facto standard on desktop and laptop computers seems strange. The same goes for vertex and index buffers (sent to the GPU). These can be trivially emulated in software, yet provide tremendous performance benefits by lowering the transfers from CPU to GPU.
+
+In conclusion, don't expect to write the next <a href="http://en.wikipedia.org/wiki/Crysis" target="_blank">Crysis</a> or <a href="http://en.wikipedia.org/wiki/Half-life_2" target="_blank">Half-Life 2</a> using Flash Player 10, but the technology should be able to equal older 3D game graphics without too much difficulty (<a href="http://en.wikipedia.org/wiki/Crash_Bandicoot_2">Crash Bandicoot</a>, <a href="http://en.wikipedia.org/wiki/The_Sims_2" target="_blank">The Sims</a>, <a href="http://en.wikipedia.org/wiki/Ragnarok_online" target="_blank">Ragnarok Online</a>, <a href="http://en.wikipedia.org/wiki/Second_life" target="_blank">Second Life</a>) and enhancing the aspect of existing Flex applications with 3D effects should be a breeze.

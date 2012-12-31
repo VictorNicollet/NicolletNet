@@ -1,0 +1,82 @@
+@title Let's Whine About Google Dart
+@draft
+
+<img class="aligncenter size-full wp-image-2584" title="melee" src="http://www.nicollet.net/wp-content/uploads/2011/10/melee.png" alt="" width="675" height="100" />
+
+<a href="http://webreflection.blogspot.com/2011/10/what-is-wrong-about-17259-lines-of-code.html" target="_blank">What's wrong about 17259 lines of code ?</a> asks Andrea Giammarchi, following the publication of a <a href="https://gist.github.com/1277224" target="_blank">gist</a> that shows an 18-line Hello-World application written in Dart, the new Google-sponsored browser-based language, and the corresponding 17259 lines of JavaScript that the Dart source code would be compiled to.
+
+Yes, 17259 lines of code is quite terrifying, and reading through the code does make one ponder what those engineers at Google were smoking and how they can ever expect such a language to overtake JavaScript — or even manage to be used in the first place.
+
+And then, there's a loud WHOOSH: the sound of a point flying so high over the collective heads of Dart critiques that it will probably collide with some garbage in low earth orbit.
+
+The point is that <strong>this is version 0.01 of a language designed for optimization through static analysis</strong>.
+
+I'll be the first to admit that there is no way for a Hello-World application to execute all those 17259 lines. This is known as dead code: pieces of functionality which might be useful to some applications but not to others, which is included because it's easier for the developer, but which will never run.
+
+I can understand why Andrea is upset. Dead code is a big no-no in JavaScript, because it has to be downloaded and parsed by every user, which costs bandwidth and slows down everything. No, wait. Let me correct that last statement. Dead code is a big no-no in JavaScript <em>because the JavaScript language makes it impossible to have automatic dead code elimination</em>.
+
+In JavaScript, you can have a global function named <code>foobar</code> which is not even once referenced in the entire code base, and it would still be unsafe to remove it because at some point the code fetches a <code>funcname</code> variable through AJAX and executes <code>window[funcname]()</code> — and it just so happens that the server returns <code>"foobar"</code> on the night of the full moon. In short, there's no way in hell an automated tool can remove a single line of code from JavaScript without breaking at least one possible program. That's just the way JavaScript is — objects are key-value containers with string keys.
+
+Of course, you could decide to follow rules that prevent such things from happening. There's at least one convention, for instance, which is used by minifiers to try and be a little more than glorified whitespace removers: variable renaming. If you have a local variable in JavaScript, you can rename it and all its occurences and the change will never be visible outside the scope it was defined in <em>because the variable itself is not visible outside</em>. This lets you rename <code>aQuiteLongVariableName</code> to <code>g</code>, which makes your code lighter. And it breaks because one of your function uses <em>eval </em>on an arbitrary string provided by the server and which references <code>aQuiteLongVariableName</code>. So, the convention is « do not use <em>eval</em> » but it's still a convention, not a language specification, so it has to be opt-in and clearly document its requirements.
+
+Dart was designed not to have these issues, so it does not matter if version 0.01 of the Dart-to-JavaScript compiler fails to perform dead code removal: it can be implemented, and Google engineers would indeed be fools not to implement it before the 1.0 release.
+
+There are also questions to be asked about the actual contents of those 17259 lines — when they <em>will</em> be used, will it make sense?
+
+One of the first things that I notice is, as Andrea mentioned, the various global binding functions such as:
+<pre style="padding-left: 30px;"><code>function $bind1_0(fn, thisObj, scope) {
+  return function() {
+    return fn.call(thisObj, scope);
+  }
+}</code></pre>
+This is actually an extremely important optimization, but not related to speed — it's about memory. To understand why, look at this code:
+<pre style="padding-left: 30px;"><code>var div = document.createElement("div");
+var message = "Hello";
+div.onclick = function(){
+  alert (message)
+};</code></pre>
+The anonymous function here is a closure: it must carry the variable <code>message</code> with it in order to access it when it is called. In any sane language, the interpreter would store a reference to that variable in the closure, and be done with it. JavaScript cannot (again, because of <em>eval</em>) so it has to store the entire scope that the function was defined in, which includes both <code>message</code> and <code>div</code>. In some versions of IE, having such a circular reference between a DOM element and a JavaScript value creates a memory leak which leads to massive performance degradation, but even in better browsers than IE, the function will keep this <code>div</code> alive for longer than is really necessary, thus consuming memory for nothing.
+
+Dart has the ability to perform this scope analysis and determine that only the message needs to be included. The truckload of bind functions help implement this by utterly eliminating the JavaScript closure:
+<pre style="padding-left: 30px;"><code>function onclick(message) {
+  alert(message);
+}
+
+var div = document.createElement("div");
+var message = "Hello";
+div.onclick = $bind1_0(onclick,div,message);</code></pre>
+Another critic from Andrea was the massive amount of wrappers around elementary functions, such as setting an array element to a value or adding two values together, which should bring JavaScript-from-Dart programs to a screeching halt becuse of all the involved overhead.
+
+They won't. Trust me. This isn't the first time I have seen such wrappers, and I know what they are and why they exist. They are generic adapters — fallback operations to be used when the static analysis step cannot determine precisely the types of the objects involved.
+
+Quick. Translate the following code from Dart to JavaScript by hand in an optimal manner:
+<pre style="padding-left: 30px;"><code>swap(a,i,j) {
+  var t = a[i];
+  a[i] = a[j];
+  a[j] = t;
+}</code></pre>
+Chances are, you answered something like this:
+<pre style="padding-left: 30px;"><code>function swap(a,i,j) {
+  var t = a[i];
+  a[i] = a[j];
+  a[j] = t;
+}</code></pre>
+You would be wrong. You are under the mistaken impression that, because it uses the []-syntax, the Dart function works with arrays when in fact it works with any object that defines that access operator.
+
+So, on your second attempt, you would answer something like this:
+<pre style="padding-left: 30px;"><code>function swap(a,i,j) {
+  var t = ugly_getter.apply(a,i);
+  ugly_setter.apply(a,i,ugly_getter.apply(a,j));
+  ugly_setter.apply(a,j,t);
+}</code></pre>
+<strong>And you would be wrong again</strong>. The key property of Dart (as well as other languages which encounter the same problem — OCaml, C#, C++, Java... anything with generic polymorphism actually) is that it allows static analysis. Static analysis lets you determine what the types of those variables might be. Is the swap function ever called on something other than an array? Then only define version one. Is it called on many things, but most often arrays? Define both functions, and use the specific array-compatible one whenever you are certain an array will be passed. Is it never called? Remove it...
+
+This kind of analysis is reasonably simple to perform, and has the benefit of being able to create both highly-optimized code for primitive types and short generic code for abstract types. And you can even help the compiler by annotating types.
+
+Again, it does not matter whether Dart 0.0.1 actually performs these optimizations. What matters is that they are both possible and easy given the language design, and I expect them to be present in release 1.0
+
+I am by no means a Google zealot or secret Dart admirer. In fact, from what I have seen so far, I would sooner <em>loathe </em>Dart than admire it — a bastard type-checking that relies on warnings? A bland java-like syntax for brace weenies? No actual support for immutable data structures? Blech. Give me <span style="text-decoration: line-through;">JavaScript</span> CoffeeScript anyday. I'll switch to Dart when it takes over the world.
+
+But the current crapstorm is just ridiculous. Come on, the guys at Google are pushing out a 0.0.1 proof-of-concept and you're complaining that their optimizer isn't acceptable? Please. <em>I'm not even sure there's an optimizer yet</em>. From the language specs, it's fairly obvious that many optimization avenues unavailable to JavaScript will be available to Dart, the only question is whether release 1.0 will have them or not. Wait and see — criticizing the optimization of a 0.0.1 compiler is just silly.
+
+<small>Article Image &copy; Erich Ferdinantd &mdash; <a href="http://www.flickr.com/photos/erix/5876052552/">Flickr</a></small>

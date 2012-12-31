@@ -1,0 +1,80 @@
+@title Beginning OCaml, Part 1
+@draft
+
+Perhaps you've never programmed. Or perhaps you know of other languages, and wish to learn others—this post will discuss only pure functional programming, so I suggest you forget everything you know and start anew. Either way, this series of articles provides a quick introduction to the functional side of Objective Caml.
+<h2>Expressions</h2>
+The vast majority of code you will write in Objective Caml will be <em>expressions</em>. An expression is usually a mathematical formula or something close to one. The simplest expression is a constant, such as:
+<pre style="padding-left: 30px;">1</pre>
+This is not a very useful expression. A slightly more useful example would be using Objective Caml as a pocket calculator, with expressions like:
+<pre style="padding-left: 30px;">(2 + 4) * 3</pre>
+Objective Caml runs expressions by computing their value: this is known as <em>evaluation</em>. The above expression would result in the integer value 18. As we discover more elements of the language, the rules for evaluation will become more complex, but the fundamental principle remains almost intact: an Objective Caml program is an expression or series of expressions, running the program means evaluating those expressions.
+<h2>Variables</h2>
+The first step in raising Objective Caml above the lowly pocket calculator level is the ability to give names to objects.  The language construct for doing so is borrowed from mathematics, where mathematicians would say "<em>let x be the smallest integer such that ...</em>" and refer to that integer as "<em>x</em>" from then on. The syntax for doing so is:
+<pre style="padding-left: 30px;">let (variable) = (expression) ;;</pre>
+Use the semicolons for now—we will see later on that they are optional in some circumstances. Example of such a definition:
+<pre style="padding-left: 30px;">let x = (2 + 4) * 3 ;;
+x - 2</pre>
+This will evaluate the expression (which yields the value 18) then bind that value to the name x. Every expression below the definition of x will know that x equals 18, so the second expression would evaluate to 16. Here, x is called a <em>variable</em>—a confusing name, since it does not actually vary: once it's defined, it stays forever. Any name can be used for a variable, as long as it starts with a lowercase letter and contains only letters, numbers and underscores.
+
+It is of course possible to define more than one variable in a program:
+<pre style="padding-left: 30px;">let x = 3 + 4 ;;
+let y = 2 * 5 ;;
+x + y</pre>
+This example evaluates to 17. A normal Objective Caml program defines hundreds and even thousands of variables in order to work.
+
+Having a thousand variables creates a risk for collision. The good news is that collisions are handled smoothly: at any point in the program only the last definition found so far counts. So, if we were to consider an example:
+<pre style="padding-left: 30px;">let x = 3 ;;
+let x = x + 1 ;;
+x + x</pre>
+<p style="text-align: justify;">Line 1 defines x as 3, line 2 defines x again, this time as 3 + 1 = 4, and line three evaluates to 4 + 4 = 8.</p>
+<p style="text-align: justify;">This doesn't solve the problem entirely, though: what if I accidentally overwrite a previously defined value, and I need that value later on?</p>
+
+<h2 style="text-align: justify;">Local Definitions</h2>
+<p style="text-align: justify;">Objective Caml solves this by providing local definitions: instead of making a variable available to all lines that appear below it, the variable is only available within an expression. The syntax is:</p>
+
+<pre style="text-align: justify; padding-left: 30px;">let <em>(variable)</em> = <em>(expression)</em> in <em>(expression)</em></pre>
+<p style="text-align: justify;">The variable exists only within the second expression, and uses the value of the first expression. For instance:</p>
+
+<pre style="text-align: justify; padding-left: 30px;">let x = 1 ;;
+let y =
+  let x = 2 in
+  x + x ;;
+x + y</pre>
+<p style="text-align: justify;">This example defines x as 1. Then, within the definition of y, it defines x again as 2, which makes the value of y equal to 2 + 2 = 4. However, the second definition of x is only available within the "x + x" expression, so the "x + y" expression uses the original value, and the result is "1 + 4 = 5".</p>
+<p style="text-align: justify;">Local definitions are <em>expressions</em>. This means that they can be used as part of other expressions, such as on either side of a mathematical operator, or within other definitions. It's perfectly legal to write code like:</p>
+
+<pre style="text-align: justify; padding-left: 30px;">1 + (let x = 1 + 2 in x * 2)</pre>
+<p style="text-align: justify;">This evaluates to 1 + (3 * 2) = 7.</p>
+<p style="text-align: justify;">In practice, most variables are defined locally, and only the most important variables are defined globally.</p>
+
+<h2 style="text-align: justify;">Functions</h2>
+<p style="text-align: justify;">While useful, the above features still don't get very far beyond basic calculation needs. The one feature that turns Objective Caml into a highly expressive tool is <em>functions</em>. A function follows the mathematical tradition of being a mapping: it associates every element of a set with an element from another set. The element from the first set is the <em>argument</em>, and the element from the other set is the <em>return value</em>.</p>
+<p style="text-align: justify;">To call a function, you provide it with an argument and it is automatically turned into its return value for that argument. For example, the function "string_of_int" returns a bit of text representing an integer, so you could use it like so:</p>
+
+<pre style="text-align: justify; padding-left: 30px;">string_of_int 10</pre>
+This would evaluate to the text "10".
+
+How do we define functions? Well, we simply write an expression which uses the argument and evaluates to the return value. Of course, the function doesn't know the value of its argument until it's called. So, when we write the function's code code, we use a placeholder name to represent the argument: this variable is called the <em>parameter</em>, and it is replaced with the argument itself when the function is called. The syntax is:
+<pre style="padding-left: 30px;">fun <em>(parameter)</em> -&gt; <em>(expression)</em></pre>
+For instance, a function that adds two to a number can be defined as:
+<pre style="padding-left: 30px;">fun x -&gt; x + 2</pre>
+It is not very useful as such, so let's give it a name and call it:
+<pre style="padding-left: 30px;">let add = fun x -&gt; x + 2 ;;
+add 3 * add 4</pre>
+This evaluates to 5 * 6 = 30, and illustrates the main point of functions: they allow you to describe an operation once, and use it in many places simply by using the function's name.
+
+The Objective Caml language provides two shortcuts for defining functions. The first was designed to write functions that returns functions. Suppose that I write:
+<pre style="padding-left: 30px;">fun x -&gt; (fun y -&gt; x + y)</pre>
+This can be elegantly shortened to:
+<pre style="padding-left: 30px;">fun x y -&gt; x + y</pre>
+The second shortcut was designed to make the definition of named functions easier. Suppose that I write:
+<pre style="padding-left: 30px;">let add = fun x -&gt; x + 2</pre>
+This can be elegantly shortened to:
+<pre style="padding-left: 30px;">let add x = x + 2</pre>
+The two shortcuts can be combined, so that:
+<pre style="padding-left: 30px;">let add x y = x + y</pre>
+Means the same as:
+<pre style="padding-left: 30px;">let add = fun x -&gt; (fun y -&gt; x+y)</pre>
+You can see all the above (along with the general structure of the tutorial) on this <a href="/ocaml">page</a>.
+<p style="padding-left: 30px;"></p>
+<p style="padding-left: 30px;"></p>

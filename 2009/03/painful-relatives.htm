@@ -1,0 +1,20 @@
+@title Painful Relatives
+@draft
+
+It's hard to say which kind of path (relative, or absolute) was invented first. Did people first get the idea of a tree representation for information, where every node could be identified with a unique absolute path that started at the root? Or did they invent a nested dictionary structure where all data could be reached through a relative path from the currently active dictionary, and the root dictionary merely appeared because it had no parent?
+
+Either way, relative paths are painful, because you don't know what they will be relative to (if you include that information, you actually provide an absolute path). This leads to situations where the user expects a relative path to resolve to a certain absolute path, but it resolves to a different relative path instead—usually when you least expect it, because something changed the root path to something else.
+
+PHP include paths are a classic: you have two files within the same directory, A.php and B.php, and you wish for A.php to include B.php while it runs. You might be tempted to include("B.php"), which uses a relative path to refer to the file. That path is interpreted by PHP as being relative to its current list of include paths. So, if someone plays with the include paths, your code breaks. Even worse, include paths are per-execution, not per-file, meaning that if A.php is included from a somewhereelse/C.php, then it will go looking for somewhereelse/B.php insead of just B.php!
+
+Words cannot describe how annoying it can be to include a PHP file, and see that file screw up its own inclusions because it assumes something about the include paths. This has led to three main approaches:
+<ul>
+	<li>There's an implicit 'root' from which all files must be included, which is defined in some simple way (for instance, in software that has a single root index.php file, the directory in which the file is found is the root). To use the PHP files in that program, you have to use that root yourself. Annoying.</li>
+	<li>Every file in the program computes the root itself based on the knowledge of its own path relative to the root (usually as by heavy use of dirname and __FILE__), then explicitely prepends that root to any files it includes, thereby using absolute paths.</li>
+	<li>Files don't include other files. They rely to a central inclusion function (either explicitely or through class auto-loading) to seek and include files correctly). This can be very complicated if it relies on class auto-loading, since it will inevitably clash with your own use of that.</li>
+</ul>
+My take on the issue, both for PHP inclusion and as a general path-manipulation practice, is to <strong>always use absolute paths</strong>.
+
+The only reason why relative paths are useful is that they allow you to specify a path that has a prefix that can be configured somewhere else, instead of having to specify that prefix along with the rest of the path. You don't want to hard code '/home/nicollet/www' in a hundred places in your code, do you?
+
+Yet, I don't need to have relative paths to do this. I can solve this redundant element the old-fashioned way by creating a constant that equals the prefix and refering to the prefix by its name, not by its value. You would get an include(ROOT . "/index.php") instead of include("/home/nicollet/www/index.php"), solving both issues.

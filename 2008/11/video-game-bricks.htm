@@ -1,0 +1,82 @@
+@title Video Game Bricks
+@draft
+
+I don't believe in game engines. I tend to consider software development as the process of using existing bricks together with glue code to obtain the expect result, whereas engines provide the final result with the holes to be filled in. This is not to say that game engines are useless—countless situations can benefit from them. However, my approach to game development has always been to rely on frameworks and collections of helper and utility classes, perhaps due to my beginnings as a DirectDraw programmer.
+
+Objective Caml games do exist, even though they often <a href="http://www.cs.ubc.ca/%7Erbridson/personal/spiff/" target="_blank">lack</a> the backing of a full video game studio. Whether used as a prototyping tool or to develop the final product, I think the functional approach can benefit video game development. To that end, I regularly develop small bricks that can be useful for game development. All of the source code presented here is my own work, placed in the public domain.
+<h2>Vectors and Transforms</h2>
+Bidimensional vectors with supporting elementary mathematical operators:
+<blockquote>
+<pre style="background: #ffffff none repeat scroll 0% 50%; color: #000000;"><span style="color: #000084; font-weight: bold;">type</span> <span style="color: #000084; font-weight: bold;">vector</span> = { x : float; y : float } 
+
+<span style="color: #000084; font-weight: bold;">val</span> right : <span style="color: #000084; font-weight: bold;">vector</span>
+<span style="color: #000084; font-weight: bold;">val</span> up : <span style="color: #000084; font-weight: bold;">vector</span>
+<span style="color: #000084; font-weight: bold;">val</span> zero : <span style="color: #000084; font-weight: bold;">vector</span> 
+
+<span style="color: #000084; font-weight: bold;">val</span> equal : <span style="color: #000084; font-weight: bold;">vector</span> -&gt; <span style="color: #000084; font-weight: bold;">vector</span> -&gt; <span style="color: #000084; font-weight: bold;">bool</span> 
+
+<span style="color: #000084; font-weight: bold;">val</span> ( ++ ) : <span style="color: #000084; font-weight: bold;">vector</span> -&gt; <span style="color: #000084; font-weight: bold;">vector</span> -&gt; <span style="color: #000084; font-weight: bold;">vector</span>
+<span style="color: #000084; font-weight: bold;">val</span> ( -- ) : <span style="color: #000084; font-weight: bold;">vector</span> -&gt; <span style="color: #000084; font-weight: bold;">vector</span> -&gt; <span style="color: #000084; font-weight: bold;">vector</span>
+<span style="color: #000084; font-weight: bold;">val</span> ( *+ ) : float -&gt; <span style="color: #000084; font-weight: bold;">vector</span> -&gt; <span style="color: #000084; font-weight: bold;">vector</span> 
+
+<span style="color: #000084; font-weight: bold;">val</span> sqlen : <span style="color: #000084; font-weight: bold;">vector</span> -&gt; float
+<span style="color: #000084; font-weight: bold;">val</span> len : <span style="color: #000084; font-weight: bold;">vector</span> -&gt; float 
+
+<span style="color: #000084; font-weight: bold;">exception</span> ZeroVector
+<span style="color: #000084; font-weight: bold;">val</span> normalize : <span style="color: #000084; font-weight: bold;">vector</span> -&gt; <span style="color: #000084; font-weight: bold;">vector</span> 
+
+<span style="color: #000084; font-weight: bold;">val</span> dot : <span style="color: #000084; font-weight: bold;">vector</span> -&gt; <span style="color: #000084; font-weight: bold;">vector</span> -&gt; float</pre>
+</blockquote>
+The operators behave as expected. Equality and normalization work with a fixed epsilon of 1e-6. The total memory usage for a vector is 20 bytes (16 for the coordinates, 4 for internal usage), and they are manipulated by reference. Intermediary operations on vectors tend to be inlined, and intermediary values are garbage-collected when present.
+
+Bidimensional transforms and corresponding operations:
+<blockquote>
+<pre style="background: #ffffff none repeat scroll 0% 50%; color: #000000;"><span style="color: #000084; font-weight: bold;">type</span> transform 
+
+<span style="color: #000084; font-weight: bold;">val</span> identity   : transform
+<span style="color: #000084; font-weight: bold;">val</span> rotate     : transform -&gt; float -&gt; transform
+<span style="color: #000084; font-weight: bold;">val</span> scale      : transform -&gt; float -&gt; transform
+<span style="color: #000084; font-weight: bold;">val</span> translate  : transform -&gt; Vector.<span style="color: #000084; font-weight: bold;">vector</span> -&gt; transform 
+
+<span style="color: #000084; font-weight: bold;">type</span> transform_description =
+    {
+      angle    : float;
+      scale    : float;
+      position : Vector.<span style="color: #000084; font-weight: bold;">vector</span>
+    } 
+
+<span style="color: #000084; font-weight: bold;">val</span> make       : transform_description -&gt; transform
+<span style="color: #000084; font-weight: bold;">val</span> describe   : transform -&gt; transform_description 
+
+<span style="color: #000084; font-weight: bold;">val</span> apply      : transform -&gt; Vector.<span style="color: #000084; font-weight: bold;">vector</span> -&gt; Vector.<span style="color: #000084; font-weight: bold;">vector</span>
+<span style="color: #000084; font-weight: bold;">val</span> compose    : transform -&gt; transform -&gt; transform</pre>
+</blockquote>
+This type represents <a href="http://en.wikipedia.org/wiki/Similarity_%28geometry%29" target="_blank">similarities</a>. The total memory usage is 36 bytes (32 for the coordinates, 4 for internal usage), and they are manipulated by reference.
+
+Downloads:  <a href="http://www.nicollet.net/files/articles/video-game-bricks/vector.ml" target="_blank">vector.ml</a> <a href="http://www.nicollet.net/files/articles/video-game-bricks/vector.mli" target="_blank">vector.mli</a> <a href="http://www.nicollet.net/files/articles/video-game-bricks/transform.mli" target="_blank">transform.ml</a> <a href="http://www.nicollet.net/files/articles/video-game-bricks/transform.mli" target="_blank">transform.mli</a>
+<h2>Indexing</h2>
+When using functional programming, the aliasing problem makes it impossible to have several data structures directly reference a certain value without having to update all data structures when that value changes. A solution to that problem is to store indirect references instead: the value is stored in a single data structure and bound to a key. The other data structures do not reference the value, but rather "whatever the key is bound to". Meaning that changing the single data structure holding the value also implicitely updates the value for all other data structures.
+
+An indexing data structure provides exactly that: a way of binding a value to a key and retrieving it with that key. If no backtracks happen, then the following implementation performs all relevant operations in amortized constant time.
+<blockquote>
+<pre style="background: #ffffff none repeat scroll 0% 50%; color: #000000;"><span style="color: #000084; font-weight: bold;">type</span>         'a t
+<span style="color: #000084; font-weight: bold;">type</span>         handle
+<span style="color: #000084; font-weight: bold;">exception</span>    UnboundHandle 
+
+<span style="color: #000084; font-weight: bold;">val</span> empty  : <span style="color: #000084; font-weight: bold;">int</span> -&gt; 'a t 
+
+<span style="color: #000084; font-weight: bold;">val</span> add    : <span style="color: #0000ff;">'a -&gt; '</span>a t -&gt; 'a t * handle
+<span style="color: #000084; font-weight: bold;">val</span> remove : handle -&gt; <span style="color: #0000ff;">'a t -&gt; '</span>a t
+<span style="color: #000084; font-weight: bold;">val</span> get    : handle -&gt; <span style="color: #0000ff;">'a t -&gt; '</span>a 
+
+<span style="color: #000084; font-weight: bold;">val</span> map    : (<span style="color: #0000ff;">'a -&gt; '</span>b) -&gt; <span style="color: #0000ff;">'a t -&gt; '</span>b t
+<span style="color: #000084; font-weight: bold;">val</span> mapi   : (handle -&gt; <span style="color: #0000ff;">'a -&gt; '</span>b) -&gt; <span style="color: #0000ff;">'a t -&gt; '</span>b t
+<span style="color: #000084; font-weight: bold;">val</span> iter   : ('a -&gt; <span style="color: #000084; font-weight: bold;">unit</span>) -&gt; 'a t -&gt; <span style="color: #000084; font-weight: bold;">unit</span>
+<span style="color: #000084; font-weight: bold;">val</span> iteri  : (handle -&gt; 'a -&gt; <span style="color: #000084; font-weight: bold;">unit</span>) -&gt; 'a t -&gt; <span style="color: #000084; font-weight: bold;">unit</span>
+<span style="color: #000084; font-weight: bold;">val</span> fold   : (handle -&gt; <span style="color: #0000ff;">'a -&gt; '</span>b -&gt; <span style="color: #0000ff;">'b) -&gt; '</span>b -&gt; <span style="color: #0000ff;">'a t -&gt; '</span>b</pre>
+</blockquote>
+Note that "UnboundHandle" is not necessarily raised. If it is, then you know what happened. However, attempting to access a removed handle is, in the general case, undefined, and may return another value.
+
+You can also look for <a href="http://nicollet.net/blog/ocaml/53-persist" target="_blank">persistent arrays</a> for generic data storage.
+
+Downloads: <a href="http://www.nicollet.net/files/articles/video-game-bricks/assoc.ml" target="_blank">assoc.ml</a> <a href="http://www.nicollet.net/files/articles/video-game-bricks/assoc.mli" target="_blank">assoc.mli</a>

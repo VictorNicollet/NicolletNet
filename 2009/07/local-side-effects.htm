@@ -1,0 +1,110 @@
+@title Local side-effects
+@draft
+
+In pure functional languages, variables cannot be modified. In order to perform operations that imperative programmers achieve with variable modification, functional programmers perform re-assignment:
+<pre style="padding-left: 30px;">// Imperative
+x = sqrt(x);
+
+(* Functional *)
+let x = sqrt x in ...</pre>
+And in the case of a loop, they represent the loop body as a function that is called with different arguments, and the modified value is propagated through the calls as an argument:
+<pre style="padding-left: 30px;">// Imperative
+x = 0
+for (i = 0; i &lt; 10; ++i)
+  x += i;
+
+(* Functional *)
+let x = 0 in
+let rec loop i x =
+  if i = 10 then x else loop (i+1) (x+i)
+in
+let x = loop i x in ...</pre>
+So, can local modification of variables be allowed in a pure functional context through simple rewriting rules that turn the imperative constructs into their functional counterparts? Yes, although there are some limits.
+<h3>Simple assignments</h3>
+We know that there might be assignments within every expression (an assignment is an expression of the form <code>x ? &lt;V&gt; ; &lt;E&gt;</code>). The tactic used here is to turn every expression <code>&lt;E&gt;</code> into an expression of the form:
+<pre style="padding-left: 30px;">let [E'] in x1 ? v1 ; x2 ? v2 ... ; e</pre>
+such that no sub-expression within the "let ..." contains an assignment (and is therefore a plain old pure functional language expression) and only variable names appear after the "in ..." . This rewriting tactic is applied recursively : atomic expressions (those without sub-expressions) are trivially written as such, which leaves only the question of expressions with sub-expressions that have already been recursively turned into the above format.
+
+The key is to turn <code>op(&lt;A&gt;, &lt;B&gt;, &lt;C&gt;, &lt;D&gt;)</code> into:
+<pre style="padding-left: 30px;">let [A'] in
+let xa* = va* in
+let [B'] in
+let xb* = vb* in
+let [C'] in
+let xc* = vc* in
+let [D'] in
+let e = op(a,b,c,d) in
+xa1 ? va1 ; xa2 ? va2 ; ... xb1 ? vb1 ; ... ; e</pre>
+The order of the sub-expression is fixed (which means an order of evaluation has to be specified for every operation). Every expression computes all its values (including the asisgned ones) and the assignment is simulated using redefinition of the variable so that subsequent sub-expressions can "see" the modified variable. The actual assignments are then pushed to the end of the complete expression so that the recursive rewriting rule will see them from the superexpression above.
+
+Note that expressions which do not always evaluate all sub-expressions cannot be expressed as above. Fortunately, all such expressions can be rewritten as a conditional and expressions that evaluate all sub-expressions, and conditionals are evaluated above.
+
+Note that a lambda expression is considered to be an atomic expression here, so no propagation of assignment occurs from within the anonymous function to the surrounding context! This means (as expected) that the assignments are a purely local construct that cannot cross function barriers, so I simply remove them when they reach the top level to obtain a normal pure functional expression.
+
+This performs the transform:
+<pre style="padding-left: 30px;">(* Imperativeish *)
+let x = 3.14 in
+x ? sqrt x ; print_float x
+
+(* Functional *)
+let x = 3.14 in
+let v = sqrt x in
+let x = v in
+print_float x</pre>
+<h3>Loops and conditionals</h3>
+Loops, conditionals are special cases of block-based expressions. A block is a language construct that looks like a lambda expression (it gathers all values from the surrounding scope) and may be executed zero, one or several times. The main difference is that a block cannot be saved for later execution, it is always executed at a specified time. In short, a block is a <em>beta-redex</em>. Since we have the guarantee that the block is executed before the current context resumes, we can let it alter the state of the current context.
+
+For every block, I select a set of variables that the block may alter (although it does not necessarily do so). The block itself is syntactically an expression, so I can rewrite its internal assignments as above by moving them all to the top level of the expression. Then, I turn the block into a closure which takes as arguments the aforementioned set of variables, and returns a pair that contains the result of the expression and the final values (after assignment) of the set of variables. In short:
+<pre style="padding-left: 30px;">(* Imperativeish *)
+{
+  a ? 1 ;
+  b ? b + 2 ;
+  a + b
+}
+
+(* Functional *)
+fun (a,b,c) -&gt;
+  let a = 1 in
+  let b = b + 2 in
+  a + b, (a,b,c)</pre>
+I can add completely unused variables (like "c" above) to the set of variables simply because another branch of the construct (usually a conditional) may use that variable as well, and I need both blocks to be functions of the same type.
+
+Then, by transforming any blocks into functions, a conditional follows the rewriting rule :
+<pre style="padding-left: 30px;">(* Imperativeish *)
+let r = if cond then A else B in ...
+
+(* Functional *)
+let r, (a,b,c) = if c then A(a,b,c) else B(a,b,c) in ...</pre>
+Loops work in the same way :
+<pre style="padding-left: 30px;">(* Imperativeish *)
+while c do
+  A
+done ; ...
+
+(* Functional *)
+let rec loop (a,b,c) =
+  if c then
+    let _, (a,b,c) = A (a,b,c) in
+      loop (a,b,c)
+  else (a,b,c)
+in let (a,b,c) = loop (a,b,c) in ...</pre>
+<h3>Records</h3>
+All of the above only handles assignment to variables. What about assigning to records?
+
+It is of course impossible to alter a record held by someone else. However, if the record is stored in a local variable, then it is possible to change the local variable to take this into account.
+
+The rewriting rule is quite simple, and turns a complex assignment (assign to a record) into a less assignment recursively:
+<pre style="padding-left: 30px;">x.label ? y <strong>  becomes</strong>   x ? { x with label = y }
+var           <strong>remains the same</strong>
+<strong>anything else causes an error</strong></pre>
+So, this rule would perform the following transform:
+<pre style="padding-left: 30px;">(* Imperativeish *)
+x.owner.details.name ? boris ; ...
+
+(* Functional *)
+let x =
+  { x with owner =
+    { x.owner with details =
+      { x.owner.details with name = "boris"} } }
+in ...</pre>
+The same approach can be applied to most other assignment operations (array, string, hash table).

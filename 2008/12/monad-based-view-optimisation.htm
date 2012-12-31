@@ -1,0 +1,125 @@
+@title Monad-Based View Optimisation
+@draft
+
+There are two main execution models for web scripts. One model is to have the web server (apache, IIS) start a new instance of the script when a request for that script is found. The script then executes from beginning to end, performing its entire initialization, response and shutdown cycle. Caching may occur at both the bytecode level (to avoid parsing the source file several times) and explicitly in the code (querying a cache system for existing data). The other model is to have the web scripts run as a process in cooperation with the web server.
+
+In this other model, initialization is performed only once, and the data is then kept in memory, which allows more in-memory caching opportunities. For example, views.
+
+A <strong>view</strong> is a function which reads data and outputs a formatted document based on that data. Of course, language and design considerations might turn the view into an object or module, but the general concept of "data goes in, document comes out" remains constant in all situations. A "user profile" page would be a view for a social networking site, reading user data from the data model and writing it as a document.
+
+A <strong>view helper</strong> is a function which reads data and outputs a formatted sub-document—the main difference is that instead of being sent to the user directly, the view helper is instead incorporated into a document. That is, view helpers are used to help views render the data. For instance, a "friend" view helper would read the data for a single friend and output it both on the "user profile" and the "view all friends" pages.
+
+A simplistic illustration in Objective Caml (this language choice will be explained later on, although by reading the 'monad' word in the title you would have guessed that functional programming would be involved today):
+<blockquote>
+<pre style="background: #ffffff none repeat scroll 0% 50%; color: #000000;"><span style="color: #000084; font-weight: bold;">let</span> showFriend(friend) = 
+  print <span style="color: #0000ff;">"&lt;img src='/images/"</span>; 
+  print (User.id friend);
+  print <span style="color: #0000ff;">".png'/&gt;&lt;span&gt;"</span>; 
+  print (User.name friend); 
+  print <span style="color: #0000ff;">"&lt;/span&gt;"</span> 
+
+<span style="color: #000084; font-weight: bold;">let</span> showUserPage(user) = 
+  print <span style="color: #0000ff;">"&lt;html&gt;&lt;head&gt;&lt;title&gt;"</span>;  
+  print (User.name user);  
+  print <span style="color: #0000ff;">"&lt;/title&gt;&lt;/head&gt;&lt;body&gt;"</span>; 
+  print <span style="color: #0000ff;">"&lt;h2&gt;Friends ("</span>;  
+  print (string_of_int (List.length (User.friends user))); 
+  print <span style="color: #0000ff;">")&lt;/h2&gt;&lt;ul&gt;"</span>; 
+  List.iter      
+    (<span style="color: #000084; font-weight: bold;">fun</span> friend -&gt; 
+      print <span style="color: #0000ff;">"&lt;li&gt;"</span>; 
+      showFriend(friend);
+      print <span style="color: #0000ff;">"&lt;/li&gt;"</span>) 
+    (User.friends user);
+  print <span style="color: #0000ff;">"&lt;/ul&gt;&lt;/body&gt;&lt;/html&gt;"</span></pre>
+</blockquote>
+This is, of course, very simple. It's quite probable that a complex page could use hundreds of view helpers to further improve code reuse.
+
+There's a problem with this approach, however. If the logic is pushed to the extreme, a page will be composed of hundreds of function calls that each append a very small number of characters to the final document. This can reduce program performance because of multiple concatenation options.
+
+This limitation is already present in the simple example above: instead of printing a friend as <span style="font-family: courier new,courier;">"&lt;li&gt;&lt;img src='/images/", ".png'/&gt;&lt;span&gt;" and "&lt;/span&gt;&lt;/li&gt;"</span>, it prints the individual <span style="font-family: courier new,courier;">"&lt;li&gt;"</span> and <span style="font-family: courier new,courier;">"&lt;/li&gt;"</span> separated from the rest. The compiler can do nothing about this, because it has no reason to know that <span style="font-family: courier new,courier;">print "a"; print "b"</span> is equivalent to <span style="font-family: courier new,courier;">print "ab"</span>.
+<h1>Monads</h1>
+It's possible, however, to provide the compiler with this information: monads allow the programmer to represent a function with side-effects as a non-function type, which can then be pre-processed when the script is initialized so that it is always used in an optimized state.
+
+Let's consider the following situation:
+<ul>
+	<li>A view is something that reads data and outputs a document. It's not a function, but it can be converted to such a function after an optimization process.</li>
+	<li>The function "show" creates a view which outputs the passed string: <span style="font-family: courier new,courier;">show "text"</span> reads data and outputs <span style="font-family: courier new,courier;">"text"</span>.</li>
+	<li>The function "call" creates a view which calls a function on the passed data and outputs the result: <span style="font-family: courier new,courier;">call func</span> outputs <span style="font-family: courier new,courier;">func(data)</span>.</li>
+	<li>The operator "++" creates a view from two views. The two views are rendered with the same data one after another.</li>
+	<li>The function "foreach" creates a view which calls a function, then calls another function on every element in the returned data set, then concatenates the resulting views using "++".</li>
+</ul>
+Then, the above code will look like this:
+<blockquote>
+<pre style="background: #ffffff none repeat scroll 0% 50%; color: #000000;"><span style="color: #000084; font-weight: bold;">let</span> showFriend = 
+     show <span style="color: #0000ff;">"&lt;img src='/images/"</span> 
+  ++ call User.id 
+  ++ show <span style="color: #0000ff;">".png'/&gt;&lt;span&gt;"</span> 
+  ++ call User.name 
+  ++ show <span style="color: #0000ff;">"&lt;/span&gt;"</span> 
+
+<span style="color: #000084; font-weight: bold;">let</span> showUserPage = 
+     show <span style="color: #0000ff;">"&lt;html&gt;&lt;head&gt;&lt;title&gt;"</span>  
+  ++ call User.name 
+  ++ show <span style="color: #0000ff;">"&lt;/title&gt;&lt;/head&gt;&lt;body&gt;"</span> 
+  ++ show <span style="color: #0000ff;">"&lt;h2&gt;Friends ("</span>  
+  ++ call (<span style="color: #000084; font-weight: bold;">fun</span> user -&gt; string_of_int (List.length (User.friends user))) 
+  ++ show <span style="color: #0000ff;">")&lt;/h2&gt;&lt;ul&gt;"</span> 
+  ++ foreach User.friends 
+     (   show <span style="color: #0000ff;">"&lt;li&gt;"</span> 
+      ++ showFriend 
+      ++ show <span style="color: #0000ff;">"&lt;/li&gt;"</span> ) 
+  ++ show <span style="color: #0000ff;">"&lt;/ul&gt;&lt;/body&gt;&lt;/html&gt;"</span></pre>
+</blockquote>
+Notice how <span style="font-family: courier new,courier;">foreach </span>looks idiomatic and quite similar to typical imperative languages, and how <span style="font-family: courier new,courier;">showFriend </span>is used just like any other view. Now, both showFriend and showUserPage are values, not functions, so they are evaluated at initialization time instead of every time they are called. This makes it possible to optimize things as necessary once and for all.
+
+A non-optimized version of the above would simply perform concatenation:
+<blockquote>
+<pre style="background: #ffffff none repeat scroll 0% 50%; color: #000000;"><span style="color: #000084; font-weight: bold;">let</span> (++)    f g x = f x ^ g x 
+<span style="color: #000084; font-weight: bold;">let</span> show      s x = s 
+<span style="color: #000084; font-weight: bold;">let</span> call      f x = f x 
+<span style="color: #000084; font-weight: bold;">let</span> foreach l f x = String.concat <span style="color: #0000ff;">""</span> (List.map (l x) f)</pre>
+</blockquote>
+An optimized version could use a complex type: a view is a list of things to print, and consecutive "show a constant string" instructions can be collapsed through concatenation at initialization time.
+<blockquote>
+<pre style="background: #ffffff none repeat scroll 0% 50%; color: #000000;"><span style="color: #000084; font-weight: bold;">type</span> instr =  
+  | S <span style="color: #000084; font-weight: bold;">of</span> <span style="color: #000084; font-weight: bold;">string</span>  
+  | C <span style="color: #000084; font-weight: bold;">of</span> (data -&gt; <span style="color: #000084; font-weight: bold;">string</span>)  
+  | F <span style="color: #000084; font-weight: bold;">of</span> (data -&gt; data <span style="color: #000084; font-weight: bold;">list</span>) * instr 
+
+<span style="color: #000084; font-weight: bold;">let</span> (++) f g =  
+  List.fold_right (<span style="color: #000084; font-weight: bold;">fun</span> instr acc -&gt; 
+    <span style="color: #000084; font-weight: bold;">match</span> instr, acc <span style="color: #000084; font-weight: bold;">with</span>  
+      | S a, S b::t -&gt; S (a^b)::t 
+      | i  , a      -&gt; i :: a) f g 
+
+<span style="color: #000084; font-weight: bold;">let</span> show s = [C s] 
+<span style="color: #000084; font-weight: bold;">let</span> call f = [V f] 
+<span style="color: #000084; font-weight: bold;">let</span> foreach l f = [F (l,f)] 
+
+<span style="color: #000084; font-weight: bold;">let</span> <span style="color: #000084; font-weight: bold;">rec</span> render v x =  
+  List.iter (<span style="color: #000084; font-weight: bold;">function</span>   
+    | S s     -&gt; print s 
+    | C f     -&gt; print (f x) 
+    | F (l,f) -&gt; List.iter (render f) (l x)) v</pre>
+</blockquote>
+Since the "++" concatenation function collapses consecutive constants, the two views above would look like this:
+<blockquote>
+<pre>[S "&lt;img src='/images"; 
+ C User.id; 
+ S ".png'/&gt;&lt;span&gt;"; 
+ C User.name; 
+ S "&lt;/span&gt;"]</pre>
+<pre>[S "&lt;html&gt;&lt;head&gt;&lt;title&gt;"; 
+ C user.name; 
+ S "&lt;/title&gt;&lt;/head&gt;&lt;body&gt;&lt;h2&gt;Friends ("; 
+ C (fun user -&gt; string_of_int (List.length (User.friends user)); 
+ S ")&lt;/h2&gt;&lt;ul&gt;";
+ F (User.friends, [S "&lt;li&gt;&lt;img src='/images"; 
+                   C User.id; 
+                   S ".png'/&gt;&lt;span&gt;"; 
+                   C User.name; 
+                   S "&lt;/span&gt;&lt;/li&gt;"]);
+ S "&lt;/ul&gt;&lt;/body&gt;&lt;/html&gt;"]</pre>
+</blockquote>
+So, the definition of the friends view has been inlined in the user view, and the constant <span style="font-family: courier new,courier;">"&lt;li&gt;"</span> and <span style="font-family: courier new,courier;">"&lt;/li&gt;"</span> have been collapsed.

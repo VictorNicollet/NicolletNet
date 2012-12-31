@@ -1,0 +1,83 @@
+@title PHP Dynamic Method Definitions
+@draft
+
+I recently stumbled across a quite old <a href="http://advogato.org/article/470.html" target="_blank">post</a> about using mixins in PHP. It observes that calling a member function within another member function of another object is possible, and runs that function with the <em>$this</em> variable of the other. Like so:
+<pre style="padding-left: 30px;">class Alpha {
+  function called() { echo $this -&gt; _beta; }
+}
+
+class Beta {
+  var $_beta = "Hello!";
+  function caller() { Alpha::called(); }
+}
+
+$beta = new Beta();
+$beta -&gt; caller();</pre>
+This example displays "Hello!" by using the <em>$beta</em> object as the <em>$this</em> variable in <em>Alpha::called</em>. The author of the post then wants to achieve something similar to this:
+<pre style="padding-left: 30px;">class Beta {
+  var $_beta;
+}
+
+$beta = new Beta();
+mixin($beta, Alpha);
+$beta -&gt; called();</pre>
+The <em>mixin</em> call would insert all functions from class <em>Alpha</em> into class <em>Beta</em>, thereby allowing a direct call to <em>called</em> despite it never being defined in <em>Beta</em>. If you will, the mixin behaves like importing all the functions from a class into another. And unlike inheritance, it works dynamically.
+
+Except that there's no way in PHP (as of 5.2, at least) to add a function to an object. The details of why it's impossible are complex (and can be summarized as "whatever your approach, there will be a problem that cannot be worked around"). Therefore, adding functions to objects is mostly a matter of choosing the approach that has the most acceptable problem.
+
+My choice is to have classes extend a certain base class before they can receive functions dynamically. This class looks mostly like this:
+<pre style="padding-left: 30px;">class Dynamic
+{
+  function __call($func, $args)
+  {
+    $func = strtolower($func);
+    $assoc = $this -&gt; funcs[$func];
+    if (is_object($assoc))
+      return call_user_func_array(array($assoc,$func), $args);
+    if (!isset($assoc)) $assoc = get_class($this);
+    $argarr = array();
+    $keys = array_keys($args);
+    foreach ($keys as $id =&gt; $key)
+      $argarr[] = '$args[$keys['.$id.']]';
+    $argstr = implode($argarr, ",");
+    return eval("return $assoc::$func($argstr);");
+  }
+
+  function import($arg1, $arg2=null)
+  {
+    assert (is_object($arg1) || class_exists($arg1));
+    if (isset($arg2))
+      $this -&gt; funcs[strtolower($arg2)] = $arg1;
+    else
+      foreach (get_class_methods($arg1) as $method)
+        $this -&gt; funcs[strtolower($method)] = $arg1;
+  }
+}</pre>
+Any errors are left to the reader as an exercise ;) This code allows you to add functions from other objects, and functions from other classes, to your class:
+<pre style="padding-left: 30px;">class Alpha
+{
+  var $_value = "Alpha";
+  function show() { echo $this -&gt; _value; }
+}
+
+class Beta extends Dynamic
+{
+  var $_value = "Beta";
+}
+
+$alpha = new Alpha();
+$beta = new Beta();
+
+$beta -&gt; import(Alpha); // or (Alpha, show)
+$beta -&gt; show();        // "Beta"
+
+$beta -&gt; import($alpha); // or ($alpha, show)
+$beta -&gt; show();         // "Alpha"</pre>
+If you import an object, then all its functions are installed into the dynamic object, and calling these functions actually calls the functions on the imported object. Similarly, if you import a class, then all its functions are installed into the dynamic object, but calling them will run them on the dynamic object. And you may add a second argument to only load a single function from the object or class, instead of loading them all.
+
+Two important things to notice here:
+<ul>
+	<li>You can't override <em>__call</em> in classes that extend Dynamic. Unless, of course, you forward the call to the parent class if you cannot handle it.</li>
+	<li>Functions defined directly in the class, as well as those handled by its <em>__call</em> function (if any) are never overridden by importing. You can only override functions that don't exist (or were imported from somewhere else).</li>
+</ul>
+Enjoy! I hereby place all this code in the public domain.

@@ -1,0 +1,61 @@
+@title CSS Indentation Trick
+@draft
+
+While reading a Wordpress stylesheet recently, I stumbled upon an interesting way to nest CSS selectors and their associated rules. To illustrate, here's a <a href="http://css.maxdesign.com.au/listamatic/" target="_blank">listamatic</a> example of list stylesheet:
+<pre style="background: #ffffff none repeat scroll 0% 0%; color: #000000; padding-left: 30px;"><span style="color:#800000; font-weight:bold; ">ul</span><span style="color:#808030; ">#</span>navlist
+<span style="color:#800080; ">{</span>
+<span style="color:#bb7977; font-weight:bold; ">margin</span><span style="color:#808030; ">:</span> <span style="color:#008c00; ">0</span> <span style="color:#008c00; ">0</span> <span style="color:#008c00; ">0</span> <span style="color:#008c00; ">30</span><span style="color:#006600; ">px</span><span style="color:#800080; ">;</span>
+<span style="color:#bb7977; font-weight:bold; ">padding</span><span style="color:#808030; ">:</span> <span style="color:#008c00; ">0</span><span style="color:#800080; ">;</span>
+<span style="color:#bb7977; font-weight:bold; ">width</span><span style="color:#808030; ">:</span> <span style="color:#008c00; ">12.5</span><span style="color:#006600; ">%</span><span style="color:#800080; ">;</span>
+<span style="color:#800080; ">}</span>
+
+<span style="color:#808030; ">#</span>navlist <span style="color:#800000; font-weight:bold; ">li</span>
+<span style="color:#800080; ">{</span>
+<span style="color:#bb7977; font-weight:bold; ">list-style-type</span><span style="color:#808030; ">:</span> <span style="color:#074726; ">none</span><span style="color:#800080; ">;</span>
+<span style="color:#bb7977; font-weight:bold; ">background-color</span><span style="color:#808030; ">:</span> <span style="color:#008c00; ">#</span><span style="color:#008000; ">191970</span><span style="color:#800080; ">;</span>
+<span style="color:#bb7977; font-weight:bold; ">color</span><span style="color:#808030; ">:</span> <span style="color:#008c00; ">#</span><span style="color:#008000; ">daa520</span><span style="color:#800080; ">;</span>
+<span style="color:#bb7977; font-weight:bold; ">border</span><span style="color:#808030; ">:</span> <span style="color:#008c00; ">.2</span><span style="color:#006600; ">em</span> <span style="color:#074726; ">solid</span> <span style="color:#008c00; ">#</span><span style="color:#008000; ">daa520</span><span style="color:#800080; ">;</span>
+<span style="color:#bb7977; font-weight:bold; ">font-weight</span><span style="color:#808030; ">:</span> <span style="color:#008c00; ">600</span><span style="color:#800080; ">;</span>
+<span style="color:#bb7977; font-weight:bold; ">text-align</span><span style="color:#808030; ">:</span> <span style="color:#074726; ">center</span><span style="color:#800080; ">;</span>
+<span style="color:#bb7977; font-weight:bold; ">padding</span><span style="color:#808030; ">:</span> <span style="color:#008c00; ">.3</span><span style="color:#006600; ">em</span><span style="color:#800080; ">;</span>
+<span style="color:#bb7977; font-weight:bold; ">margin-bottom</span><span style="color:#808030; ">:</span> <span style="color:#008c00; ">.1</span><span style="color:#006600; ">em</span><span style="color:#800080; ">;</span>
+<span style="color:#800080; ">}</span>
+
+<span style="color:#808030; ">#</span>navlist <span style="color:#800000; font-weight:bold; ">li</span> <span style="color:#800000; font-weight:bold; ">a</span>
+<span style="color:#800080; ">{</span>
+<span style="color:#bb7977; font-weight:bold; ">color</span><span style="color:#808030; ">:</span> <span style="color:#008c00; ">#</span><span style="color:#008000; ">daa520</span><span style="color:#800080; ">;</span>
+<span style="color:#bb7977; font-weight:bold; ">text-decoration</span><span style="color:#808030; ">:</span> <span style="color:#074726; ">none</span><span style="color:#800080; ">;</span>
+<span style="color:#bb7977; font-weight:bold; ">display</span><span style="color:#808030; ">:</span> <span style="color:#074726; ">block</span><span style="color:#800080; ">;</span>
+<span style="color:#800080; ">}</span>
+
+<span style="color:#808030; ">#</span>navlist <span style="color:#800000; font-weight:bold; ">li</span> <span style="color:#800000; font-weight:bold; ">a</span><span style="color:#800080; ">:</span><span style="color:#800000; font-weight:bold; ">hover</span>
+<span style="color:#800080; ">{</span>
+<span style="color:#bb7977; font-weight:bold; ">background-color</span><span style="color:#808030; ">:</span> <span style="color:#008c00; ">#</span><span style="color:#008000; ">faebd7</span><span style="color:#800080; ">;</span>
+<span style="color:#bb7977; font-weight:bold; ">color</span><span style="color:#808030; ">:</span> <span style="color:#008c00; ">#</span><span style="color:#008000; ">191970</span><span style="color:#800080; ">;</span>
+<span style="color:#800080; ">}</span></pre>
+And here's the reindented version:
+<pre style="background: #ffffff none repeat scroll 0% 0%; color: #000000; padding-left: 30px;"><span style="color:#800000; font-weight:bold; ">ul</span><span style="color:#808030; ">#</span>navlist <span style="color:#800080; ">{</span>
+  <span style="color:#bb7977; font-weight:bold; ">margin</span><span style="color:#808030; ">:</span> <span style="color:#008c00; ">0</span> <span style="color:#008c00; ">0</span> <span style="color:#008c00; ">0</span> <span style="color:#008c00; ">30</span><span style="color:#006600; ">px</span><span style="color:#800080; ">;</span>
+  <span style="color:#bb7977; font-weight:bold; ">padding</span><span style="color:#808030; ">:</span> <span style="color:#008c00; ">0</span><span style="color:#800080; ">;</span>
+  <span style="color:#bb7977; font-weight:bold; ">width</span><span style="color:#808030; ">:</span> <span style="color:#008c00; ">12.5</span><span style="color:#006600; ">%</span><span style="color:#800080; ">;</span>
+<span style="color:#800080; ">}</span>
+  <span style="color:#808030; ">#</span>navlist <span style="color:#800000; font-weight:bold; ">li</span> <span style="color:#800080; ">{</span>
+    <span style="color:#bb7977; font-weight:bold; ">list-style-type</span><span style="color:#808030; ">:</span> <span style="color:#074726; ">none</span><span style="color:#800080; ">;</span>
+    <span style="color:#bb7977; font-weight:bold; ">background-color</span><span style="color:#808030; ">:</span> <span style="color:#008c00; ">#</span><span style="color:#008000; ">191970</span><span style="color:#800080; ">;</span>
+    <span style="color:#bb7977; font-weight:bold; ">color</span><span style="color:#808030; ">:</span> <span style="color:#008c00; ">#</span><span style="color:#008000; ">daa520</span><span style="color:#800080; ">;</span>
+    <span style="color:#bb7977; font-weight:bold; ">border</span><span style="color:#808030; ">:</span> <span style="color:#008c00; ">.2</span><span style="color:#006600; ">em</span> <span style="color:#074726; ">solid</span> <span style="color:#008c00; ">#</span><span style="color:#008000; ">daa520</span><span style="color:#800080; ">;</span>
+    <span style="color:#bb7977; font-weight:bold; ">font-weight</span><span style="color:#808030; ">:</span> <span style="color:#008c00; ">600</span><span style="color:#800080; ">;</span>
+    <span style="color:#bb7977; font-weight:bold; ">text-align</span><span style="color:#808030; ">:</span> <span style="color:#074726; ">center</span><span style="color:#800080; ">;</span>
+    <span style="color:#bb7977; font-weight:bold; ">padding</span><span style="color:#808030; ">:</span> <span style="color:#008c00; ">.3</span><span style="color:#006600; ">em</span><span style="color:#800080; ">;</span>
+    <span style="color:#bb7977; font-weight:bold; ">margin-bottom</span><span style="color:#808030; ">:</span> <span style="color:#008c00; ">.1</span><span style="color:#006600; ">em</span><span style="color:#800080; ">;</span>
+  <span style="color:#800080; ">}</span>
+    <span style="color:#808030; ">#</span>navlist <span style="color:#800000; font-weight:bold; ">li</span> <span style="color:#800000; font-weight:bold; ">a</span> <span style="color:#800080; ">{</span>
+      <span style="color:#bb7977; font-weight:bold; ">color</span><span style="color:#808030; ">:</span> <span style="color:#008c00; ">#</span><span style="color:#008000; ">daa520</span><span style="color:#800080; ">;</span>
+      <span style="color:#bb7977; font-weight:bold; ">text-decoration</span><span style="color:#808030; ">:</span> <span style="color:#074726; ">none</span><span style="color:#800080; ">;</span>
+      <span style="color:#bb7977; font-weight:bold; ">display</span><span style="color:#808030; ">:</span> <span style="color:#074726; ">block</span><span style="color:#800080; ">;</span>
+    <span style="color:#800080; ">}</span>
+    <span style="color:#808030; ">#</span>navlist <span style="color:#800000; font-weight:bold; ">li</span> <span style="color:#800000; font-weight:bold; ">a</span><span style="color:#800080; ">:</span><span style="color:#800000; font-weight:bold; ">hover</span> <span style="color:#800080; ">{</span>
+      <span style="color:#bb7977; font-weight:bold; ">background-color</span><span style="color:#808030; ">:</span> <span style="color:#008c00; ">#</span><span style="color:#008000; ">faebd7</span><span style="color:#800080; ">;</span>
+      <span style="color:#bb7977; font-weight:bold; ">color</span><span style="color:#808030; ">:</span> <span style="color:#008c00; ">#</span><span style="color:#008000; ">191970</span><span style="color:#800080; ">;</span>
+    <span style="color:#800080; ">}</span></pre>
+The idea is to combine the common prefixes in selectors as branches of a tree, and then indent each node of the tree by its depth in the tree (and place it right below its parent node or elder sibling). From what I gather, the position of the braces varies depending on personal styles, but the basic indentation rules apply as such.

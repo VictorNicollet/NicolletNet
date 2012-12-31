@@ -1,0 +1,24 @@
+@title No Wheat Please
+@draft
+
+Yesterday evening, while I dined at the traditional Japanese restaurant <a href="http://maps.google.com/maps?q=higuma+paris" target="_blank">Higuma</a>, I overheard a conversation a few tables away between a waiter and two guests.
+
+One of the guests wanted to eat something without wheat—I couldn't catch the exact reason—and the quick question turned into a long discussion of what wheat-less dish could be served at that restaurant. The question could seem an obvious one: a serving of sashimi (raw fish) shouldn't contain any wheat.
+
+Except that Higuma does not serve fish: it serves ramen (fried or normal noodles) and donburi (bowls of rice covered with pork, beef, chicken, egg, onion or ginger). Still, there must be some dish among these that doesn't use any kind of wheat... or is there?
+<p style="text-align: left;"><img class="aligncenter" title="Soy Sauce Flickr courtesy of dmuth " src="/images/no-wheat-please.jpg" alt="" width="500" height="375" /></p>
+<p style="text-align: left;">Both ramen and donburi contain meat. All meat is cooked in soy sauce. And soy sauce contains wheat. besides, the dishes are often served with some sauce based on soy sauce anyway. This doesn't leave much room for dishes without wheat—I think the only one was cantonese rice (<em>sans</em> meat).</p>
+<p style="text-align: left;">This must be what <a href="http://en.wikipedia.org/wiki/Peanut_allergy" target="_blank">peanut allergy</a> feels like.</p>
+
+<h2 style="text-align: left;">A sprinkle of Logging</h2>
+Don't spill your soy sauce everywhere. The problem in the restaurant was that one couldn't get anything to eat without having to eat wheat—in software engineering terms, there's strong coupling between wheat and food. The same happens wherever strong coupling appears: nobody can use a module without also having to handle an entire heap of other modules along with it.
+
+Every reasonaby encapsulated piece of code in a program has three kinds of dependencies. <em></em>
+<ul>
+	<li><em>Internal </em>dependencies are those dependencies that are required for the module to work, but don't require user intervention beyond simply adding them to a project. These can be annoying at setup time, but they cause no problems when developing or maintaining a project because they don't leak out of the module.</li>
+	<li><em>Public</em> dependencies are part of the module's public interface, either explicitly (a function returns a 2D vector, therefore the module has a public dependency on 2D vectors) or implicitly (a function accesses the JAVA_HOME environment variable, therefore the module has a public dependency on that environment variable). These are annoying, because whenever one needs to work with the module, one also needs to take care of its public dependencies in the user code.</li>
+	<li><em>Parametric</em> dependencies are specified for the module when it's created or used. For instance, a serialization function depends neither on write-to-disk nor on write-to-socket code, but can use either when provided with them. These are the most flexible, but can also become annoying if there's a lot of parametrization to be done before a module can be used.</li>
+</ul>
+All three are problematic (after all, the mere fact that you have to write code is a problem: ideally, you'd just install and configure an already-written piece of software), but some are more than others.
+
+A global piece of state is a communication channel. As with all communication channels, it can be used anonymously (the receiver does not know who the sender is) or not (the receiver makes some assumptions about the sender).  The former is good, the latter is bad: when the receiver needs to assume things about the sender, strong coupling occurs which prevents the receiver from working independently or with other senders.

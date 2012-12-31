@@ -1,0 +1,64 @@
+@title chain()
+@draft
+
+Like many other languages, PHP is home to <a href="http://www.talkphp.com/advanced-php-programming/1163-php5-method-chaining.html" target="_blank">method chaining</a>, a pattern that allows writing several mutators on the same object without having to name it more than once. A typical example can be found in the Zend Framework for configuration of <a href="http://framework.zend.com/manual/en/zend.mail.html" target="_blank">e-mails</a>, among other things :
+<blockquote>
+<pre>$mail = new Zend_Mail();
+$mail -&gt; setBodyText('This is the text of the mail.')
+      -&gt; setFrom('somebody@example.com', 'Some Sender')
+      -&gt; addTo('somebody_else@example.com', 'Some Recipient')
+      -&gt; setSubject('TestSubject');</pre>
+</blockquote>
+This is a very simple trick that is accomplished by having every mutator return the object itself.
+However, the PHP syntax rules forbid calling a member function on the result of a new-expression, so that you always require a two-step sequence: initialize the object, then call its chain of mutators.
+
+Of course, a simple solution is to use a function:
+<pre><code><span style="color: #000000;"><span style="color: #0000bb;"> </span><span style="color: #007700;">function </span><span style="color: #0000bb;">chain</span><span style="color: #007700;">(</span><span style="color: #0000bb;">$obj</span><span style="color: #007700;">) { return </span><span style="color: #0000bb;">$obj</span><span style="color: #007700;">; }
+
+ </span><span style="color: #0000bb;">$mail </span><span style="color: #007700;">= </span><span style="color: #0000bb;">chain</span><span style="color: #007700;">(new </span><span style="color: #0000bb;">Zend_Mail</span><span style="color: #007700;">())
+   -&gt; </span><span style="color: #0000bb;">setBodyText</span><span style="color: #007700;">(</span><span style="color: #dd0000;">'This is the text of the mail.'</span><span style="color: #007700;">)
+   -&gt; </span><span style="color: #0000bb;">setFrom</span><span style="color: #007700;">(</span><span style="color: #dd0000;">'somebody@example.com'</span><span style="color: #007700;">, </span><span style="color: #dd0000;">'Some Sender'</span><span style="color: #007700;">)
+   -&gt; </span><span style="color: #0000bb;">addTo</span><span style="color: #007700;">(</span><span style="color: #dd0000;">'somebody_else@example.com'</span><span style="color: #007700;">, </span><span style="color: #dd0000;">'Some Recipient'</span><span style="color: #007700;">)
+   -&gt; </span><span style="color: #0000bb;">setSubject</span><span style="color: #007700;">(</span><span style="color: #dd0000;">'TestSubject'</span><span style="color: #007700;">);
+</span></span></code></pre>
+In a similar vein, there's the matter of using the method chaining pattern on objects that were not designed for that. This is where a quick wrapper can come in handy:
+<pre><code><span style="color: #000000;"><span style="color: #0000bb;"> </span><span style="color: #ff8000;">// Define the appropriate class and function
+ </span><span style="color: #007700;">class </span><span style="color: #0000bb;">WithWrapper
+ </span><span style="color: #007700;">{
+   public </span><span style="color: #0000bb;">$value</span><span style="color: #007700;">;
+   public function </span><span style="color: #0000bb;">__construct</span><span style="color: #007700;">(</span><span style="color: #0000bb;">$obj</span><span style="color: #007700;">) {
+     </span><span style="color: #0000bb;">$this </span><span style="color: #007700;">-&gt; </span><span style="color: #0000bb;">value </span><span style="color: #007700;">= </span><span style="color: #0000bb;">$obj</span><span style="color: #007700;">;
+   }
+   public function </span><span style="color: #0000bb;">__call</span><span style="color: #007700;">(</span><span style="color: #0000bb;">$name</span><span style="color: #007700;">, </span><span style="color: #0000bb;">$args</span><span style="color: #007700;">) {
+     </span><span style="color: #0000bb;"><a title="Open the PHP manual for assert" href="http://www.php.net/assert" target="_blank"><strong>assert</strong></a></span><span style="color: #007700;"> (</span><span style="color: #0000bb;"><a title="Open the PHP manual for count" href="http://www.php.net/count" target="_blank"><strong>count</strong></a></span><span style="color: #007700;">(</span><span style="color: #0000bb;">$args</span><span style="color: #007700;">) === </span><span style="color: #0000bb;">1</span><span style="color: #007700;">);
+     </span><span style="color: #0000bb;">$this</span><span style="color: #007700;"> -&gt; </span><span style="color: #0000bb;">value </span><span style="color: #007700;">-&gt; </span><span style="color: #0000bb;">$name </span><span style="color: #007700;">= </span><span style="color: #0000bb;">$args</span><span style="color: #007700;">[</span><span style="color: #0000bb;">0</span><span style="color: #007700;">];
+     return </span><span style="color: #0000bb;">$this</span><span style="color: #007700;">;
+   }
+ }
+
+ function </span><span style="color: #0000bb;">with</span><span style="color: #007700;">(</span><span style="color: #0000bb;">$obj</span><span style="color: #007700;">) {
+   return new </span><span style="color: #0000bb;">WithWrapper</span><span style="color: #007700;">(</span><span style="color: #0000bb;">$obj</span><span style="color: #007700;">);
+ }
+
+ </span><span style="color: #ff8000;">// A typical record class
+ </span><span style="color: #007700;">class </span><span style="color: #0000bb;">Person
+ </span><span style="color: #007700;">{
+   var </span><span style="color: #0000bb;">$age</span><span style="color: #007700;">;
+   var </span><span style="color: #0000bb;">$firstName</span><span style="color: #007700;">;
+   var </span><span style="color: #0000bb;">$lastName</span><span style="color: #007700;">;
+   var </span><span style="color: #0000bb;">$married</span><span style="color: #007700;">;
+ }
+
+ </span><span style="color: #ff8000;">// Create entry for Jane
+ </span><span style="color: #0000bb;">$jane </span><span style="color: #007700;">= </span><span style="color: #0000bb;">with</span><span style="color: #007700;">(new </span><span style="color: #0000bb;">Person</span><span style="color: #007700;">())
+   -&gt; </span><span style="color: #0000bb;">age</span><span style="color: #007700;">(</span><span style="color: #0000bb;">24</span><span style="color: #007700;">)
+   -&gt; </span><span style="color: #0000bb;">firstName</span><span style="color: #007700;">(</span><span style="color: #dd0000;">"Jane"</span><span style="color: #007700;">)
+   -&gt;</span><span style="color: #0000bb;"> lastName</span><span style="color: #007700;">(</span><span style="color: #dd0000;">"Smith"</span><span style="color: #007700;">)
+   -&gt; </span><span style="color: #0000bb;">married</span><span style="color: #007700;">(</span><span style="color: #0000bb;">false</span><span style="color: #007700;">)
+   -&gt; </span><span style="color: #0000bb;">value</span><span style="color: #007700;">;
+
+ </span><span style="color: #ff8000;">// Jane gets married
+ </span><span style="color: #0000bb;">with</span><span style="color: #007700;">(</span><span style="color: #0000bb;">$jane</span><span style="color: #007700;">)
+   -&gt; </span><span style="color: #0000bb;">lastName</span><span style="color: #007700;">(</span><span style="color: #dd0000;">"Brown"</span><span style="color: #007700;">)
+   -&gt; </span><span style="color: #0000bb;">married</span><span style="color: #007700;">(</span></span></code><code><span style="color: #000000;"><span style="color: #0000bb;">false</span></span></code><code><span style="color: #000000;"><span style="color: #007700;">);</span></span></code></pre>
+This is starting to look like <a href="http://msdn.microsoft.com/en-us/library/wc500chb(VS.80).aspx" target="_blank">Visual Basic</a>...

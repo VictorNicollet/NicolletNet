@@ -1,0 +1,16 @@
+@title Information Flow
+@draft
+
+The real world is a complex place. When writing software that has to interact with the real world, there are literally thousands of concepts you have to master and tens of thousands of details you have to be aware of, or you will paint yourself into a corner where your software clashes with reality. <em>And reality always wins</em>.
+
+Understanding concepts and details is a fundamental part of a project's time budget, whether they come from the project requirements, real-world constraints, third party code or teammates. Every time information goes around in a project, it uses up valuable time, and to keep the time budget tight it becomes necessary to decide <em>what</em> information should be allowed to go around, and <em>where</em>.
+
+Working on concurrent systems is an enlightening experience, because of the many similarities between an array of computers and a team of information workers. Computers arrays have latency issues when one thread depends on another thread to be done...
+<blockquote>“When do you think your settings import module will be done? I'm stuck on the payment API until I can load those settings!„</blockquote>
+...they have bandwidth issues and manipulating some data yourself is usually faster than sending the data to another part of the cluster for treatment...
+<blockquote>“The User object? Well, it's a bit of a weird design, but it's rather clever. I'll draw you a quick UML sketch on the blackboard so you can see what the five helper classes do.„</blockquote>
+...they have to avoid data loss if a computer or network is down...
+<blockquote>“I have no idea how this stored procedure works, you should ask Tim, he's the one who wrote it. He's in southern France right now but I think he'll be back next month.„</blockquote>
+... and they have to handle a directory of parts and a garbage collector for data...
+<blockquote>“Wait, nobody's written the comment moderation back-office! Who was in charge of doing it? Who wrote the comments front-end anyway?„</blockquote>
+There are algorithms, strategies and techniques for handling and optimizing those things. Many of these can be adapted to humans, with the added benefit that, humans being smart, they can understand the point of those algorithms and compensate for minor flaws if the plan isn't perfect.

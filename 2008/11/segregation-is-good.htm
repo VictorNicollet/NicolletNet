@@ -1,0 +1,75 @@
+@title Segregation is Good
+@draft
+
+As a frequent reader of the <a href="http://www.gamedev.net/" target="_blank">gamedev.net</a> game development forums, I often notice that most beginner and intermediate developers start designing the architecture of their game by deciding on a base class from which all game objects will inherit, and storing a list of these objects. The justifications given are usually that:
+<ul>
+	<li>It's Object Oriented.</li>
+	<li>Inheriting from a base class allows code reuse.</li>
+</ul>
+The most appealing advantage of the "base class everything inherits from" approach is that it provides the illusion of a solid design foundation (that is essential to the "getting things done" feeling that motivates many of us) without requiring a lot of thought. All that is to be done is to slap together a few functions into a base class (usually plagiarized from one of the many tutorials available on the web) and then start inheriting.
+<h2>The Issues</h2>
+The naive approach to the base class solution can be summarized as this:
+<blockquote>
+<pre style="background: #ffffff none repeat scroll 0% 50%; color: #000000;"><span style="color: #000084; font-weight: bold;">interface</span> BaseObject 
+{ 
+  <span style="color: #000084; font-weight: bold;">void</span> render(); 
+  <span style="color: #000084; font-weight: bold;">void</span> update(); 
+}</pre>
+</blockquote>
+In theory, this interface seems to do everything required: after all, every object will have to update its state, and every frame it shall render itself to the screen. In practice, however, this approach leads to two serious issues:
+<ul>
+	<li>Not all objects are both updated and rendered. For instance, a script or a trigger cannot be rendered, but they still have to be regularly updated. The least that could be done here is to separate the rendering side of things from the update side.</li>
+</ul>
+<ul>
+	<li>Sometimes, updating requires access to other objects. This happens for instance when objects collide or when an AI looks for a target. However, interacting with other objects only happens through the base object interface, which provides no information about what the other object is. Even assuming that all objects have a collision hull as part of their public interface (which in itself also does not make any sense, since many objects do not collide with anything), determining that the other object in a collision is a friend or an enemy requires knowledge beyond any acceptable base interface.</li>
+</ul>
+While the former can easily be solved by using two base classes instead of one, the latter is much more problematic. It is usually solved through contraptions such as <a href="http://en.wikipedia.org/wiki/Downcasting" target="_blank">downcasting </a>(which eliminates the benefits of the <a href="http://en.wikipedia.org/wiki/Liskov_substitution_principle" target="_blank">Liskov Substitution Principle</a>) or the <a href="http://www.dofactory.com/Patterns/PatternVisitor.aspx" target="_blank">Visitor Design Pattern</a> (which eliminates the benefits of the <a href="http://en.wikipedia.org/wiki/Open/closed_principle" target="_blank">Open-Closed Principle</a> in most modern static languages).
+<h2>The benefits</h2>
+But surely people wouldn't be using base classes this way if there wasn't a tangible benefit to using them, would they? Well-known games (including the original Half Life engine, which was mod-friendly enough to give birth to a vast number of mods) have used this approach through the ages.
+
+<img class="alignright" style="border: 0pt none; margin: 5px;" src="/images/segregation-is-good.jpg" border="0" alt="Purty pictar of waterfall." hspace="5" width="266" height="400" align="right" /> There is a fundamental rule for interface implementation and class inheritance:
+<blockquote><strong>The finality of every interface and every inheritance relationship is to allow code to operate on different types of objects.</strong></blockquote>
+The sole benefit of using a base class for game objects is to store those objects in a single container and apply update and render functions over that container. Everything else in a typical game requires using a more specific type through visitation or downcasting.
+
+When, then, is a single container useful? In the case of a game <em>engine</em>, a single container is useful because on the one hand, it's preferable to have the engine handle the storage, lifetime and processing of game objects and on the other hand, designing a game engine to allow the addition of other containers (one for each type of object, for instance) is difficult.
+
+As such, having everything inherit from a single type makes communications between the engine and the game much easier (only one type of object has to be carried through the interface), even though it might make the development of the actual game harder.
+
+Of course, a container may allow multiple interfaces to exist: a container for renderable objects, a container for updated objects, a container for objects with collision detection, a container for objects with a physical model, a container for objects which are synchronized over the network and so on. However, the original problem remains: when two objects collide, the collision response depends on the exact type of the objects, which exists in game space but not in engine space. The engine is therefore by construction unable to provide the original most derived types back to the game, and so the game must retrieve them by other means (note that visitation is not possible, because it requires to encode the possible most derived types in the visitor, which itself is encoded in the interface of the visited object.
+
+However, beginner and intermediate programmers don't write engines (or at least, they <a href="http://scientificninja.com/advice/write-games-not-engines" target="_blank">shouldn't</a>, because the motive that drives studios to write engines is the necessity to distribute programming tasks across large teams with varying competence, and to keep the code for later projects), they write games. The source code of these games is worked on by only a small handful of programmers, usually only one, which allows a far greater level of control, especially for purposes of refactoring. As such, the necessity of having generic containers disappears, and the main benefit of a single base class with it.
+<h2>Segregate types</h2>
+My advice is pretty simple: strive to keep one list per type of object. In your average video game, you would have a list of projectiles flying around, a list of AI-controlled opponents, and a player-controlled character.
+
+Do not let this approach hurt code reuse, however. If both the player character and the AI-controller opponents can take damage from walking in lava, you don't want to write the damage assignment code twice. Instead, you can have both the AI-controller opponents and the player-controlled character implement the same interface with a single "takeDamage()" function, and apply the damage assignment code to both. You may even share the health/damage handling code between the player and the opponents by aggregating a "health" class, by inheriting from a "Character" class which manages health, or by applying a "WithHealth" mix-in:
+<blockquote>
+<pre style="background: #ffffff none repeat scroll 0% 50%; color: #000000;"><span style="color: #000084; font-weight: bold;">class</span> IDamageTaker 
+{ <span style="color: #000084; font-weight: bold;">public</span>: <span style="color: #000084; font-weight: bold;">virtual</span> <span style="color: #000084; font-weight: bold;">void</span> takeDamage(<span style="color: #000084; font-weight: bold;">int</span>); }; 
+
+<span style="color: #000084; font-weight: bold;">template</span> &lt;<span style="color: #000084; font-weight: bold;">typename</span> T&gt;  
+<span style="color: #000084; font-weight: bold;">class</span> WithHealth : <span style="color: #000084; font-weight: bold;">public</span> IDamageTaker, <span style="color: #000084; font-weight: bold;">public</span> T 
+{ 
+  <span style="color: #000084; font-weight: bold;">int</span> health; 
+<span style="color: #000084; font-weight: bold;">public</span>: 
+  <span style="color: #000084; font-weight: bold;">void</span> takeDamage(<span style="color: #000084; font-weight: bold;">int</span> d)       { health -= d; } 
+  <span style="color: #000084; font-weight: bold;">void</span> healDamage(<span style="color: #000084; font-weight: bold;">int</span> d)       { health += d; } 
+  <span style="color: #000084; font-weight: bold;">bool</span> alive()           <span style="color: #000084; font-weight: bold;">const</span> { <span style="color: #000084; font-weight: bold;">return</span> health &gt; 0; } 
+}; 
+
+<span style="color: #000084; font-weight: bold;">class</span> Vanilla  
+{ <span style="color: #000084; font-weight: bold;">public</span>: <span style="color: #000084; font-weight: bold;">virtual</span> ~Vanilla() {} }; 
+
+<span style="color: #000084; font-weight: bold;">class</span> PlayerCharacter : <span style="color: #000084; font-weight: bold;">public</span> 
+  WithHealth&lt;
+  WithPosition&lt;Vanilla&gt; &gt; 
+{ <span style="color: #808080;">/* Player-related data here */</span> }; 
+
+<span style="color: #000084; font-weight: bold;">class</span> AIOpponent : <span style="color: #000084; font-weight: bold;">public</span> 
+  WithHealth&lt;
+  WithPosition&lt;
+  WithTarget&lt;Vanilla&gt; &gt; &gt;
+{ <span style="color: #808080;">/* Opponent-related data here */ </span>};</pre>
+</blockquote>
+Now, the code for health management is not duplicated and the code for assigning damage is not duplicated. The only dupicated code is the traversal of the various lists (since instead of traversing a single list, now several lists must be traversed in order to reach all elements), and that code is not only very small, but also fairly easy to factor out (for instance, by implementing an iterator that traverses several containers in order).
+
+On the other hand, because of the presence of several lists, there is no more need for determining whether a projectile has hit an opponent or the player: the type of the object is known simply because the currently processed list is also known.

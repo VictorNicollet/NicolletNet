@@ -1,0 +1,51 @@
+@title Lazy and Threads
+@draft
+
+A nice thing about pure functional programming is that it's inherently thread-safe. Since your code never actually modifies anything, atomicity of operations ceases to be an issue. At the hardware level, every modification operation is performed by a single thread (since it happens while a value is created, but before the high-level semantics can manipulate it) so no error can arise from multiple threads. Every value is basically written by one thread then read by everyone else until it dies.
+
+Except that isn't always the case. I've recently stumbled upon a nasty interaction between Objective Caml threads and pure functional lazy evaluation.
+
+Lazy evaluation is the process of delaying the evaluation of an expression until it's needed (so that, if it's never needed, no time is wasted evaluating it). This can be done in Objective Caml through the use of the "lazy" keyword:
+<pre style="background: #ffffff none repeat scroll 0% 0%; color: #000000; padding-left: 30px;"><span style="color:#800000; font-weight:bold; ">let</span> text <span style="color:#808030; ">=</span> <span style="color:#800000; font-weight:bold; ">lazy</span> <span style="color:#808030; ">(</span>String<span style="color:#008c00; ">.</span>concat <span style="color:#0000e6; ">","</span> values<span style="color:#808030; ">)</span></pre>
+This example delays a costly operation (concatenating a list of strings) until it's required. Evaluating it requires applying a specific evaluation function:
+<pre style="background: #ffffff none repeat scroll 0% 0%; color: #000000; padding-left: 30px;">print_string <span style="color:#808030; ">(</span>Lazy<span style="color:#008c00; ">.</span>force text<span style="color:#808030; ">)</span></pre>
+The first time a lazy value is forced, it is evaluated. Subsequent reads merely return the already evaluated value. While the semantics of this operation are fairly simple and involve no side-effects, the implementation of it <em>does</em> involve side-effects. Which is why I was very cautious of whether such a mechanism could be used in a thread-safe manner.
+
+Imagine that two threads are provided with an un-evaluated lazy value. Both threads evaluate it at the same time (either on different processors, or on the same processor with time-sharing). Can the evaluation process result in anything other than the evaluation returning the correct value in both threads? It can. There's a situation where the evaluation can raise an "Undefined" exception (which is quite likely if the evaluation takes a long time) and a less likely situation where the evaluation can cause a segmentation fault or even constitute a security flaw by executing arbitrary code.
+<h3>The Implementation</h3>
+The code that handles lazy evaluation looks like this (this is a direct excerpt from the codebase of Objective Caml 3.11.0, any copyrights apply):
+<pre style="background: #ffffff none repeat scroll 0% 0%; color: #000000; padding-left: 30px;"><span style="color:#800000; font-weight:bold; ">let</span> force_lazy_block <span style="color:#808030; ">(</span>blk <span style="color:#808030; ">:</span> <span style="color:#808030; ">'</span>arg lazy_t<span style="color:#808030; ">)</span> <span style="color:#808030; ">=</span>
+  <span style="color:#800000; font-weight:bold; ">let</span> closure <span style="color:#808030; ">=</span> <span style="color:#808030; ">(</span>Obj<span style="color:#008c00; ">.</span>obj <span style="color:#808030; ">(</span>Obj<span style="color:#008c00; ">.</span>field <span style="color:#808030; ">(</span>Obj<span style="color:#008c00; ">.</span>repr blk<span style="color:#808030; ">)</span> <span style="color:#008c00; ">0</span><span style="color:#808030; ">)</span> <span style="color:#808030; ">:</span> <span style="color:#800000; font-weight:bold; ">unit</span> <span style="color:#808030; ">-&gt;</span> <span style="color:#808030; ">'</span>arg<span style="color:#808030; ">)</span> <span style="color:#800000; font-weight:bold; ">in</span>
+  Obj<span style="color:#008c00; ">.</span>set_field <span style="color:#808030; ">(</span>Obj<span style="color:#008c00; ">.</span>repr blk<span style="color:#808030; ">)</span> <span style="color:#008c00; ">0</span> raise_undefined<span style="color:#808030; ">;</span>
+  <span style="color:#800000; font-weight:bold; ">try</span>
+    <span style="color:#800000; font-weight:bold; ">let</span> result <span style="color:#808030; ">=</span> closure <span style="color:#808030; ">(</span><span style="color:#808030; ">)</span> <span style="color:#800000; font-weight:bold; ">in</span>
+    Obj<span style="color:#008c00; ">.</span>set_field <span style="color:#808030; ">(</span>Obj<span style="color:#008c00; ">.</span>repr blk<span style="color:#808030; ">)</span> <span style="color:#008c00; ">0</span> <span style="color:#808030; ">(</span>Obj<span style="color:#008c00; ">.</span>repr result<span style="color:#808030; ">)</span><span style="color:#808030; ">;</span>  <span style="color:#696969; ">(* do set_field BEFORE set_tag *)</span>
+    Obj<span style="color:#008c00; ">.</span>set_tag <span style="color:#808030; ">(</span>Obj<span style="color:#008c00; ">.</span>repr blk<span style="color:#808030; ">)</span> Obj<span style="color:#008c00; ">.</span>forward_tag<span style="color:#808030; ">;</span>
+    result
+  <span style="color:#800000; font-weight:bold; ">with</span> e <span style="color:#808030; ">-&gt;</span>
+    Obj<span style="color:#008c00; ">.</span>set_field <span style="color:#808030; ">(</span>Obj<span style="color:#008c00; ">.</span>repr blk<span style="color:#808030; ">)</span> <span style="color:#008c00; ">0</span> <span style="color:#808030; ">(</span>Obj<span style="color:#008c00; ">.</span>repr <span style="color:#808030; ">(</span><span style="color:#800000; font-weight:bold; ">fun</span> <span style="color:#808030; ">(</span><span style="color:#808030; ">)</span> <span style="color:#808030; ">-&gt;</span> <span style="color:#800000; font-weight:bold; ">raise</span> e<span style="color:#808030; ">)</span><span style="color:#808030; ">)</span><span style="color:#808030; ">;</span>
+    <span style="color:#800000; font-weight:bold; ">raise</span> e
+<span style="color:#808030; ">;;</span></pre>
+<em>Lazy.force</em> inlines a piece of machine code that tests whether the lazy object is already evaluated (its tag is <em>Obj.forward_tag</em>) and, if it isn't, calls <em>force_lazy_block</em>. The latter (shown above) extracts the evaluation closure, calls it to get the result, and turns the lazy expression into an evaluated object (setting its zeroth field to the result and its tag to <em>Obj.forward_tag</em>). If the expression raises an exception, it remains un-evaluated but turns into a function that throws the exception, so that side-effects are not repeated.
+
+Two race conditions appear here.
+<h3>First Race Condition</h3>
+The first is caused when a thread forces the evaluation of a lazy value while another thread is already evaluating it. In order:
+<ul>
+	<li>Thread A forces the evaluation.</li>
+	<li>Thread A sets field 0 of the lazy block to <em>raise_undefined</em>.</li>
+	<li>Thread A starts running <em>closure ()</em>.</li>
+	<li>Context switch!</li>
+	<li>Thread B forces the evaluation.</li>
+	<li>Thread B runs <em>closure ()</em>, which is now <em>raise_undefined</em>.</li>
+	<li>Thread B gets <em>Lazy.Undefined</em>.</li>
+</ul>
+This behavior can be readily achieved with a three-line test:
+<pre style="background: #ffffff none repeat scroll 0% 0%; color: #000000; padding-left: 30px;"><span style="color:#800000; font-weight:bold; ">let</span> expr <span style="color:#808030; ">=</span> <span style="color:#800000; font-weight:bold; ">lazy</span> <span style="color:#808030; ">(</span>Thread<span style="color:#008c00; ">.</span>delay <span style="color:#008c00; ">1</span><span style="color:#008c00; ">.0</span><span style="color:#808030; ">)</span>
+
+<span style="color:#800000; font-weight:bold; ">let</span> <span style="color:#008c00; ">_</span> <span style="color:#808030; ">=</span>
+  <span style="color:#800000; font-weight:bold; ">let</span> thread <span style="color:#808030; ">=</span> Thread<span style="color:#008c00; ">.</span>create <span style="color:#808030; ">(</span><span style="color:#800000; font-weight:bold; ">fun</span> <span style="color:#808030; ">(</span><span style="color:#808030; ">)</span> <span style="color:#808030; ">-&gt;</span> Lazy<span style="color:#008c00; ">.</span>force expr<span style="color:#808030; ">)</span> <span style="color:#808030; ">(</span><span style="color:#808030; ">)</span> <span style="color:#800000; font-weight:bold; ">in</span>
+  Lazy<span style="color:#008c00; ">.</span>force expr<span style="color:#808030; ">;</span> Thread<span style="color:#008c00; ">.</span>join thread</pre>
+The evaluation of the lazy expression explicitly forces a context switch, which causes the second thread to die with the <em>Undefined</em> exception. The same would happen if the runtime forces a context switch during the evaluation of the closure (which is usually a long computation that might warrant it).
+<h3>Second Race Condition</h3>
+This one is harder to illustrate due to the nature of context switching in the middle of  a standard library function. It happens if a context switch occurs between the instruction that sets the zeroth field to the evaluated result and the instruction that sets the tag to <em>Obj.forward_tag</em>. Such a switch results in a normal lazy block, which has an arbitrary value as its zeroth field. If another thread attempts to force the value, the runtime will treat that arbitrary value as a closure and execute it. This, in most situations, means death of the program, or perhaps the execution of arbitrary intruder-chosen code if the lazy value is chosen appropriately.

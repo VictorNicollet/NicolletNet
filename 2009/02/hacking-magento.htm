@@ -1,0 +1,67 @@
+@title Hacking Magento
+@draft
+
+My evil hacker side is rampaging the virtual countryside again. This time, I'm scanning Magento for exploits and vulnerabilities. 
+
+<span style="color: #888888;">If you like what you see here, or if you're interested by more details about Magento, the web or the business of earning money online, make sure you </span><a href="http://www.nicollet.net/feed/">subscribe to my rss feed</a><span style="color: #888888;"> to keep up with the latest articles on the topic.</span> 
+
+Anyway, let's start with the easy stuff.
+<h3>Eval</h3>
+Once I download the code, the first step is to look for classic bug-prone functions. One example is the 'eval' function, which executes an arbitrary string as PHP code. Were such a function present in the codebase, I could look for ways of subverting the input string so that I can insert my own code in there and take control of the server.
+
+A quick search of the code yields only two uses of 'eval', both of them in a google cart function that was deprecated because it was using 'eval':
+<pre style="padding-left: 30px;">if($value == "true" || $value == "false")
+  eval('$this-&gt;'.$string.'="'.$value.'";');
+else
+  eval('$this-&gt;'.$string.'="'.$default.'";');</pre>
+I scan for uses of that function (just in case someone ignored the deprecation) and get no results. Well, that particular exploit won't be available here.
+<h3>Exec</h3>
+Another way is the classic family of shell execution functions: 'exec', 'shell_exec' and 'passthru', as well as the backtick operator that I've never actually seen used anywhere. These functions take a string argument and run it as a command on the server. Of course, this requires that the server is not secure and allows arbitrary execution of commands, but at least one server on the internet is bound to have this safety issue <strong>and</strong> run Magento.
+
+So, if I could then corrupt the arguments to that call, I could have the server run what I want (usually, it would be downloading a PHP file from my own evil server and running that file with a direct query).
+
+The basic 'exec' comes up as part of PEAR, mostly with constant string arguments, so no cookie there.
+
+As for 'shell_exec', it comes up in Zend for the console adapter (that no sane person would use on the web), also with constant string arguments.
+
+Finally, 'passthru' does not come up anywhere.
+
+So, there's nothing this way either.
+<h3>SQL Injection</h3>
+If I can't take control of the server directly, I could at least get into the site admin, for instance by extracting the admin password from the database (or inserting my own in its place, if it's encrypted). With access to the back-end, I could upload evil PHP files and get control anyway. So, I could try hammering the database with injection requests.
+
+A quick search for "SELECT ... FROM" yields no interesting results (all of them are within Zend, and I'm not going to look for exploits within Zend today). This means that Magento is using Zend for handling requests (by use of Zend_Table and the related functions) in order to reduce the probability of SQL injection. So far so good, but even Zend doesn't eliminate the risk of SQL injection completely.
+
+For instance, Zend relies on providing variables as arguments to its functions so that it can escape them itself. So, one would do (to build the 'where' part of a query):
+<pre style="padding-left: 30px;">$select -&gt; where('parent_id &gt; 0 AND user_id = ?', $userId);</pre>
+But looking at a Magento file (one that's part of the external API, and handles the users to the API) I find instead:
+<pre style="padding-left: 30px;">$select -&gt; where("parent_id &gt; 0 AND user_id = {$user_id}");</pre>
+This code inserts the text value of $user_id directly into the request without any escaping or even checking, which makes it a possible vulnerability against SQL injection. This is getting excited: can I alter $user_id to get the request to do nasty things? Nope. Even though the SQL statement itself is risky, the variable is protected:
+<pre style="padding-left: 30px;">if (is_numeric($user)) {
+  $userId = $user;
+} else if ($user instanceof Mage_Core_Model_Abstract) {
+  $userId = $user-&gt;getUserId();
+} else {
+  return null;
+}</pre>
+There are around 90 occurences of a "where" clause that contains an interpolated string within Magento. Every one of them is a potential security issue. All of them seem to be secured by argument verification, though.
+<h3>Password Retrieval</h3>
+Another way of gaining access to the administration panel is simply by getting the password. <a href="http://milw0rm.com/exploits/6234" target="_blank">Joomla! had a vulnerability</a> in this area not so long ago, for instance. Magento uses a fairly straightforward controller dispatch scheme, meaning that the "/admin/index/forgotpassword/" URL maps to functoin "forgotpasswordAction()" in the file "AdminHtml/controllers/IndexController.php".
+
+Peeking at the code for that function, I soon notice there's no way I can get through. Unlike the Joomla!, the password is not set by the user, but rather re-generated by the server and sent back to the user. I can't even insert my own email to receive the password: sending happens using a specific function that uses the user's mail.
+<pre style="padding-left: 30px;">$user-&gt;sendNewPasswordEmail();</pre>
+Another technique would be to somehow predict what password was generated by the server and plug it back in to connect. The password is generated as such:
+<pre style="padding-left: 30px;">$pass = substr(md5(uniqid(rand(), true)), 0, 6);</pre>
+Now, that's quite interesting. The server first generates an md5 hash: the characters inside the hash are fully random and unpredictable (unless I can somehow identify the initial state of uniqid and rand when I performed the re-generation, but that was designed to be impossible). Then, it selects the first 6 characters of the hash and uses them as the password. This means that the password contains six hexadecimal figures: there are 16 million possible passwords there, which is far weaker than the safety of a 6-character alphanumeric password (64 billion possible passwords) and ridiculous when compared with an 8-character password containing digits, numbers and punctuation (up to 70 million billion possible passwords).
+
+Of course, this is nothing groundbreaking: 16 million possible passwords is plenty to be safe, especially since they're randomly chosen and therefore impossible to guess without full brute-force. Besides, to do it, you would need to know the administrator username and email (which can be obtained through a minimal amount of social engineering).
+
+Either way, an improved password-generation method would be to use base64_encode to generate alphanumeric passwords instead of just hex passwords like the above:
+<pre style="padding-left: 30px;">$pass = substr(base64_encode(md5(uniqid(rand(), true), true)), 0, 6);</pre>
+This brings back the number of possible passwords to 64 billion, which is beyond brute-force.
+
+This doesn't eliminate the annoyance of changing the password without a confirmation e-mail: as soon as you know the administrator's mail, you can generate a new password as often as you want, and you can even do it fast enough to make the "read password from mail and write password in box" process too slow to use the latest password, or even have the mail-sending script burst (because it's blacklisted for flooding, for instance) and leave the user with no password.
+<h3>Related Posts</h3>
+<ul>
+	<li><a title="Permanent Link to &quot;Five Bad Reasons for using Magento&quot;" rel="bookmark" href="http://www.nicollet.net/2010/06/five-bad-reasons-for-using-magento/">Five Bad Reasons for using Magento</a> : there are many good reasons for choosing Magento, but there are also several bad ones.</li>
+</ul>

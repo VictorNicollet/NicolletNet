@@ -1,0 +1,45 @@
+@title From PHP to Firebug
+@draft
+
+I often encounter problems with the typical approach of using var_dump (or Zend_Debug::Dump) to trace through PHP code:
+<ul>
+	<li>Does not work on a page that has to redirect to another page.</li>
+	<li>Results are difficult to see if the page is queried through AJAX.</li>
+	<li>The crash may happen so utterly that no data is actually output, or it's well hidden, or otherwise destroyed by output buffering mishaps.</li>
+	<li>I have to look around the page to find it, and it also destroys my page layout.</li>
+</ul>
+The other possibility commonly used is to use error_log or log or printing to stderr or printing to a file, all of which rely on access to the server or setting up a way of displaying the data and filtering through it to see only relevant information.
+
+I could bring in some logging facility from a framework (such as Symphony or Zend, which has a nice one), but I'd rather not add overweight dependencies—the Zend_Log_Writer_Firebug setup is kind of scary if you're not already using enough bits of Zend to make it worth it.
+
+So, I set out to design a system that would make things simpler. It works by sending 'console.log()' instructions to Firebug to display whatever it needs to display, and keeping things in the session until they can be displayed.
+
+The code:
+<pre><code><span style="color: #000000;"><span style="color: #0000bb;"> </span><span style="color: #007700;">function </span><span style="color: #0000bb;">jslog</span><span style="color: #007700;">()
+ {
+   if (</span><span style="color: #0000bb;"><a title="Open the PHP manual for defined" href="http://www.php.net/defined" target="_blank"><strong>defined</strong></a></span><span style="color: #007700;">(</span><span style="color: #dd0000;">'NO_JSLOG'</span><span style="color: #007700;">))
+     return;
+
+   </span><span style="color: #0000bb;">$args </span><span style="color: #007700;">= </span><span style="color: #0000bb;"><a title="Open the PHP manual for func_get_args" href="http://www.php.net/func_get_args" target="_blank"><strong>func_get_args</strong></a></span><span style="color: #007700;">();
+   if (empty(</span><span style="color: #0000bb;">$args</span><span style="color: #007700;">)) {
+     return </span><span style="color: #0000bb;"><a title="Open the PHP manual for create_function" href="http://www.php.net/create_function" target="_blank"><strong>create_function</strong></a></span><span style="color: #007700;">(</span><span style="color: #dd0000;">'$x'</span><span style="color: #007700;">, </span><span style="color: #dd0000;">
+       'if (strpos($x,"&lt;/head&gt;") &gt; 0){
+         $s = "&lt;script type=text/javascript&gt;";
+         $e = "&lt;/script&gt;&lt;/head&gt;";
+         $x = str_replace("&lt;/head&gt;",$s.$_SESSION["jslog"].$e,$x);
+         $_SESSION["jslog"] = "";
+       } return $x;'</span><span style="color: #007700;">);
+   }
+
+   </span><span style="color: #0000bb;">$_SESSION</span><span style="color: #007700;">[</span><span style="color: #dd0000;">'jslog'</span><span style="color: #007700;">] .=
+     </span><span style="color: #dd0000;">'console.log('</span><span style="color: #007700;">.</span><span style="color: #0000bb;"><a title="Open the PHP manual for implode" href="http://www.php.net/implode" target="_blank"><strong>implode</strong></a></span><span style="color: #007700;">(</span><span style="color: #dd0000;">','</span><span style="color: #007700;">,</span><span style="color: #0000bb;"><a title="Open the PHP manual for array_map" href="http://www.php.net/array_map" target="_blank"><strong>array_map</strong></a></span><span style="color: #007700;">(</span><span style="color: #dd0000;">'json_encode'</span><span style="color: #007700;">,</span><span style="color: #0000bb;">$args</span><span style="color: #007700;">)).</span><span style="color: #dd0000;">');'</span><span style="color: #007700;">;
+ }</span></span></code></pre>
+Nothing overly complex. Initialization happens as a simple <code>ob_start(jslog())</code>, and everything can be disabled with a well-timed <code>define('NO_JSLOG','')</code> if you don't have Firebug running. Typical usage includes being echo-like:
+<pre style="padding-left: 30px;">jslog("Hello");</pre>
+Being var_dump-like:
+<pre style="padding-left: 30px;">jslog($_POST);</pre>
+Being printf-like:
+<pre style="padding-left: 30px;">jslog('Earned $%.2f today', $dollars);</pre>
+Being the best of both worlds:
+<pre style="padding-left: 30px;">jslog('My session is %o and my post is %o', $_SESSION, $_POST);</pre>
+Displayed objects are converted to JSON and sent to Firebug, where they can be explored with the nifty DOM explorer tab that is so much easier to use than looking at var_dumped data.

@@ -1,0 +1,27 @@
+@title Lorem Ipsum
+@draft
+
+Lorem Ipsum is a sample phrase used as a filler in typesetting, to illustrate how some text would look. Here's a sample paragraph:
+<blockquote><em>Lorem ipsum dolor sit amet, consectetur adipisicing elit, sed do eiusmod tempor incididunt ut labore et dolore magna aliqua. Ut enim ad minim veniam, quis nostrud exercitation ullamco laboris nisi ut aliquip ex ea commodo consequat. Duis aute irure dolor in reprehenderit in voluptate velit esse cillum dolore eu fugiat nulla pariatur. Excepteur sint occaecat cupidatat non proident, sunt in culpa qui officia deserunt mollit anim id est laborum.</em></blockquote>
+This approach to filler text is superior in many ways to most alternatives:
+<ul>
+	<li>It's long, certainly longer than "Test" or "AAA", so it can fill several lines (and test whether there is an unexpected length limit when saving the data).</li>
+	<li>Unlike random strings of characters copy-pasted several times, it is split into words of uneven length, spaces between words do not align horizontally or vertically.</li>
+	<li>It is readily recognizable as random text by any typesetter (or developer) worth its salt.</li>
+</ul>
+A typical testing strategy, when filling forms by hand, is to copy-paste one or two Lorem Ipsum paragraph to test such things as how the text area reacts, whether it is saved correctly, and so on.
+
+Lorem Ipsum does have some limitations:
+<ul>
+	<li>It's written in latin, so it fits nicely in the ASCII range of characters. As such, it does not test for Unicode support.</li>
+	<li>It contains no quotes of any kind, so no testing of database escaping processing either.</li>
+	<li>It contains no HTML-specific characters like &lt; or &amp;, so HTML character escaping is not tested either.</li>
+	<li>For that matter, it does not contain exceedingly long words that would overflow a single line, so you cannot test for this kind of overflow either.</li>
+	<li>Sometimes, you want to auto-linkify links and URLs.</li>
+	<li>Sometimes, Skype turns numbers into ... clickable numbers.</li>
+</ul>
+I need to test these things on my web applications, so I've developed my own version of a "<strong>Modern Lorem Ipsum</strong>":
+<blockquote><em>Lorem &lt;a href="javascript:document.write('')"&gt;ipsum&lt;/a&gt; dòlor sit àmet, consectetur adipisicing élit, sèd do eiusmod tempor incididunt ut labore &amp; dolore magna aliqua. &lt;hr/&gt;Ut enim@minim.com veniam, quis nostrud exercitation `"ullamco laboris nisi &amp; aliquip ex æ commodo consequat. Duis aute irure dolor 01 23 45 67 89 in reprehenderit in voluptate velit esse cillum dolore `eu fugiat https://nulla.biz/pariatur. aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa </em>
+
+<em>Excepteur [u]sint occaecat cupidatat non proident, sunt in culpa qui officia deserunt mollit 'anim id est laborum.[u] </em><em>Lorem" ipsum dòlor sit àmet, consectetur adipisicing élit, sèd do eiusmod tempor http://incididunt.ut.com/labore &amp; dolore magna aliqua. &lt;b&gt;Ut enim ad minim veniam, quis nostrud exercitation ullamco laboris nisi ut aliquip ex æ commodo consequat.&lt;/b&gt; "Duis aute irure dolor in 'reprehenderit in voluptate velit -- esse cillum dolore eu fugiat nulla pariatur.</em></blockquote>
+Feel free to copy-paste it away. Wordpress certainly does seem to have a hard time with these long lines in post bodies—I wonder if it happens in comments as well :)

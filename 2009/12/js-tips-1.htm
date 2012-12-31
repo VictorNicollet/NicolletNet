@@ -1,0 +1,68 @@
+@title Javascript Tips, Part 1
+@draft
+
+It is advised, when deploying a live website, to <a href="http://developer.yahoo.com/performance/rules.html#num_http" target="_blank">group</a> all your Javascript files into a single one, and <a href="http://developer.yahoo.com/performance/rules.html#minify" target="_blank">reduce its size</a> by removal of all unnecessary clutter. You obviously get a few nasty surprises the first time you do this, such as dead code (or debug-only code) being included or two incompatible files being included together. The usual answer to this, like with any integration-related issue, is to perform <strong>continuous integration</strong>, and generally make sure during development that the final product works as it should.
+<h3>Tip #1 — Keep it all together</h3>
+I generally keep all of my javascript together in one single file, which is accessed through <code>http://domain/all.js</code> or something like that. Of course, that file is in fact generated from a well-tended garden of neatly arranged source files, but the intent is that every single visit on the development website will bring along all the code that could possibly conflict with it, to identify issues as soon as possible.
+
+This means I have access to a Javascript preprocessor, because generating a single file already involves reading all the files.
+<h3>Tip #2 — Conditional inclusion</h3>
+Difficult bugs appear on platforms with  no debuggers, which means you need to be able to track the progress of your application with logging. You don't want to have those log lines appearing on the live website, though. In the same way, runtime assertions are useful while developing, so you get a clean "Expected string, got array" error message right after you call a function with incorrect parameters, instead of a "object has no member charAt" ten stack layers deeper. Yet, assertions use up room, and tend to die in a flashy and unprofessional way on a live website.
+
+An overly intrusive preprocessor can prevent your code from running if not preprocessed. It also means whatever tool you use to edit Javascript source cannot recognize the syntax anymore, which is bad. The solution (which I learned from the PHP preprocessing techniques of the folks at <a href="http://www.intellagence.eu/en/" target="_blank">IntellAgence</a>) is to embed preprocessing information in comments.
+
+Need some logging?
+<pre style="background: #ffffff none repeat scroll 0% 0%; color: #000000; -moz-background-clip: -moz-initial; -moz-background-origin: -moz-initial; -moz-background-inline-policy: -moz-initial; padding-left: 30px;"><span style="color: #808080;">/*&lt;*/</span> <span style="color: #000084; font-weight: bold;">log</span>(<span style="color: #0000ff;">'Hello'</span>); <span style="color: #808080;">/*&gt;*/</span></pre>
+Need to check something at runtime?
+<pre style="background: #ffffff none repeat scroll 0% 0%; color: #000000; -moz-background-clip: -moz-initial; -moz-background-origin: -moz-initial; -moz-background-inline-policy: -moz-initial; padding-left: 30px;"><span style="color: #808080;">/*[*/</span> <span style="color: #000084; font-weight: bold;">Assert</span>.areEqual(x,y); <span style="color: #808080;">/*]*/</span></pre>
+A simple regular expression can remove these from the final code, but you can also selectively disable them by removing the second slash of the first comment :
+<pre style="background: #ffffff none repeat scroll 0% 0%; color: #000000; -moz-background-clip: -moz-initial; -moz-background-origin: -moz-initial; -moz-background-inline-policy: -moz-initial; padding-left: 30px;"><span style="color: #808080;">/*[*  Assert.areEqual(x,y); /*]*/</span></pre>
+<h3>Tip #3 — Named anonymous functions</h3>
+Quick reminder: Javascript allows you to define anonymous functions using a lambda-like construct:
+<pre style="background: #ffffff none repeat scroll 0% 0%; color: #000000; -moz-background-clip: -moz-initial; -moz-background-origin: -moz-initial; -moz-background-inline-policy: -moz-initial; padding-left: 30px;"><span style="color: #000084; font-weight: bold;">function</span>(x) { <span style="color: #000084; font-weight: bold;">return</span> x + 1 }</pre>
+This acts like a function literal (pretty much like a string literal works for strings, or an array literal works for arrays). In fact, if you're doing any kind of serious Javascript, you probably have anonymous functions all over the place, such as callbacks to asynchronous operations:
+<pre style="background: #ffffff none repeat scroll 0% 0%; color: #000000; padding-left: 30px;">$(<span style="color: #0000ff;">'button'</span>).click(<span style="color: #000084; font-weight: bold;">function</span>(){ alert(<span style="color: #0000ff;">'Hello'</span>) });</pre>
+Or you might be defining member functions for your classes:
+<pre style="background: #ffffff none repeat scroll 0% 0%; color: #000000; padding-left: 30px;">className.<span style="color: #000084; font-weight: bold;">prototype</span>.setFoo = <span style="color: #000084; font-weight: bold;">function</span>(x){
+  <span style="color: #000084; font-weight: bold;">this</span>._foo = x;
+};</pre>
+When you get a runtime error, the debugger displays a stack trace containing the names of the functions and the places where they were called. So, if you were using many anonymous functions, you get neck-deep into layers of "anonymous" on your stack trace. Sure, you can <em>click on every single one of them</em> to understand what is happening, but it is way faster to get that knowledge from looking at meaningful names.
+
+Javascript allows you to give names to anonymous functions. In fact, this is how recursive functions can be defined as lambdas (a feature that OCaml lacks, for instance). So you can write the following and see it appear in a stack trace:
+<pre style="background: #ffffff none repeat scroll 0% 0%; color: #000000; -moz-background-clip: -moz-initial; -moz-background-origin: -moz-initial; -moz-background-inline-policy: -moz-initial; padding-left: 30px;">$(<span style="color: #0000ff;">'button'</span>).click(<span style="color: #000084; font-weight: bold;">function</span> _onButtonClick(){ alert(<span style="color: #0000ff;">'Hello'</span>) });
+
+className.<span style="color: #000084; font-weight: bold;">prototype</span>.setFoo = <span style="color: #000084; font-weight: bold;">function</span> _className_setFoo(x){
+  <span style="color: #000084; font-weight: bold;">this</span>._foo = x;
+};</pre>
+I start all names with underscores, because a simple <code>/function _[A-Za-z0-9_]*/</code> in my preprocessor can identify and remove all those names when I don't need them.
+<h3>Tip #4 — Are your callbacks called?</h3>
+The Javascript function model lets you write a function that forwards whatever it was doing to another function. You can even log some information along the way...
+<pre style="background: #ffffff none repeat scroll 0% 0%; color: #000000; padding-left: 30px;"><span style="color: #000084; font-weight: bold;">function</span> trace(f) {
+  <span style="color: #000084; font-weight: bold;">return</span> <span style="color: #000084; font-weight: bold;">function</span> () {
+    <span style="color: #000084; font-weight: bold;">log</span>(<span style="color: #0000ff;">'%o.%s(%o)'</span>,<span style="color: #000084; font-weight: bold;">this</span>,name(f),arguments);
+    <span style="color: #000084; font-weight: bold;">return</span> f.apply(<span style="color: #000084; font-weight: bold;">this</span>,arguments);
+  }
+}</pre>
+The preprocessor instructions for conditional removal let you do this only in specific circumstances:
+<pre style="background: #ffffff none repeat scroll 0% 0%; color: #000000; -moz-background-clip: -moz-initial; -moz-background-origin: -moz-initial; -moz-background-inline-policy: -moz-initial; padding-left: 30px;">className.<span style="color: #000084; font-weight: bold;">prototype</span>.setFoo = <span style="color: #808080;">/*[*/</span> trace <span style="color: #808080;">/*]*/</span>
+(<span style="color: #000084; font-weight: bold;">function</span> _className_setFoo(x){
+  <span style="color: #000084; font-weight: bold;">this</span>._foo = x;
+});</pre>
+It can also be quite practical to use a variant of the trace function that stores all functions it traces in an array, and removes them from the array the first time they are called. This can be useful when debugging calls to asynchronous functions that you write, because you might <em>forget</em> to call the callback function when you are done, and these bugs are otherwise quite hard to identify.
+<h3>Tip #5 — Do not rely on closures too much</h3>
+Closures in Javascript means you can write this, and have the inner function use the variable from the outer function :
+<pre style="background: #ffffff none repeat scroll 0% 0%; color: #000000; padding-left: 30px;"><span style="color: #000084; font-weight: bold;">function</span> outer(a) {
+  <span style="color: #000084; font-weight: bold;">var</span> b = a + 1;
+  <span style="color: #000084; font-weight: bold;">return</span> <span style="color: #000084; font-weight: bold;">function</span> inner(c) {
+    <span style="color: #000084; font-weight: bold;">return</span> b * c;
+  }
+}</pre>
+Closures are extremely useful. However, Javascript has a nasty habit of creating variables at global scope whenever you try to write to a variable that doesn't exist. For instance, the following function is not re-entrant because an accidental typo makes it use a global variable :
+<pre style="background: #ffffff none repeat scroll 0% 0%; color: #000000; padding-left: 30px;"><span style="color: #000084; font-weight: bold;">function</span> person() {
+  <span style="color: #000084; font-weight: bold;">var</span> aeg = 18;
+  <span style="color: #000084; font-weight: bold;">return</span> {
+    setAge : <span style="color: #000084; font-weight: bold;">function</span>(a) { age = a },
+    canDrink : <span style="color: #000084; font-weight: bold;">function</span>() { <span style="color: #000084; font-weight: bold;">return</span> age &gt; 20 }
+  }
+}</pre>
+A good solution, I believe, is to rely on object members instead of variables. Inappropriately using an object member is harder than inappropriately using a local variable, because the former does not default to "look in the global scope". Besides, every function beyond a certain level of inner state complexity deserves to be adapted to a more structured object style with its data as private members (if only because this is way easier to explore with a debugger).

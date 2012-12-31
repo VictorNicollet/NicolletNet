@@ -1,0 +1,45 @@
+@title Premature Optimization
+@draft
+
+<h2>Wisdom of the Ancients</h2>
+<blockquote>
+<p align="right"><em>"We should forget about small efficiencies, say about 97% of the time: premature optimization is the root of all evil."
+</em>- Donald Knuth</p></blockquote>
+I remember when Donald Knuth was in France, back in March 2005, to give a lecture at the EHESS about tree lattices. As expected, the author of the Art of Computer Programming, the creator of TeX, and the co-inventer of the Knuth-Morris-Pratt algorithm (algorithm) was tall, smart and eloquent. He is the kind of person I will trust on the subjects related to computer science.
+
+This is not to say, of course, that anything he says (or said a while ago) is to be taken at face value. This includes the above quotation.
+<h2>Software optimization</h2>
+Computer programs with identical functionality can run at different speeds. The performance of a program is usually a factor of three key elements: the outright efficiency of the program (performing useless computations, processing the data that does not need to be processed), the adaptation of the program to the underlying hardware (attempting random access on a magnetic band, thrashing the cache, fragmenting the memory) and the memory/speed tradeoff (recomputing data versus storing it in memory).
+
+Furthermore, many of today's programs perform a large number of distinct tasks interactively. Whether a program takes one millisecond or a hundred milliseconds to compute and display the next screen is not relevant (or even perceptible) to the user. In the internet age, latencies of a full second are acceptable to many, and a web page that loads in 300 milliseconds is considered to be fast by most. In video games, a low frame rate is far less problematic than a wildly varying framerate that alternates between a high and a medium value, because users tends to adapt: the brain can compensate for a consistent slowdown.
+
+That being said, the most fundamental point to be made about optimization is that it has a cost: optimizing a program (either when writing it, or after it has been written) takes time. Time to identify the bottlenecks, time to think about a possible solution to eliminate them, time to implement that solution. And so, given a finite time span, a tradeoff exists between implementing more features and optimizing existing features.
+<h2>Premature optimization</h2>
+The 20-80 rule is a classic in optimization situations, basically stating that 80% of the time is spent in 20% of the code. So, if one concentrates on optimizing those 20%, the end result will have better performance characteristics than if the same time was spent optimizing the entire program. The actual figures certainly are different than 80% and 20%, but the basic idea that spending one week optimizing the "Out of memory" message box on a text editor will have a smaller impact on the final product than spending that same week optimizing the rendering of the actual text box or the speed of the autosave feature. Or, in an equivalent fashion, spending six months optimizing the memory usage of a Java application when a $30 RAM purchase yields equivalent results is quite wasteful.
+
+Optimizing a program as it is being written, without any practical hint of where the bottlenecks will lie, makes the optimizations substantially easier: the very design of the program can be adapted on the fly to allow the optimization to fit in perfectly. On the other hand, since the actual impact of the code on performance is not known in advance, there is a high probability that the resulting performance gain is negligible (or, in the case of unpredictable interactions with the cache and the pipeline, even negative).
+
+Optimizing a program after it has been written, on the other hand, yields a high probability of a significant performance gain, because profiling and manual testing can show which parts of the program are the bottleneck. However, when the program can finally be tested and profiled, its design and architecture is already well set into place, and often large portions of code must be refactored, rewritten and tested in order to implement the optimization.
+
+Of course, as with all things, the ideal course is somewhere in the middle. If the developers wait too long to optimize, architectural choices that are too difficult to reverse will simply prevent some optimizations, no matter how interesting, making the cost of performance improvement too high, leading to the release of low-performance software. On the other hand, if developers are too eager to optimize before the code is even written, this leads to often wasted effort and often architectural choices that will reduce generality and extensibility later on. This situation is the essence of <strong>premature optimization</strong>: before the actual performance characteristics of a program are known, important design and architecture decisions are taken because they are expected to improve performance, even though they have a negative impact on future productivity (by making code harder to write, refactor, extend or even debug).
+<h2>Why premature optimization is evil</h2>
+<ul>
+	<li>Optimizing code as it is written is more difficult, intellectually, than writing code and then optimizing it, because it requires thinking at three levels (interface, implementation and optimization) at the same time. This leads to bugs, because the code expresses the original functionality in a non-obvious way in order to improve execution speed, or even outright sacrifices correctness.</li>
+	<li>Optimization requires specific knowledge about processes, seizing opportunities that arise when two pieces of functionality are used together. When applied improperly, this reduces abstraction and increases coupling, because the two independent pieces must be made aware of each other, and optimization-related data must be shared.</li>
+	<li>The optimization itself must be tested to show that it not only does output the expected result, but that it does so in a way that is indeed efficient as originally intended. Of course, the typical way of testing optimization (by profiling the code before and after it is applied) is impossible when no unoptimized code is available.</li>
+	<li>Quite often, premature optimization leads to marginal improvements and sometimes even have a negative impact on performance.</li>
+</ul>
+<h2>Not all pre-emptive optimization is premature</h2>
+However, it's sometimes possible to know in advance that some optimization will be required. For instance, if a developer has already worked on a similar project, and has already been bitten by performance issues, then it makes sense to suggest an optimization strategy ahead of time in order to avoid the same problems. In this case, assuming that the situation is indeed the same as before, then optimization is not premature.
+
+Another example would be a choice between two possible architectures, each of them with the same potential for extension and usability, but one of which provably does more work than another (for instance by requiring that certain parts of data be recomputed unnecessarily). In that case, choosing the more efficient architecture at no additional cost is a good idea, and not premature optimization.
+<h2>Lay the foundations for later optimization</h2>
+Finally, sometimes it appears that a given process might be inefficient. However, optimizing the process requires work and time, and it is not yet certain whether the process is important enough to be optimized: perhaps it only accounts for a very small fraction of the computation time, or perhaps it will be dropped from the project and replaced altogether in the following weeks.
+
+A good idea, in that case, is to slightly alter the design of the process to allow optimization code to be added later on. Knowing a few optimization tricks helps here.
+
+The most frequent example of this approach is scalability. By essence, being able to improve performance by adding hardware is an incredible optimization technique, but it requires code to be built for it from the very beginning.
+
+Another, more specific example is precaching data queried from a database. Consider a page containing various elements. A first query done in the Page module retrieves the list of elements, and then queries are performed for each element in the Element module to retrieve the contents. The consequence, of course, is that the Element module performs a lot of queries instead of doing the sane thing: performing a single query to retrieve all the elements from the page.
+
+An optimization technique in that situation is to use a hint system, to hint the Element module that a certain set of elements will probably be queries soon enough. Then, on the first element request, the Element module queries for the entire set of elements, and merely serves the data from cache afterwards. This, in itself, requires no modification of the interface of either module (as everything can be transmitted through a third module privately), but does require that the data is not modified in the database when precaching is used.

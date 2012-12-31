@@ -1,0 +1,38 @@
+@title Google Chrome to end H.264 Support
+@draft
+
+This has been announced yesterday <a href="http://blog.chromium.org/2011/01/html-video-codec-support-in-chrome.html" target="_blank">on the chromium blog</a>:
+<blockquote>[...] we are changing Chrome’s HTML5 &lt;video&gt;  support to make it consistent with the codecs already supported by the open Chromium project. Specifically, we are supporting the WebM (VP8) and Theora video codecs, and will consider adding support for other high-quality open codecs in the future. Though H.264 plays an important role in video, as our goal is to enable open innovation, support for the codec will be removed and our resources directed towards completely open codec technologies.</blockquote>
+And of course, it was met with a decent and quite enjoyable wad of trolls and flames in the comments section.
+
+H.264 is a video compression method (the complete name being <a href="http://en.wikipedia.org/wiki/H.264/MPEG-4_AVC" target="_blank">H.264/MPEG-4 AVC</a>) which happens to be the de facto standard for the up-and-coming HTML5 revolution—the next step in web technology spearheaded by Chrome, Firefox 4, Safari and maybe Internet Explorer 9, which lets the user view videos without requiring a Flash Player. The H.264 standard is supported by most modern browsers, with the notable exception of Firefox, by Adobe Flash, as well as the hardware of several mobile devices including the iPhone and iPad. Yep: there are special chips available for decoding H.264 while using less battery power.
+
+In short, if you encode video as H.264, chances are that anyone on the planet will be able to view it.
+
+How widespread is it? If you've watched YouTube recently, you've seen a H.264 encoded video.
+
+By contrast, the alternative proposed above (WebM) does not have the same range of support: Firefox and Chrome do support it, Adobe Flash support should happen "any day now", and no significant hardware implementations exist yet. This means that a WebM video can be viewed in HTML5 on Firefox and Chrome, through a Flash-based player in the other browsers, through a battery-guzzling software codec on Android phones, and through the power of your imagination on iOS devices.
+
+So, WebM is the codec with inferior support. Why is Chrome moving away from it?
+
+This is actually a gambit to force <strong>content producers</strong> away from H.264, because Google is uncomfortable with the fact that <strong>H.264 is patented</strong>.
+
+Being patented means that if you write software or hardware that encodes H.264 video (such as a camera), you need to pay royalties to an organization known as MPEG-LA. The same happens if you create software or hardware that decodes H.264 video (such as including a codec in the HTML5 implementation of your browser). And even if you only distribute content (using tools provided by others), you still need to pay royalties — the one exception here is that if you distribute content for free, you will never have to pay royalties.
+
+<a href="http://www.streamingmedia.com/Articles/ReadArticle.aspx?ArticleID=65357" target="_blank">The amount paid</a> is not really an issue: it's about 2% of the price of any content you distribute that's over 12 minutes in length, $0.15 per subscriber if you have more than 100,000 ... basically, by the time it starts to hurt, you're already bringing in a lot of cash to cover your losses. So, while a free format like WebM would let you save those royalties, it's probably not worth losing iOS customers.The only exception here is when Firefox needs to implement the H.264 codec for its own HTML5 support, which falls in the "decoding video" section above : this would end up costing the foundation a whopping <strong>$5 million</strong> for its 270+ million users worldwide. This explains why there is no such support.
+
+Could the rates increase over time? <a href="http://www.streamingmedia.com/Articles/ReadArticle.aspx?ArticleID=65357" target="_blank">Read for yourself</a>:
+<blockquote>Interestingly, MPEG LA calls out that fees cannot increase by more than  10% per year, but the bump from 2008-2009 to 2010 is almost a 20% annual  increase.</blockquote>
+Another very real issue is that to do anything with H.264, <strong>you need a license</strong>. If you have a single video on your small web site and it's encoded as H.264, you need to contact the MPEG-LA and ask for a license. You will pay zero royalties, but you still need the license. If you're a corporation, this means you need your lawyer team to study the topic to determine whether said license creates any liabilities for you, which isn't free. That, or you accept the risk of doing things without a license.<em> Your funeral</em>.
+
+By comparison, WebM is a free, open standard. No paperwork, no royalties, no licensing required.
+
+The largest pain for Google remains Apple — a move away from H.264 is possible for anyone who does not need to support iOS. This will likely end as a battle of titans between the market share of Chrome and that of iOS devices, until one of them caves in and implements the other's format.
+
+As for HTML5, the standard is still being built, but there are three evils one can pick from and the lesser is not easily found:
+<ul>
+	<li>Making H.264 support mandatory would be an honest acknowledgement of the format's current omnipresence, but it would spell doom for any platform that cannot pay for the decoder license — open source browsers would only be able to display H.264 through HTML5 if someone decided to pay for the license (either in a fashion similar to how Adobe pays for including H.264 in Flash, or by offering a special plugin for a fee) and the hairy tangle of open source implementation of patented algorithms is sorted out.</li>
+	<li>Requiring support of either H.264 or WebM (or both every browser decides) seems like a good compromise, but the cost of hosting and serving both H.264 and WebM video is steep, so every content provider will probably end up providing only one of the two and rely on Flash to display the videos on non-supporting browsers. Seems like a standardization failure to me.</li>
+	<li>Making WebM support mandatory is an interesting solution, but it's a waste of a perfectly good standard (<strong>H.264 is a good standard</strong>).</li>
+</ul>
+I wonder if the waste and confusion caused by the patents on H.264 are worth it, especially since for many of these patents the royalies are a reward for <em>being the first to patent the ideas</em>, and not for <em>working hard to find them</em>. In a world when every idea emerges from the brains of dozens of computer scientists and engineers, what is the rationale behind patents?

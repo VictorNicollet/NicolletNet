@@ -1,0 +1,57 @@
+@title ACID Outside Databases
+@draft
+
+The ACID acronym stands for Atomicity-Consistency-Isolation-Durability. In the context of database management systems, these terms stand for the following essential properties:
+<ul>
+	<li><strong>Atomicity</strong> is the all-or-none stance on state operations: either a modification is completely applied, or it is not applied at all (for instance, if a failure of some kind prevented complete application), and never partially applied.</li>
+	<li><strong>Consistency</strong> is the requirement that any constraints placed on the data are respected after an operation is completed. If an operation cannot be completed without violating a constraint, it fails (and if Atomicity is supported, then it is not applied at all).</li>
+	<li><strong>Isolation</strong> indicates that any operations performed on the data are performed sequentially (that is, one after another without overlapping), so one operation does not observe the results of another unless that other operation has already been completed. Of course, optimizations are allowed to overlap operations as long as overlapping them maintains the illusion of sequentiality.</li>
+	<li><strong>Durability</strong> indicates that once an operation has been completely applied, no failure may undo that operation (aside from utter and irreversible loss of the hard drive storing the data). For instance, if the PayPal database receives money from a payment and responds with "payment received", then the payment and corresponding funds will never disappear from the database.</li>
+</ul>
+<h2>Feeling Safe</h2>
+The basic ideas intersect the classic principles of object-oriented design: an object has a set of possible states, along with a list of messages that it can receive and respond to, based on its current state, by returning values or changing to a new state. In this analogy, a database is an object, its states are defined positively by its internal structure and negatively by the structural constraints, and the messages it receives are read and write queries. The ACID properties are implicit here:
+<ul>
+	<li>A message cannot, by definition, leave an object in-between states: it always leads from an current state to a new state (or keep the same state).</li>
+	<li>An object cannot, by definition, have a state that is not valid, because all object states are designed to be valid (otherwise, they wouldn't be states).</li>
+	<li>There are no concurrent accesses: messages are sent one at a time and are assumed to perform immediately, right before the next one is issues.</li>
+	<li>There is no notion of data loss: a theoretical object lives forever as a mathematical construct.</li>
+</ul>
+One can suspect that this is not because the theory was carefully designed so that it includes ACID properties without explicitly naming them, but rather because humans, when they think of algorithms, automatically assume that ACID properties are true. After all, it is much more complicated to provide solid algorithms using partial execution, inconsistent intermediary states, concurrent modification of shared data, and random loss of data: there are many more possibilities to take into account, and some guarantees (such as durability) are downright impossible.
+
+The real world, however, is not safe. Programmers in exception-enabled imperative languages routinely forget to handle some corner cases where an exception interrupts execution without a rollback, and even without exceptions it is easy to forget part of a rollback in response to a failure. Programmers of all languages encounter human communication issues where the definition of what is consistent varies between two pieces of code treating the same data. The theory of concurrent computations is still in its infancy, and its industrial applications are still restricted to stone age mutex-and-semaphore techniques in most modern languages. And, of course, both hardware and software are subject to a myriad failures that can wipe out data or processes at any time. In order to do real work without infinite brainpower, it becomes necessary to create a protective wrapper between the real world and the implementation. Heroic developers and engineers of untold skill stand between the wrapper and the chaotic unpredictability of our universe, designing redundant hardware, transaction systems, constraint verification engines and optimal locking or lock-free synchronization strategies to implement the wrapper. Then, your run-of-the-mill applications developer can stay within that that protective shell and design new software with improved productivity.
+
+Although the implementation of that wrapper varies, what it <em>does</em> is ACID.
+
+Of course, there is no single legendary wrapper. Hardware provides one small and limited ACID layer limited to certain instructions and certain register and memory states. The operating system then provides an improved set of ACID primitives . The programming language semantics and standard library provide yet another. On top of that, applications provide an increasingly complex set of layers where the atomicity of your PayPal transaction is guaranteed by a web server, which has a transactional database to support its claim, which in turn uses operating system primitives to provide that support, and these in turn rely on the hardware as a fundamental provider of ACID properties. And because everything is built on top of failure-prone silicon mazes, every layer has a decreasing but nonzero chance of failure.
+
+It is therefore extremely important for developers of any even remotely important application to make that application ACID-compliant, otherwise it will lack reliability or plain old user-friendliness.
+<h2>ACID for code design</h2>
+Whether a remote SOAP API or the plain interface of a class, ACID requirements are a huge competitive advantage once satisfied. In themselves, they are often easily implemented in terms of code (although they may in some cases create performance issues), but noticing that a certain piece of code may violate ACID requires a lot of concentration and experience.
+
+Every modification of state is, potentially, an ACID violation, because most imperative languages do not support ACID at all (except through specific concurrency-oriented or persistence-oriented libraries). Writing a member function for an arbitrary object does not guarantee that two threads will not run that function at the same time, or that the function's execution will not be interrupted by internal or external factors without rollback. When changing the contents of a file, the writing process may be interrupted at any time by a vast number of factors.
+
+Transaction-based systems are the skeleton (or pattern) of most solutions to ACID problems: if one defines a transaction as the smallest unit of atomic behavior, moving the object from a state to another instantaneously and permanently, then transactions by default enforce the ACID requirements. The basic philosophy of transactions is to lock first, commit last:
+<ul>
+	<li>When a transaction starts, it should lock every resource it can use. This can be done explicitly (using a lock mechanism) or implicitly (by remembering the values, comparing them right before committing, and doing everything all over again if they differ). This is required to ensure isolation.</li>
+	<li>A transaction does not change anything before it's ready to commit. Should a transaction fail before committing, it releases its locks, cleans up any temporary work it did, and does nothing else.</li>
+	<li>Once the work is done (and is verified to satisfy the constraints), it is committed using an ACID primitive supported by the wrapper it is built upon, and its locks are released.</li>
+</ul>
+For instance, if a script has to replace a file on the server by a file sent by the user, a bad idea would be to open the server-side file for writing, and writing the user file there: any interruption of the script would leave the server-side file in a jumbled state. The correct solution is to write the user file to a different location on the server, then use an atomic "rename" command to replace one server-side file with another. In the general case, the process of "lock, create temporary, verify temporary, replace value with temporary" performs much better than directly modifying objects.
+
+The ideal code contains no function which does not respect ACID (and, in this regard, pure functional code is ideal).
+<h2>ACID for user interfaces</h2>
+Your average web site user does not know what ACID is. However, the average web user cares about:
+<ul>
+	<li>Not breaking some part of the website. When, I upload a file to the web site, I obviously expect the web site to remain online and keep on working, but I also expect the file to work perfectly. This is pretty elementary and most get it right. The next step is to ensure that the file itself works. While it works most of the time, in some cases of partially failed uploads (or partially completed profiles, or partially configured accounts, or partially changed passwords) the modified element ends up in an unacceptable state. The next step is to allow rollbacks of anything: a versioning system (or its little brother the "undo" button) are great additions to any user-driven site, and an absolute requirement to many.
+
+This not require full atomicity: for instance, uploading ten files may be considered as a non-atomic combination of ten atomic uploads. This way, if the upload of the tenth file fails, the nine others are already present and don't have to be uploaded again.</li>
+</ul>
+<ul>
+	<li>Displaying valid, coherent and up-to-date information. Don't display my password on someone else's screen, don't display my relationship status change for a split second if I perform both "End relationship" and "Don't publish relationship stories" on Facebook in one go, and don't display a Wikipedia page as a mix of two major revisions.
+
+This does not require full isolation: for instance, it doesn't matter in the vast majority of cases that the "latest threads" section is a millisecond older than the "latest messages" section on a forum.</li>
+</ul>
+<ul>
+	<li>Not losing any information. When I submit data to be included, I want it included, not lost in some limbo. By extension, accidental overwriting should be cancellable and submitted data may be allowed to undergo moderation workflows instead of being committed right away</li>
+</ul>
+Although full ACID support is not required in many cases (one of the reasons why there are several transaction isolation levels in database management systems), it never hurts to guarantee ACID first, and optimize queries later.

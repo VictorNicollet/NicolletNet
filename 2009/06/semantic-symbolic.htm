@@ -1,0 +1,23 @@
+@title Semantic & Symbolic
+@draft
+
+Our brain interprets variables in two different fashions : semantic and symbolic. <strong>Semantic</strong> understanding means understanding the meaning of the variable's name, where long and detailed names like "newCustomers" convey information in plain english and shorter names like "i" and "x" convey information through conventions. <strong>Symbolic</strong> understanding relies on recognizing the shape of the variable in several locations in code, and deducing from there its actual meaning—in itself, the name is not relevant, your brain just goes "<em>hey, that's the same variable</em>". Of course, there is some amount of semantic recognition to symbolic variables, usually because we understand the variable as being a symbol.
+
+Mathematics make much use of symbolic recognition. After all, mathematicians do not write <em>f(number) = 10 × number</em>, they write <em>f(x) = 10x</em> and while one-letter variables do have some amount of semantics associated to them (i,j,k,m,n are integers, x,y,z are reals, p is a prime number, q and r are rationals, f,g,h are functions, t is often seen as time, d is a divisor, P is a predicate or a polynomial) this minimal amount of information is ridiculous when compared to the huge amounts of purely symbolic information one gathers from the use of the letter.
+
+Symbolic recognition works better when the expression is small. In descending order of readability when you're familiar with the language,
+<p style="text-align: left; padding-left: 30px;">Mathematical notation:</p>
+<p style="text-align: left; padding-left: 60px;">ƒ : A ? ?n?A. 2|n</p>
+<p style="text-align: left; padding-left: 30px;">Objective Caml:</p>
+
+<pre style="text-align: left; padding-left: 60px;">let f(a) = List.exists (fun n -&gt; n mod 2 = 0) a</pre>
+<p style="text-align: left; padding-left: 30px;">C++:</p>
+
+<pre style="text-align: left; padding-left: 60px;">bool f(const std::vector&lt;int&gt; &amp;a) {
+  for(std::vector&lt;int&gt;::const_iterator it = a.begin(); it != a.end(); ++it)
+    if (*it % 2 == 0) return true;
+  return false;
+}</pre>
+<p style="text-align: left;">I guess there are two things one can learn from this.</p>
+<p style="text-align: left;">First, in a terse language, symbolic recognition works better, which in turns means the programs can be even more terse while retaining their understandability.</p>
+<p style="text-align: left;">Second, don't bother with long variable names in a two-line function if all the information present in the name can be readily and easily deduced from the two lines in the function.</p>

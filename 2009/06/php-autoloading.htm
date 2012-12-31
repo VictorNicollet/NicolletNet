@@ -1,0 +1,36 @@
+@title PHP Autoloading
+@draft
+
+Like C, PHP initially started out as a "every file defines functions and variables and classes" language where using an entity assumed that it had already been defined (which, in practice, meant that the file it was defined in had already been included).
+
+This led to several issues :
+<ul>
+	<li>It was hard to find out what file contained what function. It was certainly possible to namespace functions based on the file name, but it required more effort than the amateur team workforce was capable of, and it made function names so much longer.</li>
+</ul>
+<ul>
+	<li>It was easy to mess things up when doing dynamic loading, because one could mistakenly load a dangerous or private file.</li>
+</ul>
+<ul>
+	<li>When serializing classes, one would have to determine where the class was defined when reloading the serialized data, so that the class definition could be loaded again.</li>
+</ul>
+<ul>
+	<li>Every time a class or function was used, the developer would have to check that the corresponding definition file was loaded as well. This led to loading many files that were not necessary just in case they would be used. Since PHP is not compiled, this meant parsing the files and populating the global scope with unnecessary entities.</li>
+</ul>
+Which is why autoloading was introduced.
+
+The mechanism behind autoloading is simple : if at any point during the execution of a program the script uses a class that is not defined, the __autoload function is called with the name of that class as an argument. That function is then allowed to load a file or evaluate a script string in order to define that class.
+
+The function obviously determines, using the class name, what source file defines that class, and loads it just in time for the class to be used. This solves all of the above issues in one strike:
+<ul>
+	<li>There's usually a clean convention for mapping class names to files. For instance, the Zend convention is that class Foo_Bar_Qux is defined in Foo/Bar/Qux.php within the include path. And if you don't follow the convention, the code doesn't work (of course, there's still the issue of writing the code on Windows and then running into Linux case sensitivity).</li>
+</ul>
+<ul>
+	<li>Using Zend_Loader (or writing your own sane __autoload function) you can restrict dynamic loading to a single directory.</li>
+</ul>
+<ul>
+	<li>__autoload also triggers while deserializing.</li>
+</ul>
+<ul>
+	<li>Developers don't need to include anything : every used class is included, and no class is included unless it's used.</li>
+</ul>
+There is of course a slight performance penalty as the loader has to process the class name to find out what file to load, but bytecode caches work around this issue quite well when performance is important.

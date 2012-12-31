@@ -1,0 +1,116 @@
+@title PHP Type Checking
+@draft
+
+PHP does not enforce types at compile-time (if anything, because there <em>isn't</em> a compile time) and runtime checking only happens at the leaves of your source code tree, when you use a PHP function and that function notices one of its arguments is incorrect.
+
+There are of course ways of introducing additional type safety into PHP code, both through development practices and through hints. For instance, you can hard-code checks into function prologues:
+<pre style="padding-left: 30px;">function SetUsername($username, $usr_id)
+{
+  assert (is_string($username));
+  assert (is_int($usr_id));
+  // ...
+}</pre>
+And, if using class types, you can also use the type hint mechanism in PHP 5 to get automatic warnings:
+<pre style="padding-left: 30px;">function FitToWindow(Image $img, Window $window)
+{
+  // ...
+}</pre>
+There remains the issue of member variables, which are modified and read in many different places. This means a "check the object is in a valid state" function is an useful addition to a class, to be used as a validity check during development to catch any errors as soon as they occur.
+
+I sometimes use the following for my checks:
+<pre style="padding-left: 30px;"><code><span style="color: #000000;"></span></code><code><span style="color: #000000;"><span style="color: #007700;">class </span><span style="color: #0000bb;">Type
+</span><span style="color: #007700;">{
+ public static function </span><span style="color: #0000bb;">Is</span><span style="color: #007700;">(</span><span style="color: #0000bb;">$value</span><span style="color: #007700;">, </span><span style="color: #0000bb;">$type</span><span style="color: #007700;">)
+ {
+   if (</span><span style="color: #0000bb;"><a title="Open the PHP manual for func_num_args" href="http://www.php.net/func_num_args" target="_blank"><strong>func_num_args</strong></a></span><span style="color: #007700;">() &gt; </span><span style="color: #0000bb;">2</span><span style="color: #007700;">) {
+     </span><span style="color: #0000bb;">$args </span><span style="color: #007700;">= </span><span style="color: #0000bb;"><a title="Open the PHP manual for func_get_args" href="http://www.php.net/func_get_args" target="_blank"><strong>func_get_args</strong></a></span><span style="color: #007700;">();
+     </span><span style="color: #0000bb;"><a title="Open the PHP manual for array_shift" href="http://www.php.net/array_shift" target="_blank"><strong>array_shift</strong></a></span><span style="color: #007700;">(</span><span style="color: #0000bb;">$args</span><span style="color: #007700;">);
+     return </span><span style="color: #0000bb;">self</span><span style="color: #007700;">::</span><span style="color: #0000bb;">Is</span><span style="color: #007700;">(</span><span style="color: #0000bb;">$value</span><span style="color: #007700;">, </span><span style="color: #0000bb;">$args</span><span style="color: #007700;">);
+   }
+
+   if (</span><span style="color: #0000bb;"><a title="Open the PHP manual for is_string" href="http://www.php.net/is_string" target="_blank"><strong>is_string</strong></a></span><span style="color: #007700;">(</span><span style="color: #0000bb;">$type</span><span style="color: #007700;">))
+     return </span><span style="color: #0000bb;">self</span><span style="color: #007700;">::</span><span style="color: #0000bb;">Is</span><span style="color: #007700;">(</span><span style="color: #0000bb;">$value</span><span style="color: #007700;">, </span><span style="color: #0000bb;"><a title="Open the PHP manual for array_filter" href="http://www.php.net/array_filter" target="_blank"><strong>array_filter</strong></a></span><span style="color: #007700;">(</span><span style="color: #0000bb;"><a title="Open the PHP manual for explode" href="http://www.php.net/explode" target="_blank"><strong>explode</strong></a></span><span style="color: #007700;">(</span><span style="color: #dd0000;">' '</span><span style="color: #007700;">, </span><span style="color: #0000bb;">$type</span><span style="color: #007700;">)));
+
+   if (empty(</span><span style="color: #0000bb;">$type</span><span style="color: #007700;">))
+     return </span><span style="color: #0000bb;">true</span><span style="color: #007700;">;
+
+   </span><span style="color: #0000bb;">$first </span><span style="color: #007700;">= </span><span style="color: #0000bb;"><a title="Open the PHP manual for array_shift" href="http://www.php.net/array_shift" target="_blank"><strong>array_shift</strong></a></span><span style="color: #007700;">(</span><span style="color: #0000bb;">$type</span><span style="color: #007700;">);
+
+   if (</span><span style="color: #0000bb;">$first </span><span style="color: #007700;">== </span><span style="color: #dd0000;">'null'</span><span style="color: #007700;">)
+     return </span><span style="color: #0000bb;">$value </span><span style="color: #007700;">=== </span><span style="color: #0000bb;">null </span><span style="color: #007700;">|| </span><span style="color: #0000bb;">self</span><span style="color: #007700;">::</span><span style="color: #0000bb;">Is</span><span style="color: #007700;">(</span><span style="color: #0000bb;">$value</span><span style="color: #007700;">, </span><span style="color: #0000bb;">$type</span><span style="color: #007700;">);
+
+   if (</span><span style="color: #0000bb;">$first </span><span style="color: #007700;">== </span><span style="color: #dd0000;">'array'</span><span style="color: #007700;">) {
+     if (!</span><span style="color: #0000bb;"><a title="Open the PHP manual for is_array" href="http://www.php.net/is_array" target="_blank"><strong>is_array</strong></a></span><span style="color: #007700;">(</span><span style="color: #0000bb;">$value</span><span style="color: #007700;">))
+       return </span><span style="color: #0000bb;">false</span><span style="color: #007700;">;
+     </span><span style="color: #0000bb;">$next </span><span style="color: #007700;">= </span><span style="color: #0000bb;">0</span><span style="color: #007700;">;
+     foreach (</span><span style="color: #0000bb;">$value </span><span style="color: #007700;">as </span><span style="color: #0000bb;">$key </span><span style="color: #007700;">=&gt; </span><span style="color: #0000bb;">$val</span><span style="color: #007700;">) {
+       if (</span><span style="color: #0000bb;">$key </span><span style="color: #007700;">!= </span><span style="color: #0000bb;">$next</span><span style="color: #007700;">++)
+         return </span><span style="color: #0000bb;">false</span><span style="color: #007700;">;
+       if (!</span><span style="color: #0000bb;">self</span><span style="color: #007700;">::</span><span style="color: #0000bb;">Is</span><span style="color: #007700;">(</span><span style="color: #0000bb;">$val</span><span style="color: #007700;">, </span><span style="color: #0000bb;">$type</span><span style="color: #007700;">))
+         return </span><span style="color: #0000bb;">false</span><span style="color: #007700;">;
+     }
+     return </span><span style="color: #0000bb;">true</span><span style="color: #007700;">;
+   }
+
+   if (</span><span style="color: #0000bb;">$first </span><span style="color: #007700;">== </span><span style="color: #dd0000;">'time'</span><span style="color: #007700;">) 
+     return </span><span style="color: #0000bb;"><a title="Open the PHP manual for is_int" href="http://www.php.net/is_int" target="_blank"><strong>is_int</strong></a></span><span style="color: #007700;">(</span><span style="color: #0000bb;">$value</span><span style="color: #007700;">) &amp;&amp; </span><span style="color: #0000bb;">$value </span><span style="color: #007700;">&gt;= </span><span style="color: #0000bb;">0</span><span style="color: #007700;">;
+
+   if (</span><span style="color: #0000bb;">$first </span><span style="color: #007700;">== </span><span style="color: #dd0000;">'hash'</span><span style="color: #007700;">) {
+     if (!</span><span style="color: #0000bb;"><a title="Open the PHP manual for is_array" href="http://www.php.net/is_array" target="_blank"><strong>is_array</strong></a></span><span style="color: #007700;">(</span><span style="color: #0000bb;">$value</span><span style="color: #007700;">))
+       return </span><span style="color: #0000bb;">false</span><span style="color: #007700;">;
+     foreach (</span><span style="color: #0000bb;">$value </span><span style="color: #007700;">as </span><span style="color: #0000bb;">$val</span><span style="color: #007700;">)
+       if (!</span><span style="color: #0000bb;">is</span><span style="color: #007700;">(</span><span style="color: #0000bb;">$val</span><span style="color: #007700;">, </span><span style="color: #0000bb;">$type</span><span style="color: #007700;">))
+         return </span><span style="color: #0000bb;">false</span><span style="color: #007700;">;
+     return </span><span style="color: #0000bb;">true</span><span style="color: #007700;">;
+   }
+
+   if (</span><span style="color: #0000bb;"><a title="Open the PHP manual for is_callable" href="http://www.php.net/is_callable" target="_blank"><strong>is_callable</strong></a></span><span style="color: #007700;">(</span><span style="color: #0000bb;">$first</span><span style="color: #007700;">))
+     return </span><span style="color: #0000bb;"><a title="Open the PHP manual for call_user_func" href="http://www.php.net/call_user_func" target="_blank"><strong>call_user_func</strong></a></span><span style="color: #007700;">(</span><span style="color: #0000bb;">$first</span><span style="color: #007700;">, </span><span style="color: #0000bb;">$value</span><span style="color: #007700;">) &amp;&amp; </span><span style="color: #0000bb;">self</span><span style="color: #007700;">::</span><span style="color: #0000bb;">Is</span><span style="color: #007700;">(</span><span style="color: #0000bb;">$value</span><span style="color: #007700;">, </span><span style="color: #0000bb;">$type</span><span style="color: #007700;">);
+
+   if (</span><span style="color: #0000bb;"><a title="Open the PHP manual for is_callable" href="http://www.php.net/is_callable" target="_blank"><strong>is_callable</strong></a></span><span style="color: #007700;">(</span><span style="color: #dd0000;">'is_' </span><span style="color: #007700;">. </span><span style="color: #0000bb;">$first</span><span style="color: #007700;">))
+     return </span><span style="color: #0000bb;"><a title="Open the PHP manual for call_user_func" href="http://www.php.net/call_user_func" target="_blank"><strong>call_user_func</strong></a></span><span style="color: #007700;">(</span><span style="color: #dd0000;">'is_' </span><span style="color: #007700;">. </span><span style="color: #0000bb;">$first</span><span style="color: #007700;">, </span><span style="color: #0000bb;">$value</span><span style="color: #007700;">) &amp;&amp; </span><span style="color: #0000bb;">self</span><span style="color: #007700;">::</span><span style="color: #0000bb;">Is</span><span style="color: #007700;">(</span><span style="color: #0000bb;">$value</span><span style="color: #007700;">, </span><span style="color: #0000bb;">$type</span><span style="color: #007700;">);
+
+   if (</span><span style="color: #0000bb;"><a title="Open the PHP manual for class_exists" href="http://www.php.net/class_exists" target="_blank"><strong>class_exists</strong></a></span><span style="color: #007700;">(</span><span style="color: #0000bb;">$first</span><span style="color: #007700;">))
+     return(</span><span style="color: #0000bb;">$value </span><span style="color: #007700;">instanceof </span><span style="color: #0000bb;">$first</span><span style="color: #007700;">);
+
+   return </span><span style="color: #0000bb;">false</span><span style="color: #007700;">;
+ }
+
+ public function </span><span style="color: #0000bb;">checkTypes</span><span style="color: #007700;">()
+ {
+   </span><span style="color: #0000bb;">self</span><span style="color: #007700;">::</span><span style="color: #0000bb;">check</span><span style="color: #007700;">(</span><span style="color: #0000bb;">$this</span><span style="color: #007700;">);
+ }
+
+ public static function </span><span style="color: #0000bb;">check</span><span style="color: #007700;">(</span><span style="color: #0000bb;">$obj</span><span style="color: #007700;">)
+ {
+   </span><span style="color: #0000bb;">$class </span><span style="color: #007700;">= </span><span style="color: #0000bb;"><a title="Open the PHP manual for get_class" href="http://www.php.net/get_class" target="_blank"><strong>get_class</strong></a></span><span style="color: #007700;">(</span><span style="color: #0000bb;">$obj</span><span style="color: #007700;">);
+   foreach (</span><span style="color: #0000bb;"><a title="Open the PHP manual for get_class_vars" href="http://www.php.net/get_class_vars" target="_blank"><strong>get_class_vars</strong></a></span><span style="color: #007700;">(</span><span style="color: #0000bb;">$class</span><span style="color: #007700;">) as </span><span style="color: #0000bb;">$var </span><span style="color: #007700;">=&gt; </span><span style="color: #0000bb;">$value</span><span style="color: #007700;">)
+     if (</span><span style="color: #0000bb;">$var</span><span style="color: #007700;">{</span><span style="color: #0000bb;">0</span><span style="color: #007700;">} != </span><span style="color: #dd0000;">'_'</span><span style="color: #007700;">)
+       if (!</span><span style="color: #0000bb;">is</span><span style="color: #007700;">(</span><span style="color: #0000bb;">$obj</span><span style="color: #007700;">-&gt;</span><span style="color: #0000bb;">$var</span><span style="color: #007700;">, </span><span style="color: #0000bb;">$value</span><span style="color: #007700;">))
+         throw new </span><span style="color: #0000bb;">Exception</span><span style="color: #007700;">(</span><span style="color: #dd0000;">"Type error: `$class::$var` is not of type `$value`"</span><span style="color: #007700;">);
+  }
+}</span></span></code></pre>
+The typical use is to define a new class, then assign a default value to all type-checked variables: that default value is a type string (or array) that is parsed and verified by the check functions. For instance:
+<pre style="padding-left: 30px;">class User
+{
+  var $id = 'int';
+  var $name = 'null string';
+  var $media = 'array Media';
+  var $friends = 'positive int';
+  var $_hash;
+}</pre>
+This would check that the identifier is an integer, that the name is a string or null, that media is an array of instances of the Media class, and that friends is an integer such that <em>is_positive($obj-&gt;friends)</em> returns true (assuming you define that function somewhere). The hash variable is unchecked because it starts with an underscore. This has some <strong>advantages</strong>:
+<ul>
+	<li>Type expressions are shorter than the corresponding assert statements.</li>
+	<li>They go deeper as far as checks go (for instance, arrays also check that all members are of a certain type).</li>
+	<li>They document the code, by explaining <em>in the class definition</em> what the types of the variables are, as opposed to staying in a function.</li>
+	<li>They help with automated testing by allowing the creation of classes with arbitrary values of the chosen type.</li>
+</ul>
+This also has <strong>disadvantages</strong>:
+<ul>
+	<li>This prevents setting an actual default value for the variables.</li>
+	<li>It introduces an artificial naming convention for variables starting with or without underscores.</li>
+	<li>Type-checking arrays or large structures takes time.</li>
+	<li>It's not detected by documentation generators.</li>
+	<li>Does not play well with private variables.</li>
+</ul>

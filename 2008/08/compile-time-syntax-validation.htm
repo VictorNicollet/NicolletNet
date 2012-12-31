@@ -1,0 +1,122 @@
+@title Compile-time Syntax Validation
+@draft
+
+<h2>The premises</h2>
+In the last installment of Functional Tuesdays, it was mentioned that Objective Caml could be used to write a PHP view that was verified by the generator program as creating valid XHTML. While many tasks will have to be programmed directly in Objective Caml to perform the validation, some of the more elementary parts of validation can be done directly in the type system of the language.
+
+Omitting a lot of details (attributes, unwanted tags, self-closing tags, comments...), the grammar of XHTML looks like:
+<blockquote>
+<pre>text : any piece of text with quoted entities
+p    : <strong><span style="color: #000000;">&lt;p&gt;</span></strong>(text|span)*<strong><span style="color: #000000;">&lt;/p&gt;</span></strong>
+span : <strong><span style="color: #000000;">&lt;span&gt;</span></strong>(text|span)*<strong><span style="color: #000000;">&lt;/span&gt;</span></strong>
+div  : <span style="color: #000000;"><strong>&lt;div&gt;</strong></span>(p|span|div|ul|ol|text)*<span style="color: #000000;"><strong>&lt;/div&gt;</strong></span>
+li   : <span style="color: #000000;"><strong>&lt;li&gt;</strong></span>(p|span|div|ul|ol|text)*<strong><span style="color: #000000;">&lt;/li&gt;</span></strong>
+ul   : <span style="color: #000000;"><strong>&lt;ul&gt;</strong></span>li*<strong><span style="color: #000000;">&lt;/ul&gt;</span></strong>
+ol   : <span style="color: #000000;"><strong>&lt;ol&gt;</strong></span>li*<span style="color: #000000;"><strong>&lt;/ol&gt;</strong></span>
+body : <span style="color: #000000;"><strong>&lt;body&gt;</strong></span>(p|div|ul|ol)*<span style="color: #000000;"><strong>&lt;/body&gt;</strong></span>
+html : <span style="color: #000000;"><strong>&lt;html&gt;</strong></span>body<span style="color: #000000;"><strong>&lt;/html&gt; </strong></span></pre>
+</blockquote>
+It's already possible to write one function for each of these non-terminals, and this has already been done. Formatting the things a little bit better:
+<blockquote>
+<pre style="background: #ffffff none repeat scroll 0% 50%; color: #000000;"><span style="color: #000084; font-weight: bold;">module</span> TagImpl = <span style="color: #000084; font-weight: bold;">struct</span> 
+  <span style="color: #000084; font-weight: bold;">let</span> tag n i = Printf.sprintf <span style="color: #0000ff;">"&lt;</span><span style="color: #0000ff;">%s</span><span style="color: #0000ff;">&gt;</span><span style="color: #0000ff;">%s</span><span style="color: #0000ff;">&lt;/</span><span style="color: #0000ff;">%s</span><span style="color: #0000ff;">&gt;"</span> n (String.concat <span style="color: #0000ff;">""</span> i) n 
+
+  <span style="color: #000084; font-weight: bold;">let</span> p i = tag <span style="color: #0000ff;">"p"</span> i 
+  <span style="color: #000084; font-weight: bold;">and</span> li i = tag <span style="color: #0000ff;">"li"</span> i 
+  <span style="color: #000084; font-weight: bold;">and</span> ul i = tag <span style="color: #0000ff;">"ul"</span> i 
+  <span style="color: #000084; font-weight: bold;">and</span> ol i = tag <span style="color: #0000ff;">"ol"</span> i 
+  <span style="color: #000084; font-weight: bold;">and</span> div i = tag <span style="color: #0000ff;">"div"</span> i 
+  <span style="color: #000084; font-weight: bold;">and</span> span i = tag <span style="color: #0000ff;">"span"</span> i 
+  <span style="color: #000084; font-weight: bold;">and</span> body i = tag <span style="color: #0000ff;">"body"</span> i 
+  <span style="color: #000084; font-weight: bold;">and</span> html i = tag <span style="color: #0000ff;">"html"</span> i 
+  <span style="color: #000084; font-weight: bold;">and</span> text i = i 
+
+  <span style="color: #000084; font-weight: bold;">type</span> 'a block = <span style="color: #000084; font-weight: bold;">string</span> 
+  <span style="color: #000084; font-weight: bold;">let</span> to_string s = s 
+<span style="color: #000084; font-weight: bold;">end</span></pre>
+</blockquote>
+<h2>Module types</h2>
+The main selling point of Objective Caml as a functional language is its excellent module and type system. In this case, the above module is type-unsafe (in the area of generating a valid XHTML document) because it manipulates all nodes as strings. This makes it possible to create a document such as <span style="font-family: courier new,courier; color: #999999;">&lt;html&gt;&lt;p&gt;Hello!&lt;/p&gt;&lt;/html&gt;</span> (with <span style="font-family: courier new,courier; color: #999999;">html [p [text "Hello!"]]</span>). To make this module type-safe, one can apply a module type, thereby restraining the signature of the functions in the module to have a specific type. This is the purpose of the two additional definitions of <span style="font-family: courier new,courier; color: #999999;">'a block</span> (all functions will take as arguments lists of blocks and return blocks) and <span style="font-family: courier new,courier; color: #999999;">to_string</span> (to return a string representing a block).
+
+The type parameter of the block type serves to convey information about what the block is. Since Objective Caml supports variant types, it's possible to use a variant type as that type parameter, with a distinct variant label representing each of the tags. For instance, a <span style="font-family: courier new,courier; color: #999999;">&lt;p&gt; </span>tag will be represented by the label <span style="font-family: courier new,courier; color: #999999;">`P</span>, and any functions which accept a paragraph tag as their internal XHTML code will take <span style="font-family: courier new,courier; color: #999999;">`P</span> as a possible label.
+
+The result is this module type:
+<blockquote>
+<pre style="background: #ffffff none repeat scroll 0% 50%; color: #000000;"><span style="color: #000084; font-weight: bold;">module</span> <span style="color: #000084; font-weight: bold;">type</span> TAG = <span style="color: #000084; font-weight: bold;">sig</span> 
+  <span style="color: #000084; font-weight: bold;">type</span> 'a block 
+  <span style="color: #000084; font-weight: bold;">val</span> text : <span style="color: #000084; font-weight: bold;">string</span> -&gt; [&gt;`TEXT] block 
+  <span style="color: #000084; font-weight: bold;">val</span> p    : [&lt;`TEXT|`SPAN]                  block <span style="color: #000084; font-weight: bold;">list</span> -&gt; [&gt;`P] block 
+  <span style="color: #000084; font-weight: bold;">val</span> li   : [&lt;`SPAN|`TEXT|`UL|`OL|`P |`DIV] block <span style="color: #000084; font-weight: bold;">list</span> -&gt; [&gt;`LI] block 
+  <span style="color: #000084; font-weight: bold;">val</span> ul   : [&lt;`LI]                          block <span style="color: #000084; font-weight: bold;">list</span> -&gt; [&gt;`UL] block 
+  <span style="color: #000084; font-weight: bold;">val</span> ol   : [&lt;`LI]                          block <span style="color: #000084; font-weight: bold;">list</span> -&gt; [&gt;`OL] block 
+  <span style="color: #000084; font-weight: bold;">val</span> div  : [&lt;`SPAN|`TEXT|`UL|`OL|`P |`DIV] block <span style="color: #000084; font-weight: bold;">list</span> -&gt; [&gt;`DIV] block 
+  <span style="color: #000084; font-weight: bold;">val</span> span : [&lt;`TEXT|`SPAN]                  block <span style="color: #000084; font-weight: bold;">list</span> -&gt; [&gt;`SPAN] block 
+  <span style="color: #000084; font-weight: bold;">val</span> body : [&lt;`DIV|`P|`UL|`LI]              block <span style="color: #000084; font-weight: bold;">list</span> -&gt; [&gt;`BODY] block 
+  <span style="color: #000084; font-weight: bold;">val</span> html : [&lt;`BODY]                        block <span style="color: #000084; font-weight: bold;">list</span> -&gt; [&gt;`HTML] block 
+  <span style="color: #000084; font-weight: bold;">val</span> to_string : 'a block -&gt; <span style="color: #000084; font-weight: bold;">string</span> 
+<span style="color: #000084; font-weight: bold;">end</span></pre>
+</blockquote>
+The type of the blocks accepted in the "inner XHTML" list of each tag is restricted to be one of the possible labels, while the returned block type is constrained to contain at least the type of block created by that tag. The returned block is not exactly the type of created block because this would prevent placing the returned blocks in lists of distinct blocks (such as a block containing both text and spans).
+<h2>Error detection</h2>
+The basic errors are detected by this type system:
+<blockquote>
+<pre style="background: #ffffff none repeat scroll 0% 50%; color: #000000;"><span style="color: #000084; font-weight: bold;">module</span> Tag = (TagImpl : TAG);; 
+<span style="color: #000084; font-weight: bold;">open</span> Tag;; 
+
+<span style="color: #000084; font-weight: bold;">let</span> _ = html [text <span style="color: #0000ff;">"Bad!"</span>];; 
+<span style="color: #808080;">(*            ^^^^^^^^^^^</span> 
+<span style="color: #808080;">This expression has type [&gt; `TEXT ] Tag.block but is here used with type</span> <span style="color: #808080;">[ `BODY ] Tag.block</span> 
+<span style="color: #808080;">*)</span> 
+<span style="color: #000084; font-weight: bold;">let</span> _ = p [ ul [] ];; 
+<span style="color: #808080;">(*          ^^^^^</span> 
+<span style="color: #808080;">This expression has type [&gt; `UL ] Tag.block but is here used with type</span> <span style="color: #808080;">[&lt; `SPAN | `TEXT ] Tag.block</span> 
+<span style="color: #808080;">*)</span> 
+<span style="color: #000084; font-weight: bold;">let</span> _ = ul [ div [] ];; 
+<span style="color: #808080;">(*           ^^^^^^</span> 
+<span style="color: #808080;">This expression has type [&gt; `DIV ] Tag.block but is here used with type</span><span style="color: #808080;"> [ `LI ] Tag.block</span> 
+<span style="color: #808080;">*)</span></pre>
+</blockquote>
+Additionally, the errors are fairly clear: the current type of the block being insertedis shown first, followed by the type of blocks that are allowed in that position.
+
+As an advanced feature, this also plays well with the Objective Caml type system, allowing the user to define functions which create subexpressions from other subexpressions and still having everything type-safe. For instance, a function which takes a list of blocks and turns it into an XHTML list with one block per <span style="font-family: courier new,courier; color: #999999;">&lt;li&gt;&lt;/li&gt;</span>.
+<blockquote>
+<pre style="background: #ffffff none repeat scroll 0% 50%; color: #000000;"><span style="color: #000084; font-weight: bold;">let</span> decorate elts = ul (List.map (<span style="color: #000084; font-weight: bold;">fun</span> x -&gt; li [x]) elts);; 
+<span style="color: #808080;">(* val decorate :</span> 
+<span style="color: #808080;">    [&lt; `DIV | `P | `SPAN | `TEXT ] Tag.block list -&gt; [&gt; `UL ] Tag.block = &lt;fun&gt;</span> 
+<span style="color: #808080;">*)</span> 
+<span style="color: #000084; font-weight: bold;">let</span> _ = decorate [text <span style="color: #0000ff;">"Hello"</span>; div [text <span style="color: #0000ff;">"world!"</span>]; body []];; 
+<span style="color: #808080;">(*                                                   ^^^^^^^</span> 
+<span style="color: #808080;">This expression has type [&gt; `BODY ] Tag.block but is here used with type</span> 
+<span style="color: #808080;">  [&lt; `DIV | `P | `SPAN | `TEXT &gt; `DIV `TEXT ] Tag.block</span> 
+<span style="color: #808080;">*)</span></pre>
+</blockquote>
+The error message is slightly less clear here because of the <span style="font-family: courier new,courier; color: #999999;">&gt; `DIV `TEXT</span> section (indicating that the list already contains div tags and text sections). Another example would be a function which decides whether to wrap some text in a <span style="font-family: courier new,courier; color: #999999;">&lt;p&gt;</span> or a <span style="font-family: courier new,courier; color: #999999;">&lt;div&gt;</span>, the output of such a function cannot be used safely in a <span style="font-family: courier new,courier; color: #999999;">&lt;p&gt;</span>:
+<blockquote>
+<pre style="background: #ffffff none repeat scroll 0% 50%; color: #000000;"><span style="color: #000084; font-weight: bold;">let</span> choose elts = 
+  <span style="color: #000084; font-weight: bold;">if</span> Random.int 2 = 1 <span style="color: #000084; font-weight: bold;">then</span> p elts <span style="color: #000084; font-weight: bold;">else</span> div elts;; 
+<span style="color: #808080;">(* val choose : [&lt; `SPAN | `TEXT ] Tag.block list -&gt; </span> 
+<span style="color: #808080;">                [&gt; `DIV | `P ] Tag.block = &lt;fun&gt;</span> 
+<span style="color: #808080;">*)</span> 
+<span style="color: #000084; font-weight: bold;">let</span> _ = choose [div []];; 
+<span style="color: #808080;">(*              ^^^^^^</span> 
+<span style="color: #808080;">This expression has type [&gt; `DIV ] Tag.block but is here used with type</span> 
+<span style="color: #808080;">  [&lt; `SPAN | `TEXT ] Tag.block</span> 
+<span style="color: #808080;">*)</span> 
+<span style="color: #000084; font-weight: bold;">let</span> _ = p [choose []];; 
+<span style="color: #808080;">(*         ^^^^^^^^^</span> 
+<span style="color: #808080;">This expression has type [&gt; `DIV | `P ] Tag.block but is here used with type</span> 
+<span style="color: #808080;">  [&lt; `SPAN | `TEXT ] Tag.block</span> 
+<span style="color: #808080;">*)</span></pre>
+</blockquote>
+Even better, it can detect ahead of time that some functions cannot be used, for instance a function which decides whether to wrap in <span style="font-family: courier new,courier; color: #999999;">&lt;p&gt;</span> (accepts only text or spans) or in <span style="font-family: courier new,courier; color: #999999;">&lt;ul&gt;</span> (accepts only list elements):
+<blockquote>
+<pre style="background: #ffffff none repeat scroll 0% 50%; color: #000000;"><span style="color: #000084; font-weight: bold;">let</span> impossible elts = 
+  <span style="color: #000084; font-weight: bold;">if</span> Random.int 2 = 1 <span style="color: #000084; font-weight: bold;">then</span> ul elts <span style="color: #000084; font-weight: bold;">else</span> p elts;; 
+<span style="color: #808080;">(*                                        ^^^^</span> 
+<span style="color: #808080;">This expression has type [ `LI ] Tag.block list but is here </span> 
+<span style="color: #808080;">  used with type [&lt; `SPAN | `TEXT ] Tag.block list</span> 
+<span style="color: #808080;">These two variant types have no intersection</span> 
+<span style="color: #808080;">*)</span></pre>
+</blockquote>
+<h2>Further work</h2>
+Now that the XHTML tree itself is valid, it is interesting to consider inline PHP code as being typed blocks (based on the type they can output), which in turn leads to safe generation of a valid document witin the PHP code.

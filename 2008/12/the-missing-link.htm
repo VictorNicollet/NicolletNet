@@ -1,0 +1,82 @@
+@title The Missing Link
+@draft
+
+In paleontology, a missing link is a <a href="http://en.wikipedia.org/wiki/Transitional_fossil" target="_blank">transitional fossil</a> that fills the evolutionary gap between two recognized species, both in time and in phenotype.
+
+Quite frequently in the course of software development, certain parts of a program are deemed global at some point in time: there never ought to be a need for more than one instance, nor the need for polymorphic handling of a similar yet distinct part. And sometimes, but not always, this initial impression is proven wrong, and the need for more than one instance arises. The consequences of such an error are usually quite extreme: a one-of global entity tends to be referenced by name, requiring a refactoring effort to convert it to a parameter everywhere this is needed. And so, developers are given the choice between going with the initial impression (with the risk of having to convert it) or ignore the initial impression (and spend time on something they might never need).
+
+I propose here a missing link, a third alternative which implements a one-instance form with minimal effort, yet can be easily refactored into a several-instance if the need arises.
+
+Of course, this applies only in situations where a doubt exists. If it is obvious right away that a given entity will be a several-instance entity, then it should be written as such from the beginning. Only in situations where the current state of the design (especially in Agile methodologies) only requires a single instance should this missing link be considered.
+
+But first, a few background information about this.
+<h2>Procedural and Objective</h2>
+A while ago, I wrote a short <a href="http://nicollet.net/blog/cpp/32-interfaces" target="_blank">article</a> that discussed how procedural programming approached the issue of global state. The basic conclusions were that by grouping global state into modules, the number of possible interactions decreased, and those that occurred were made obvious by the structure of the code. As such, a procedural program is a set of stateful entities that interact with each other along a dependency graph.
+
+So is an object-oriented program: stateful objects reference each other and communicate through message-passing. At runtime, there is therefore no major difference in this respect between an object-oriented program and a non-objective procedural program. The main difference is elsewhere. Objects, unlike modules, are rarely defined in the code: they are usually created dynamically at runtime. So, while the two dependency graphs may look the same, the object-oriented runtime dependency graph is a purely dynamic construct that can be altered at will, whereas the procedural runtime dependency graph is a static construct that is tightly mapped to the structure of the code.
+
+<img class="alignright" style="border: 0pt none; margin: 5px;" src="/images/the-missing-link.jpg" border="0" alt="Keep It Simple, Bridge" width="425" height="640" align="right" />The extensibility of object-oriented programming comes from the dynamic aspects of its dependency graph: if objects can be created, replaced and removed at will, even by the program itself, then the program will have a flexibility and adaptability that exceeds the static module skeleton of a traditional procedural program. On the other hand, the static module skeleton is easier to design and implement than a fully flexible object architecture where elements can be hotplugged—even with language support for object-oriented programming.
+
+<em>When you have to build a bridge, you don't build a fully automated moving bridge just for the fun of it: if the simplest thing that could possibly work is a plain old suspended bridge with no moving parts, then this is what you do. </em>
+
+Remember that we're considering here the case of a one-instance object being converted to a multiple-instance object even though there is no apparent need for it yet. Why is that more difficult than using the one instance directly?
+<ul>
+	<li>Polymorphism requires abstraction, and abstraction usually comes from having several instances—then you can identify what's general and what's specific. Trying to abstract a concept from a single instance will miss some general aspects that could have been useful, and keep some specific aspects that will limit extensibility.</li>
+</ul>
+<ul>
+	<li>It's easier to program something which makes sense. If having multiple instances does not make sense yet, then the programmer cannot rely on his instinct or his intuition to determine whether what he's writing works or not, and the single-instance assumption might fight its way stealthily into the program anyway. Testing a multi-instance system when you only have one instance is quite difficult, too.</li>
+</ul>
+<ul>
+	<li>When using multiple instances, one has to consider what scope they should exist in, and how they are propagated down. Of course, there's the code required to have the multiple instances trickle down to where they are used. But the real difficulty is deciding what the correct scope is—and since there isn't a reason yet to consider multiple non-global instances, it's quite probable that such a decision will turn out to be wrong in the end anyway.</li>
+</ul>
+<ul>
+	<li>Handling a flexible design is harder, mentally, than handling a fixed design. In a static module skeleton, the dependencies are clear and, when they are not, can be extracted from the code very easily. In a dynamic dependency graph, one has to think about how that graph will be constructed at runtime before they know whether a certain piece of code can affect a certain concept (especially if that concept is still a one-instance global).</li>
+</ul>
+As such, delaying the setup of a flexible and dynamic dependency graph as long as possible reduces the amount and difficulty of development efforts. The downside, of course, is the refactoring effort required if the initial assumption is proven wrong. A solution to this conundrum would keep the <em>conceptual </em>simplicity of a single-instance static skeleton, while having a <em>code </em>layout that can be easily changed to a multi-instance dynamic graph as soon as the reasons for such a change are discovered.
+<h2>Singletons?</h2>
+While often used to implement single-instance cases, the <a href="http://nicollet.net/blog/cpp/58-singletons" target="_blank">Singleton design pattern</a> does not solve this issue: it is a pattern for representing the single instance, and the problem here is related to how the rest of the program refers to the instance. If all your code uses a certain instance by name, it does not matter whether that instance is a global variable or the instance of a singleton class: that code cannot use a second instance until it uses that instance by reference, and that reference is a parameter of some kind.
+
+So, the choice of a singleton (or any other approach) to represent the instance is completely independent of any solution that could be found to this problem.
+<h2>Bottom-Up Construction</h2>
+An approach which can be used in many cases and leads to avoidance of single instances is bottom-up development. Since the system is being built bottom-up, most of the time when a module would need to access a single instance, that single instance has not yet been written or even designed yet. In that situation, the correct approach is to create an interface representing what the module expects, and have a parameter somewhere to receive an instance implementing that interface. Then, when the single instance is finally designed, it can be made to implement that interface (or <a href="http://www.dofactory.com/Patterns/PatternAdapter.aspx" target="_blank">adapt</a> to it) and then passed as an argument to the relevant elements.
+
+Bottom-up construction eliminates many of the problems related to handling single instances. That is, by refusing to assume anything about the object being used beyond its interface (including, of course, how many instances exist that implement that interface) development automatically deviates from the single-instance approach and can handle multiple instances automatically.
+
+This does not solve everything, however. Bottom-up construction is notoriously ill adapted to fast development cycles, because the actual functionality of the program appears only when the top-level objects have been developed, which is at the end of the cycle. By contrast, with a top-down approach, the top-level object can be developed first and filled with mocks, and the mocks replaced with the actual functionality on the fly. Besides, bottom-up construction is also subject to violating <a href="http://c2.com/cgi/wiki?YouArentGonnaNeedIt" target="_blank">YAGNI</a>, because objects are created before their users exist (and may end up not existing at all).
+<h2>The Missing Link</h2>
+The key of the problem here is that directly converting a single-instance approach to a multiple-instance approach requires a lot of argument-passing: since the instances are manipulated through references, and those references are parameters, a lot of parameters are required to pass the instance from its point of creation (quite probably somewhere near the entry point) down to every part of the program that uses it. A possible solution would be do to as much of that work as possible (replacing as many of the global accesses as possible with references) without having to heavily increase the number of parameters.
+
+Aside from global symbols, one other kind of value is available in functions without being passed as a parameter: <em>member variables</em>.
+<blockquote>
+<h2>The Screen Design Pattern</h2>
+<strong>The problem:</strong> methods of a class needs to access a global variable directly. Making that variable non-global is unnecessary right now, but might be necessary in the future.
+
+<strong>The solution:</strong> have the class keep a <em>screen</em> member reference to the global variable. That reference is initialized in the constructor and used everywhere else. Member functions other than the constructor are never allowed to reference global variables.</blockquote>
+What would be an example of refactoring using this pattern? Consider the original C# code:
+<blockquote>
+<pre style="background: #ffffff none repeat scroll 0% 50%; color: #000000;"><span style="color: #000084; font-weight: bold;">public</span> <span style="color: #000084; font-weight: bold;">class</span> GlobalUser 
+{ 
+  <span style="color: #000084; font-weight: bold;">public</span> GlobalUser() {} 
+  <span style="color: #000084; font-weight: bold;">public</span> <span style="color: #000084; font-weight: bold;">void</span> MethodA() { Global.Instance.Use(); } 
+  <span style="color: #000084; font-weight: bold;">public</span> <span style="color: #000084; font-weight: bold;">void</span> MethodB() { Global.Instance.Use(); } 
+}</pre>
+</blockquote>
+Methods in this code use a global instance. Let's replace that with a member reference to the global instance:
+<blockquote>
+<pre style="background: #ffffff none repeat scroll 0% 50%; color: #000000;"><span style="color: #000084; font-weight: bold;">public</span> <span style="color: #000084; font-weight: bold;">class</span> GlobalUser 
+{ 
+  <span style="color: #000084; font-weight: bold;">private</span> Global screen; 
+  <span style="color: #000084; font-weight: bold;">public</span> GlobalUser() { <span style="color: #000084; font-weight: bold;">this</span>.screen = Global.Instance; } 
+  <span style="color: #000084; font-weight: bold;">public</span> <span style="color: #000084; font-weight: bold;">void</span> MethodA() { <span style="color: #000084; font-weight: bold;">this</span>.screen.Use(); } 
+  <span style="color: #000084; font-weight: bold;">public</span> <span style="color: #000084; font-weight: bold;">void</span> MethodB() { <span style="color: #000084; font-weight: bold;">this</span>.screen.Use(); } 
+}</pre>
+</blockquote>
+Using the pattern, the refactored code can be written straight away (instead of writing the original code and then refactoring it) without requiring mental effort, which means that using the pattern bears almost no cost (it only requires an additional member variable and an additional assignment in the constructor). And if the screened variable suddenly has to become non-global, only the constructor will be affected, saving precious time that would have been lost refactoring the methods as well.
+
+Note that creating a property which returns the global variable (instead of a member variable assigned in the constructor) is equivalent in terms of writing the initial refactored code (the <span style="font-family: courier new,courier;">this.screen = Global.Instance</span> is replaced with <span style="font-family: courier new,courier;">{ get { return Global.Instance; } }</span>), but does not have the same benefits when refactoring to remove the global instance because a connection will have to be made between the value returned by the property and the parameter received in the constructor, which requires more code. I therefore suggest using a member variable assigned in the constructor instead of a property.
+
+Also note that the above can be seen as the preliminary step of a <a href="http://en.wikipedia.org/wiki/Dependency_injection" target="_blank">dependency injection</a> and follows the same general idea as preparing your application for <a href="http://www.springframework.net/doc-latest/reference/html/quickstarts.html" target="_blank">Spring.NET</a> integration (for example). The difference is that the pattern does so at the class scale, and emphasizes development speed (using the pattern should be no slower than using the non-pattern approach) rather than external interoperability and flexibility.
+<h2>Memory issues</h2>
+Of course, storing a screen reference in every object might not be welcome. Some very small objects, such as vectors or polygons, cannot afford to store an additional reference because of the time and space overhead this would imply.
+
+My suggestion in these situations is as follows: <em>eliminate the global dependency altogether</em>. Resist the temptation to have a certain small object <em>frobnicate </em>itself using a global instance, and instead have a larger object <em>frobnicate </em>the small objects. This makes the optimization more transparent (the small objects are now just bits of data without any kind of polymorphic behavior that are externally manipulated) and allows using the Screen design pattern on the larger object.

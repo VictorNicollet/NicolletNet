@@ -1,0 +1,83 @@
+@title Expect the Unexpected
+@draft
+
+When looking at a function declaration, there are several levels of abstraction one can use to describe what that function does.
+
+The actual action of that function is what really happens. This includes any bugs the function may contain and any undocumented behavior that is subject to change in later versions.
+
+The documented action of the function is what the author of the function intended to do with that function. This includes a complete description of what the function should reasonably be expected to do, what conditions may trigger an error, and what external factors may affect the outcome.
+
+The expected action of the function is what the user of the function expects the function to do. This is the action that matters most of the time, since there are often many users for every function.
+
+In an ideal world, all three actions would be identical: the author implemented the function to do exactly what was documented and the documentation covers all behavior and explicitly marks all unspecified elements, the user has read the documentation and understands it completely.
+
+In the real world, those actions are all different. The difference between the actual action and the documented action is either a bug (the function does not behave as documented) or the documentation being too vague and leaving things implicitly unspecified. The difference between the expected action and the documented action happens because the user has not read, or understood, all the nuances of the function's behavior as described in the documentation.
+<h3>Breaking the Mental Model</h3>
+The classic example of the latter difference in understanding is <a href="http://www.codinghorror.com/blog/archives/001075.html">the strtolower function</a>:
+<blockquote>When we convert the string "integer" to upper and lower case in the Turkish locale, we get some strange characters back:
+<pre>"INTEGER".ToLower() = "<span style="color: red;">?</span>nteger"
+"integer".ToUpper() = "<span style="color: red;">?</span>NTEGER"</pre>
+</blockquote>
+The user is not aware that strtolower depends on the current locale, because their mental model of the strtolower function turns every uppercase letter of the occidental latin alphabet into its corresponding lowercase letter in that same alphabet. Of course, this is not what happens, and there is no way of "getting" this fact straight without thoroughly reading and remembering the entire documentation of the strtolower function.
+
+The best we can do, as function authors, is to make it woefully obvious to users of that function when they misunderstand the function.
+
+<em>But,</em> you say, <em>the only way to detect most non-trivial function misuses is through complete testing, and it's quite probable that the user will not think of the test cases that would break their mental model! </em>
+
+This is correct, and this precisely why I said <strong>misunderstand</strong> and not misuse. Determining whether or not a function is used correctly is something that the user can do quite easily once they get a correct mental model of that function, so we'll let them do exactly that. The point here is to make the function as hard to use as possible when you don't understand it completely.
+
+Consider the strtolower function. If you don't understand that locale can affect the operation performed by that function, then you are going to get things wrong. A nice way to ensure you understand this is to make the locale a <strong>mandatory </strong>argument of the function. By telling the user "you need to specify a locale before using this function" you are breaking the mental model of any user that expected the function to be locale-independent, and that is a good thing.
+<h3>Exceptional Situations</h3>
+There is an interesting gradient of mental-model-breaking in the handling of exceptional situations:
+<table style="text-align: center;" border="0">
+<tbody>
+<tr>
+<td><strong>Handling Method</strong></td>
+<td><strong>Always</strong></td>
+<td><strong>When fails</strong></td>
+</tr>
+<tr>
+<td style="text-align: left;">No handling (ASM, C++ undefined behavior</td>
+<td>No</td>
+<td>No</td>
+</tr>
+<tr>
+<td style="text-align: left;">Return codes (C APIs)</td>
+<td>Weak</td>
+<td>Weak</td>
+</tr>
+<tr>
+<td style="text-align: left;">Exceptions</td>
+<td>Weak</td>
+<td>Strong</td>
+</tr>
+<tr>
+<td style="text-align: left;">Java Exceptions</td>
+<td>Medium</td>
+<td>Strong</td>
+</tr>
+<tr>
+<td style="text-align: left;">Type System</td>
+<td>Strong</td>
+<td>N/A</td>
+</tr>
+</tbody></table>
+Here, I'm discussing the ability for a given handling method of breaking an incorrect mental model in two situations : "always" means whenever the function is used, "when fails" means whenever the function is used incorrectly in a fashion that interrupts the normal course of execution.
+
+When the function is used, the existence of exceptional situations is mentioned as weak (only in the documentation), medium (compiler error that is not very specific) or strong (specific, reliable compiler error). When a failure occurs, the result is weak (depends on user action) or strong (independent of user action).
+
+As such, using the type system appears to be the strongest means of describing the existence of exceptional situations. How?
+
+In a functional language, every function returns a result. There is no point in computing a result unless that result is used, which means every function result is used somewhere in the code. As such, having functions that may encounter errors return an "Error or Success" type forces the user of the function to handle the possibility of an error before they get the result.
+
+This is precisely how Objective Caml avoids the very possibility of a "null reference" runtime error : the option type has to be explicitly turned into a value, which means that pattern matching must be used and therefore the null case has to be handled as well:
+<pre style="padding-left: 30px;">let frobnicate option =
+  match option with
+    | Some value -&gt; work_with value
+    | None -&gt; work_without_value ()</pre>
+<h3>Dealing with Programmers</h3>
+The problem is that programmers are humans and humans are lazy. Nobody wants to spend additional time designing the type of a function just to prevent misunderstanding of that function (unless it's an API, of course) and nobody wants to have to type an additional argument to a function.
+
+In fact, the entire<em> convention over configuration</em> philosophy relies on the idea that programmers should have to make as few decisions as possible. But adding default values for every argument is dangerous if programmers are not aware that those arguments exist—choosing a sane default value implies that such a value exists and is the one most programmers have in their own limited mental models for that behavior.
+
+And if no consensus exists, using a default value is impossible: a programmer would expect strtolower to work in the current locale by default, while another would expect strtolower to work in an invariant locale by default. Choosing a default locale means that one of these two programmers is wrong and leads to bugs. It certainly is the programmer's fault for not reading the documentation properly, but one could argue that a successful library is one that produces great results even in the hands of less competent programmers.

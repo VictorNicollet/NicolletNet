@@ -1,0 +1,48 @@
+@title Algebraic types, dangerous?
+@draft
+
+n static languages, algebraic data types allow the creation of complex data types without going through the tedious task of defining a type beforehand. Consider, for example, a grammar description: every rule in a grammar describes how a certain non-terminal symbol can be obtained from a list of terminal and non-terminal symbols, associated to some code that is executed when the rule is matched by the input. As such, one could describe this using the following type:
+<blockquote>
+<pre style="background: #ffffff none repeat scroll 0% 50%; color: #000000;"><span style="color: #000084; font-weight: bold;">type</span> grammar = (<span style="color: #000084; font-weight: bold;">int</span> * (<span style="color: #000084; font-weight: bold;">bool</span> * <span style="color: #000084; font-weight: bold;">int</span>) <span style="color: #000084; font-weight: bold;">list</span> * <span style="color: #000084; font-weight: bold;">string</span>) <span style="color: #000084; font-weight: bold;">list</span></pre>
+</blockquote>
+That is, a grammar is a list of rules, and a rule is an integer (the non-terminal being defined), a list of tokens (the identifier, and whether it's a nonterminal) and some code. Of course, if you were striving for conciseness, this type would never be written down: it would be inferred from how you create, extend and transform the grammar.
+
+And the type system of most languages with algebraic data types will happily infer it without a hitch, leading to concise code with no extraneous definitions.
+
+The problem with this approach is that there is no simple reminder of what is what inside an algebraic data type. Even if the programmer manages to keep types straight (and therefore know what expression has what type) the meaning of some elements might become lost or slightly altered, leading to bugs. And when reading code after a few weeks, the nature of the implicit data type has to be gathered from the code that manipulates it instead of being deduced from member names.
+
+The alternative would have been to define a few types:
+<blockquote>
+<pre style="background: #ffffff none repeat scroll 0% 50%; color: #000000;"><span style="color: #000084; font-weight: bold;">type</span> id = <span style="color: #000084; font-weight: bold;">int</span> 
+
+<span style="color: #000084; font-weight: bold;">type</span> segment =  
+  { terminal : <span style="color: #000084; font-weight: bold;">bool</span> ; id : id } 
+
+<span style="color: #000084; font-weight: bold;">type</span> rule =  
+  { rule : id ; segments : segment <span style="color: #000084; font-weight: bold;">list</span> ; code : <span style="color: #000084; font-weight: bold;">string</span> } 
+
+<span style="color: #000084; font-weight: bold;">type</span> grammar = rule <span style="color: #000084; font-weight: bold;">list</span></pre>
+</blockquote>
+This certainly helps: now, the variables being traversed are not the one-letter variables defined in typical lambdas anymore: the structure of the types enforces good naming by adding semantic information to the extraction of data.
+
+Of course, strong-willed programmers can skip this, and directly enforce strong naming constraints when using elements:
+<blockquote>
+<pre style="background: #ffffff none repeat scroll 0% 50%; color: #000000;"><span style="color: #000084; font-weight: bold;">let</span> (!!) = Printf.sprintf  
+
+<span style="color: #000084; font-weight: bold;">let</span> mapcat list func =  
+  String.concat <span style="color: #0000ff;">" "</span> (List.map func list) 
+
+<span style="color: #000084; font-weight: bold;">let</span> print rules =  
+  mapcat rules 
+    (<span style="color: #000084; font-weight: bold;">fun</span> (rule, segments, code) -&gt;  
+      <span style="color: #000084; font-weight: bold;">let</span> segments =  
+        mapcat segments  
+          (<span style="color: #000084; font-weight: bold;">fun</span> (terminal, id) -&gt;  
+            !! <span style="color: #0000ff;">"</span><span style="color: #0000ff;">%s</span><span style="color: #0000ff;">%d</span><span style="color: #0000ff;">"</span> (<span style="color: #000084; font-weight: bold;">if</span> terminal <span style="color: #000084; font-weight: bold;">then</span> <span style="color: #0000ff;">"T"</span> <span style="color: #000084; font-weight: bold;">else</span> <span style="color: #0000ff;">"r"</span>) id) 
+      <span style="color: #000084; font-weight: bold;">in</span> !! <span style="color: #0000ff;">"r</span><span style="color: #0000ff;">%d</span><span style="color: #0000ff;">:</span><span style="color: #0000ff;">%s</span><span style="color: #0000ff;">{</span><span style="color: #0000ff;">%s</span><span style="color: #0000ff;">};"</span> rule segments code)</pre>
+</blockquote>
+In short: when using algebraic data types, semantic information from the problem domain is carried only by the variable names, and especially the arguments of anonymous functions. It is therefore essential that the names of these variables are explicit and clear.
+
+As an aside, note that typical standard library functions tend to place the function to be applied before the data to which it is applied (<span style="font-family: courier new,courier;">map func list</span> instead of <span style="font-family: courier new,courier;">map list func</span>). However, when using anonymous functions, code at the bottom of the function, which is right above the data, often has no bearing to what the data actually is. This is often noticed when using prefix notation: the first argument is clear, but the second argument is often lost a few lines after the first.
+
+So, my suggestion is, if the data itself is small and the called function itself is local, to swap its arguments (like the mapcat function above) so thatthe data appears before the list. Or, if the data is large, to use the <a href="http://www.nicollet.net/blog/ocaml/16-mutator" target="_blank">mutator</a> pattern to place it on the left side of the function (so that the sequence operator may be used to identify where the data definition starts).

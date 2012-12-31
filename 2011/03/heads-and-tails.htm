@@ -1,0 +1,131 @@
+@title Heads and Tails
+@draft
+
+Let's play a little game. You have nine coins laid out as a 3&times;3 square in front of you. Three of them are tails while the other six are heads, in the following shape:
+<pre>T T H
+H T H
+H H H</pre>
+
+You are allowed to flip coins (heads becomes tails and tails becomes heads) but only in groups of three: all three coins on a line, column or diagonal can be flipped together. So, flipping the top line from the previous example would result in this:
+<pre>H H T
+H T H 
+H H H</pre>
+
+Your objective is to determine whether this configuration can be flipped into an all-heads (or all-tails) configuration, and if it can, provide a possible flip sequence.
+
+I'm going to find the solution using a short program written in Objective Caml. The first thing I'm going to do is translate as much information about the problem into data that the program can manipulate. The nine coins will be numbered from one to nine in reading order:
+<pre>1 2 3
+4 5 6
+7 8 9</pre>
+
+So, there are eight possible moves (three lines, three columns, two diagonals) and we can represent each as a list of three integers:
+<pre style='color:#000000;background:#ffffff;'><span style='color:#7f0055; font-weight:bold; '>let</span> moves = [
+  [ 1 ; 2 ; 3 ] ; [ 4 ; 5 ; 6 ] ; [ 7 ; 8 ; 9 ] ;
+  [ 1 ; 4 ; 7 ] ; [ 2 ; 5 ; 8 ] ; [ 3 ; 6 ; 9 ] ;
+  [ 1 ; 5 ; 9 ] ; [ 3 ; 5 ; 7 ]
+]</pre>
+
+Each coin will have its state represented by a boolean: true for tails, false for heads. The current state of the board will be represented by key-value pairs, where the first element of the pair is the number of the coin and the second is its state (true, or false). A missing coin is treated as false for conciseness. So, the initial state looks like this:
+<pre style='color:#000000;background:#ffffff;'>[ 1, <span style='color:#7f0055; font-weight:bold; '>true</span> ; 2, <span style='color:#7f0055; font-weight:bold; '>true</span> ; 5, <span style='color:#7f0055; font-weight:bold; '>true</span> ]</pre>
+
+Be careful: semicolons separate items of a list, while commas separate items of a tuple (such as a key-value pair).
+
+To get the current state of a coin, I can use the built-in Objective Caml function <code>List.assoc key list</code> which returns the value associated to a given key in a list of key-value pairs, and raises a <code>Not_found</code> exception if the key was not found. The function that returns the current state is then simply:
+<pre style='color:#000000;background:#ffffff;'><span style='color:#7f0055; font-weight:bold; '>let</span> state board cell =
+  <span style='color:#7f0055; font-weight:bold; '>try</span> List.assoc cell board <span style='color:#7f0055; font-weight:bold; '>with</span> Not_found -> <span style='color:#7f0055; font-weight:bold; '>false</span></pre>
+
+If you're not familiar with Objective Caml notation function for functions, just remember that function arguments are not wrapped in parentheses like many other languages require. Instead, they simply appear after the function name. When you provide a function with all its argument, it is called and replaced by its return value. If you're confused by the fact that the function above returns no value, remember that Objective Caml does not need a return keyword&mdash;it always returns whatever its body evaluates to (in this case, the value returned by <code>List.assoc</code> or, if it raises an exception, <code>false</code>).
+
+I will also need the ability to flip a coin. This is done by prepending the new key-value pair to the existing list. It is not necessary to remove the previous binding of the key, because <code>List.assoc</code> stops as soon as it finds the key, so subsequent occurrences are simply ignored. The code is simply: 
+<pre style='color:#000000;background:#ffffff;'><span style='color:#7f0055; font-weight:bold; '>let</span> flip board cell =
+  (cell , <span style='color:#7f0055; font-weight:bold; '>not</span> (state board cell)) :: board</pre>
+
+The function simply reads the current value of the cell in the board, binds it to the cell (as a key) and prepends it to the list using <code>item :: list</code> notation. This does not change the value of <code>board</code>: instead, a new list is returned with the appropriate values inside, so that <code>board</code> can be reused elsewhere if necessary. This is a common occurrence in functional programming languages, and is extremely useful because values are guaranteed to be remain the same at all times.
+
+One last thing we need before writing the actual algorithm is a function that determined whether the board has been solved. Since an all-false board can be trivially turned into an all-true board (simply flip all lines), I am just going to check whether all coins are true. This is done by using the <code>List.for_all predicate list</code> built-in, which returns true if and only if <code>predicate </code> returns true when called on every item in the list. The code is:
+<pre style='color:#000000;background:#ffffff;'><span style='color:#7f0055; font-weight:bold; '>let</span> is_solution board =
+  List.for_all (state board) [ 1 ; 2 ; 3 ; 4 ; 5 ; 6 ; 7 ; 8 ; 9 ]</pre>
+
+You might be confused about why <code>state</code> is only given one argument when it expects two. This is known as <em>currying</em> and is another common occurrence in functional programming languages. The basic idea is that if you give a two-argument function its first argument, then it becomes a one-argument function that expects its second argument. In this situation, <code>state board</code> becomes a function which expects a cell as an argument and returns the state (true or false) of that cell within the board. This precisely what we want our predicate to be. 
+
+The algorithm itself needs an initial board to work on (the one we are trying to solve) and a list of moves that it can try to solve the board. It then tries every combination of moves until it runs out or finds a solution (it makes no sense to apply a move twice, and the order in which they are applied is irrelevant, so for eight possible moves, there are 2<sup>8</sup> = 256 combinations: something that can be processed by a modern computer in the blink of an eye).
+
+Actually trying every possible combination might seem a hard thing to do until you notice that it's an inherently recursive process: if you have eight possible moves, you can try to apply the first one and try solve the resulting board with the other seven possible moves, or <i>not</i> apply the first one and try to solve the initial board with the other seven possible moves. Repeat this process until you have no moves left&mdash;at which point, if the board is all-true, you win, otherwise you lose. <pre style='color:#000000;background:#ffffff;'><span style='color:#7f0055; font-weight:bold; '>let</span> <span style='color:#7f0055; font-weight:bold; '>rec</span> solution_exists board moves =
+  <span style='color:#7f0055; font-weight:bold; '>match</span> moves <span style='color:#7f0055; font-weight:bold; '>with</span> 
+    | [] -> is_solution board 
+    | head :: tail -> solution_exists board tail || 
+                      solution_exists (List.fold_left flip board head) tail</pre>
+
+The <code>rec</code> keyword denotes that the function is recursive (which allows it to call itself). It examines the list of possible moves using <code>match</code>, which allows here two different possibilities: either the list is empty, in which case a solution exists if and only if the board is the solution ; or the list contains one element (the <code>head</code>) along with zero or more other elements (the <code>tail</code>, which is itself another list). In the latter case, the function recursively calls itself twice: once while ignoring the value of the current element, and once by applying it. The function returns true if either of the recursive calls return true.
+
+Applying the current move relies on a built-in function <code>List.fold_left func accumulator list</code> which is perhaps one of the most useful functions in Objective Caml. It works by reading items from the list in order, calling <code>func accumulator x</code> for every item in the list and storing that result back into the accumulator, and finally returns the value of the accumulator. Let's see an example with the first possible move, <code>[1;2;3]</code>. 
+<pre style='color:#000000;background:#ffffff;'><span style='color:#7f0055; font-weight:bold; '>let</span> result = List.fold_left flip board [1;2;3]
+
+<span style='color:#3f7f59; '>(* Is equivalent to: *)</span>
+
+<span style='color:#7f0055; font-weight:bold; '>let</span> result = 
+  <span style='color:#7f0055; font-weight:bold; '>let</span> board = flip board 1 <span style='color:#7f0055; font-weight:bold; '>in</span>
+  <span style='color:#7f0055; font-weight:bold; '>let</span> board = flip board 2 <span style='color:#7f0055; font-weight:bold; '>in</span>
+  <span style='color:#7f0055; font-weight:bold; '>let</span> board = flip board 3 <span style='color:#7f0055; font-weight:bold; '>in</span>
+  board</pre>
+
+In short, this applies all flips determined by the current move and returns the resulting board. But, of course, it is much shorter than the version written by hand&mdash;this was made possible by the tendency of many functional languages to manipulate lists of values instead of code. <code>List.fold_left</code> is one of the many ways of applying a single piece of code over a list of values and obtaining some results.
+
+Now that all of this is done, let's look for our solution:
+<pre style='color:#000000;background:#ffffff;'><span style='color:#7f0055; font-weight:bold; '>let</span> find = solution_exists [ 1, <span style='color:#7f0055; font-weight:bold; '>true</span> ; 2, <span style='color:#7f0055; font-weight:bold; '>true</span> ; 5, <span style='color:#7f0055; font-weight:bold; '>true</span> ] moves</pre>
+
+The result is false, meaning that no solution was found. Let's try with another board:
+<pre>T T H
+H H H 
+T H H</pre>
+
+Or, in terms of code:
+<pre style='color:#000000;background:#ffffff;'><span style='color:#7f0055; font-weight:bold; '>let</span> find = solution_exists [ 1, <span style='color:#7f0055; font-weight:bold; '>true</span> ; 2, <span style='color:#7f0055; font-weight:bold; '>true</span> ; 7, <span style='color:#7f0055; font-weight:bold; '>true</span> ] moves</pre>
+
+This returns true, meaning that a solution exists. How do we adapt our code to return a solution instead of just true? First, we need a way to give a name to every move, which we are going to do by associating a bit of text to each in the list of possible moves. This looks like this:
+<pre style='color:#000000;background:#ffffff;'><span style='color:#7f0055; font-weight:bold; '>let</span> moves = [
+  <span style='color:#2a00ff; '>"L1"</span>, [ 1 ; 2 ; 3 ] ; <span style='color:#2a00ff; '>"L2"</span>, [ 4 ; 5 ; 6 ] ; <span style='color:#2a00ff; '>"L3"</span>, [ 7 ; 8 ; 9 ] ;
+  <span style='color:#2a00ff; '>"C1"</span>, [ 1 ; 4 ; 7 ] ; <span style='color:#2a00ff; '>"C2"</span>, [ 2 ; 5 ; 8 ] ; <span style='color:#2a00ff; '>"C3"</span>, [ 3 ; 6 ; 9 ] ;
+  <span style='color:#2a00ff; '>"D1"</span>, [ 1 ; 5 ; 9 ] ; <span style='color:#2a00ff; '>"D2"</span>, [ 3 ; 5 ; 7 ]
+] </pre>
+
+This means that the solving function also needs to be rewritten to take this into account. Instead of returning true or false, we are going to use another Objective Caml built-in type which allows one to either return a value, or return nothing&mdash;we return the solution if it exists (<code>Some ["C1";"D2"]</code>) and nothing if there was no solution (<code>None</code>). The code becomes this:<pre style='color:#000000;background:#ffffff;'><span style='color:#7f0055; font-weight:bold; '>let</span> <span style='color:#7f0055; font-weight:bold; '>rec</span> solve board moves =
+  <span style='color:#7f0055; font-weight:bold; '>match</span> moves <span style='color:#7f0055; font-weight:bold; '>with</span>
+    | [] -> <span style='color:#7f0055; font-weight:bold; '>if</span> is_solution board <span style='color:#7f0055; font-weight:bold; '>then</span> <span style='color:#7f0055; font-weight:bold; '>Some</span> [] <span style='color:#7f0055; font-weight:bold; '>else</span> <span style='color:#7f0055; font-weight:bold; '>None</span>
+    | (name, move) :: tail ->
+      <span style='color:#7f0055; font-weight:bold; '>match</span> solve (List.fold_left flip board move) tail <span style='color:#7f0055; font-weight:bold; '>with</span>
+        | <span style='color:#7f0055; font-weight:bold; '>Some</span> solution -> <span style='color:#7f0055; font-weight:bold; '>Some</span> (name :: solution)
+        | <span style='color:#7f0055; font-weight:bold; '>None</span> -> solve board tail
+</pre>
+
+This is a bit more complex, but the recursive algorithm is the same: if there are no moves left, then either the board is solved (return a zero-move solution <code>Some []</code>) or it isn't (return an absence of solution <code>None</code>. If there's a possible move, remember its name, apply it and check whether a solution was returned: if there was one (<code>Some solution</code>), then just prepend the name of the move to the solution and return it (<code>Some (name::solution)</code>) ; if trying the move did not allow for a solution, then try solving the board without that move and return whatever solution or absence of solution this results in.
+
+Applying this to the original problem returns <code>None</code> as expected, while applying it to the second problem returns <code>Some ["L1";"L2";"C2";"D1"]</code> &mdash; a valid solution indeed.
+
+The complete (and quite short!) code is:
+<pre style='color:#000000;background:#ffffff;'><span style='color:#7f0055; font-weight:bold; '>let</span> moves = [
+  <span style='color:#2a00ff; '>"L1"</span>, [ 1 ; 2 ; 3 ] ; <span style='color:#2a00ff; '>"L2"</span>, [ 4 ; 5 ; 6 ] ; <span style='color:#2a00ff; '>"L3"</span>, [ 7 ; 8 ; 9 ] ;
+  <span style='color:#2a00ff; '>"C1"</span>, [ 1 ; 4 ; 7 ] ; <span style='color:#2a00ff; '>"C2"</span>, [ 2 ; 5 ; 8 ] ; <span style='color:#2a00ff; '>"C3"</span>, [ 3 ; 6 ; 9 ] ;
+  <span style='color:#2a00ff; '>"D1"</span>, [ 1 ; 5 ; 9 ] ; <span style='color:#2a00ff; '>"D2"</span>, [ 3 ; 5 ; 7 ]
+] ;;
+
+<span style='color:#7f0055; font-weight:bold; '>let</span> state board cell =
+  <span style='color:#7f0055; font-weight:bold; '>try</span> List.assoc cell board <span style='color:#7f0055; font-weight:bold; '>with</span> Not_found -> <span style='color:#7f0055; font-weight:bold; '>false</span>
+
+<span style='color:#7f0055; font-weight:bold; '>let</span> flip board cell =
+  (cell , not (state board cell)) :: board
+
+<span style='color:#7f0055; font-weight:bold; '>let</span> is_solution board =
+  List.for_all (state board) [ 1 ; 2 ; 3 ; 4 ; 5 ; 6 ; 7 ; 8 ; 9 ]
+
+<span style='color:#7f0055; font-weight:bold; '>let</span> <span style='color:#7f0055; font-weight:bold; '>rec</span> solve board moves =
+  <span style='color:#7f0055; font-weight:bold; '>match</span> moves <span style='color:#7f0055; font-weight:bold; '>with</span>
+    | [] -> <span style='color:#7f0055; font-weight:bold; '>if</span> is_solution board <span style='color:#7f0055; font-weight:bold; '>then</span> <span style='color:#7f0055; font-weight:bold; '>Some</span> [] <span style='color:#7f0055; font-weight:bold; '>else</span> <span style='color:#7f0055; font-weight:bold; '>None</span>
+    | (name, move) :: tail ->
+      <span style='color:#7f0055; font-weight:bold; '>match</span> solve (List.fold_left flip board move) tail <span style='color:#7f0055; font-weight:bold; '>with</span>
+        | <span style='color:#7f0055; font-weight:bold; '>Some</span> solution -> <span style='color:#7f0055; font-weight:bold; '>Some</span> (name :: solution)
+        | <span style='color:#7f0055; font-weight:bold; '>None</span> -> solve board tail
+
+<span style='color:#7f0055; font-weight:bold; '>let</span> find = solve [ 1, <span style='color:#7f0055; font-weight:bold; '>true</span> ; 2, <span style='color:#7f0055; font-weight:bold; '>true</span> ; 7, <span style='color:#7f0055; font-weight:bold; '>true</span> ] moves</pre>
+
+Any questions? Let me know in the comments!

@@ -1,0 +1,122 @@
+@title Why I Gave Up on the Zend Framework
+@draft
+
+The <a href="http://framework.zend.com/" target="_blank">Zend Framework</a> is a really nifty thing. Really, it is. The amount of functionality that you get merely by installing it is extremely exciting: internationalization, forms, an MVC layout for your program, a cute class loader, a database abstraction layer, a templating engine, a request dispatcher, mail-sending functions, pretty debugging "dump" functions... and there are so many people working on it and using it that basically all the bugs left in there are shallow. It has been a staple dependency of many of my projects for quite a while now, and still is.
+
+Zend Framework<strong> </strong>is actually available for your projects in two flavors, «<strong>use what you need</strong>» and «<strong>obey the hive mind</strong>», with a continuous spectrum in-between these two extremes.
+
+[caption id="attachment_1297" align="aligncenter" width="350" caption="We are Zend. Resistance is futile."]<a href="http://www.nicollet.net/wp-content/uploads/2010/03/Picard_as_Locutus.jpg"><img class="size-full wp-image-1297" title="Picard_as_Locutus" src="http://www.nicollet.net/wp-content/uploads/2010/03/Picard_as_Locutus.jpg" alt="We are Zend. Resistance is futile." width="350" height="271" /></a>[/caption]
+
+The «use what you need» approach leaves the maintenance programmers with a warm and fuzzy feeling. All you have to do is dump all the framework files somewhere in your include path, include the files for the bits you want to use, and just call the functions. The framework takes care of recursively including the appropriate dependencies for you and carefully avoids treading on any toes by prefixing everything with «Zend».
+
+In fact, if you use Zend_Loader, you can skip the include-source-files step completely (except for Zend/Loader.php obviously), and since auto-loading is reverse-compatible with loading files manually, it's also a good step towards a well-deserved refactoring.
+
+So, if you need to send multi-part mail, with HTML-and-text content, in UTF-8 format, you can just use <a href="http://framework.zend.com/manual/en/zend.mail.html" target="_blank">Zend_Mail</a> and everything will work fine regardless of the rest of the code base. There are dozens of such small features (for PDF generation, LDAP, access control, localization, and so on).
+
+<strong>There is virtually no excuse for not using a plug-in class from the Zend Framework in your application if it solves the problem you're having.</strong> Besides, since the files are not included until you need them, the worst that could happen is that you're having some PHP code taking up a few megabytes of disk storage for nothing. So I have a lib/Zend directory on all my projects, just in case I need something.
+<h3>Obey the Hive Mind</h3>
+While many pieces of Zend are independent of each other, there's a central functionality core that's designed to act well together. There are many examples:
+<ul>
+	<li>it's easier to use Zend_Dispatcher and Zend_Controller together.</li>
+	<li>it's easier to render a Zend_View if you're also using Zend_Controller.</li>
+	<li>it's easier to turn a Zend_Form into HTML if you're using Zend_View.</li>
+	<li>it's easier to set up a "login already in use" validator with Zend_Form if you have a field in a Zend_Db_Table to connect it to.</li>
+	<li>it's easier to translate Zend_Form error messages with Zend_Translate (and Zend_Registry).</li>
+</ul>
+Sure, it's usually possible to take advantage of 99% of the functionality without having to add new dependencies, but there's always that tiny voice in the back of your head, nagging that <em>you could get that additional 1% so easily if you just gave in</em>.
+
+Giving in means, of course, going all the way to Bootstrap heaven: now your project is laid out across the lines of the ideal Zend Framework template, your files cleanly stashed in their folders with a cosmic Feng Shui feeling to it all, and the Zend approach to MVC pervades your every HTTP request.
+
+This isn't so bad: actually, such an approach has some huge selling points for shops that write lots of small projects, such as the ability to get 20% of your basic functionality up and running in days, the ability to hire any Zend-certified developer and not have to educate them about the framework, and you don't need them lousy <strong>architects</strong> on your team.
+
+I've had some trouble with the Zend way before, though. There are some bits of functionality that I won't touch with a ten-foot-pole, such as Zend_View, Zend_Controller or Zend_Db_Table, because the havoc they wreak in situations I find myself in outweighs the benefit.
+<h3>Documentation</h3>
+My main issue is that I find Zend quite lacking on the documentation side.
+
+<em>«But the Zend Framework is possibly the most documented there is!»</em> you say, before trailing off in a rant about how the "FM" should be "R" and the "FW" should be "S".
+
+You're probably right. But I don't really care about <em>that</em> documentation. I'm talking about <em>project</em> documentation—to know what happens in code written by my team.
+
+<em>«What does Zend have to do with that? Document your code, you lazy slob!»</em>
+
+Humans are lazy, and I would argue that laziness is actually an essential quality of a good programmer. I can <em>require</em> that documentation be written, but I expect it to be missing, inaccurate or monosyllabic. Things like that happen when you're rushing out a bug patch at 3:00 am. And even if I could ensure that documentation is written and kept up to date, I'd rather have my code be self-documented—not only does it take less time, but it's harder to get inaccurate self-documentation and you can even get the language to check things for you.
+
+It's the difference between documenting the parameter type as a <strong>@param MyClass $obj</strong> in a comment and documenting it as a <strong>MyClass $obj</strong> type hint in the function signature.
+
+Look at the <a href="http://pointbeing.net/weblog/2009/10/how-do-you-zend-view.html" target="_blank">average .phtml template</a>, and you'll see something like this:
+<pre style="padding-left: 30px;">&lt;div&gt;
+  ...
+  &lt;a href="&lt;?php echo $this-&gt;getUrl() ?&gt;"&gt;&lt;?php
+    echo $this-&gt;escape($this-&gt;user-&gt;name)
+  ?&gt;&lt;/a&gt;
+  ...
+  &lt;?echo $this-&gt;partial('preferences.phtml', $this-&gt;pref); ?&gt;
+  ...
+&lt;/div&gt;</pre>
+Half the point of a view in the MVC approach is that I should be able to easily reuse that view from any controller, or even from within another view. Of course, Zend lets me do this very easily:
+<pre style="padding-left: 30px;">$view = new Zend_View();
+<span style="color: #ff0000;">$view-&gt;xxx = yyy; // Fill in members</span>
+$view-&gt;render('template.phtml');</pre>
+The red line, of course, is where trouble begins. Since Zend_View fields are by definition dynamic, there's no way to get auto-completion to help you find what they should be. Nor can you look at a list of these fields in a class definition or function definition, because there's none. You have to read the template file and find out by yourself what values are used by the template and what their types should be. Oh, and if the template passes some of that data to other templates, you have to read those templates too, because they might use specific information. And you have to look at view helpers too, because they might be accessing view elements behind your back.
+
+Your best bet is to look at an existing controller that uses the view, and hope that you don't stray too far from what that controller is doing. You never know: a certain member might be expected to be present if another has a certain value (this never happened with the first controller, but it happens in yours), there's no compiler checking that all values are being provided appropriately, and runtime testing doesn't reveal such special cases on the first try.
+
+And <a href="http://www.survivethedeepend.com/zendframeworkbook/en/1.0/setting.the.design.with.zend.view.zend.layout.html.5.and.yahoo.user.interface.library#zfbook.setting.the.design.with.zend.view.zend.layout.html.5.and.yahoo.user.interface.library.zend.view.object.oriented.templating" target="_blank">they</a> say Zend_View is an object-oriented approach to rendering...
+<blockquote>The most important     aspect of <code>Zend_View</code> templating is that it is object     oriented. You may use absolutely any value type in a template: arrays,     scalars, objects and even PHP resources. There is no intermediary tag     system between you and the full power of PHP. Part of this OOP approach is     that all templates are effectively executed within the variable scope of     the current <code>Zend_View</code> instance. To explain this     consider the following template.</blockquote>
+That's not what object-oriented means. OOP means if two views behave differently, then they should be instances of different classes, instead of injecting arbitrary code and data into a single class and spitting in the face of encapsulation.
+
+The bottom line is that reusing Zend_View templates is a pain in the <em>derrière</em> unless you take special steps about it (steps that you wouldn't need with a standard class-with-members).
+<h3>What's in that row?</h3>
+This is futher compounded by the way Zend_Db works: an ORM that generates SQL from a sequence of PHP calls, and then turns the result into a list of Zend_Db_Table_Row objects. Which leads to the question of what fields can be found in a given row, and that question is hard to answer.
+
+A typical application will follow a rule along the lines of <em>«every table row is, by definition, a row of a table, so you just peek at the table definition and you know that each column is mapped to a field,»</em> and that is a fine rule to follow, because then the only issue is you can't type-hint the row based on the table, so you can't make sure a given argument is always a row from "account".
+
+But following that rule is hard. In addition to those 80% plain old CRUD cases where you're working with a single table at once, you'll have those 20% that use joins where you need data from both tables (<a href="http://www.chrisrenner.com/2009/09/the-problem-with-database-abstraction-layers/" target="_blank">never mind the pain of doing that in PHP</a>). Then you end up with a row that breaks the rule, so you keep it in tightly enclosed areas of your application, until it gets too frustrating not being able to use a view-that-renders-<strong>accounts </strong>on a record-that-contains-<strong>accounts</strong>-and-<strong>sessions</strong>, and the next thing you remember is that you don't know if a given view expects an account or an account-and-session.
+
+And the language can't help you.
+<h3>Auto-complete me</h3>
+Nor can your editor, for that matter, since auto-completing <strong>$row-&gt;</strong> requires knowledge that your editor simply cannot have (the list of columns defined when you configured your Zend_Db_Table).
+
+I really do enjoy it when my code editor helps eliminate some of the tedium of writing code. In fact, I'm quite ready to make a small additional effort tagging my members, arguments and functions with some type information just so that writing code can be easier.
+
+My editor is Eclipse PDT. It has several nice features that I use extensively.
+
+The first is, of course, its ability to suggest members of classes and objects. Having well-defined classes to represent your data means that Eclipse can use the type hints you leave around to determine that <strong>$account</strong> is of class <strong>Account</strong>, so that it has a <strong>$firstname </strong>member. That's:
+<ol>
+	<li> one less round-trip to the database documentation</li>
+	<li>zero chances of typing <strong>$account-&gt;firstName</strong> by mistake</li>
+	<li>being told immediately if <strong>$account</strong> has entirely different members (because it's another type)</li>
+</ol>
+Since Zend_Db_Table_Row and Zend_View actually go out of their way to make sure that you can have arbitrary data in there based on runtime considerations, getting this functionality out of them is impossible.
+
+The other nice feature I use a lot is the ability to control-click a class or function to see its definition. This lets me navigate around the code in seconds instead of having to open the project file explorer, expand several layers of directories usually far from each other, and spend precious brain power translating a class/member naming scheme into file naming schemes.
+
+Finding a file is a job for the editor, not for the programmer.
+
+My view helpers look like this:
+<pre style="padding-left: 30px;">View_Account::renderSimple($account);</pre>
+Clicking on that function name brings up the file and scrolls it down to where it matters. Took me less than a second. Zend View Helpers look like this:
+<pre style="padding-left: 30px;">$this-&gt;renderSimpleAccount($account);</pre>
+I dare anyone to navigate to the definition of that helper in less than a second. [<strong>EDIT</strong>: apparently <a href="http://akrabat.com/development/using-pdt-with-zend-framework-projects/" target="_blank">I shouldn't dare people</a> on the internets :)]
+
+What about links? The typical approach to generating a link to a different part of a site, with the Zend Framework, is to <a href="http://naneau.nl/2007/07/08/use-the-url-view-helper-please/" target="_blank">spell out its controller and action</a>:
+<pre style="padding-left: 30px;">&lt;a href="<span>&lt;?php</span> <span>echo</span> <span>$this</span><span>-&gt;</span><span>url</span><span>(</span><span>array</span><span>(</span>
+  <span>'controller'</span> <span>=&gt;</span> <span>'user'</span><span>,</span>
+  <span>'action'</span> <span>=&gt;</span> <span>'edit'</span><span>,</span>
+  <span>'id'</span> <span>=&gt;</span> <span>'123'</span>
+<span>)</span><span>)</span><span>;</span><span>?&gt;</span>"&gt;click me!&lt;/a&gt;</pre>
+Now you have to click on every single URL on your website to make sure links are correct and you still manage to forget one and the end user will click on that link that's spelled out as «edti». And even if you do get it right, you still have to navigate to the appropriate controller class, open it up and scroll down the right action.
+
+My urls look like this:
+<pre style="padding-left: 30px;">&lt;a href="&lt;?=Action_User_Edit::url(123)?&gt;"&gt;click me!&lt;/a&gt;</pre>
+Since every one of my actions is a class (as opposed to a function in a controller class), they get to have members, and one of these members is a static url() function that:
+<ul>
+	<li>lets me ctrl-click through to the action itself</li>
+	<li>has PHP check that my link is correct (or else, die with a class-not-found answer)</li>
+	<li>documents the expected URL arguments as function arguments</li>
+	<li>even lets me find out who links to a certain controller, in case I have to move it</li>
+</ul>
+<h3>The bottom line...</h3>
+...is that I don't use Zend_View, Zend_Controller or Zend_Db in my projects. I need my code to be self-documenting, and there's nothing self-documenting about Zend_View or Zend_Db. I need my code to be easy to navigate through and simple enough for my editor to handle, and the full dynamic behavior of Zend_View and Zend_Db prevent that.
+
+Your needs might be different. Are they?

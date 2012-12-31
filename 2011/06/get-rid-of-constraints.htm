@@ -1,0 +1,34 @@
+@title Get Rid of Constraints
+@draft
+
+<img class="aligncenter size-full wp-image-2417" title="chains" src="http://www.nicollet.net/wp-content/uploads/2011/06/chains.png" alt="" width="675" height="100" />
+
+We add constraints (UNIQUE, FOREIGN KEY...) to our databases in order to achieve a tradeoff between how easy it is to write data to the database, and how easy it is to read data back. Constraints make writes harder because the application must ensure that those constraints are verified, and react appropriately when they are not. They make reads easier because they allow the application to make assumptions about the data it receives.
+
+Sometimes, the benefits to data reading are not sufficient to offset the increased difficulty of writing it. Let me provide an example.
+
+In a project management tool, users on the free plan are only allowed to have one project. Premium users can have any number of projects. An obvious solution would be to constrain the database so that a given  user can only have one free project at once. This would guarantee that any attempt to connect a second free project to an user would fail.
+
+However, the possibility of non-technical failure of "connect a project to an user" will have to be handled in a variety of unusual locations:
+<ul>
+	<li>Deleting project A, creating project B, and cancelling the deletion of project A would cause an error.</li>
+	<li>Merging two free user accounts would be interrupted because both already have a free project.</li>
+	<li>Downgrading from premium to free would break if the premium account had more than one project.</li>
+</ul>
+The good news is that your database will stop you from doing anything that would break the constraint, so you do not have to worry about a glitch letting free users have two projects. The bad news is that you now need to handle that failure specifically in three different locations in your interface: cancelling a deletion, merging two accounts, and an account downgrade that might happen when the user isn't even connected. It's possible to handle all three, but it's quite repetitive, and the user interface for handling these is probably going to be different in each case.
+<h4><em>A Posteriori</em> Constraints</h4>
+A better solution would be to allow users to have any number of projects <em>in the database</em>, but detect free users that have more than one project (because of cancelling a deletion, merging two accounts, or not renewing their premium subscription) and force them to take corrective action through the user interface. For instance, users with inconsistent accounts are greeted with a list of their projects and the possibility to keep one of them unlocked. The other projects are then locked and can only be unlocked by deleting the currently unlocked project or paying for a premium subscription again. You can even provide some leeway by letting them keep full access to all projects for a week before forcing locks on them, or let customer support temporarily unlock projects in cases of dire need.
+
+The beautiful aspect of this is that the code required to solve the inconsistency is not repeated. Regardless of how you end up with more than one free project, the feature that corrects this is always the same. This means the application is smaller, which leads to fewer bugs and a more consistent user interface.
+
+Of course, if non-subscribing users already have a project and try to create another, they are told to subscribe. Lack of constraints in the database does not mean there are no constraints or clever up-sells in the interface. While RunOrg does prevent users from exceeding the storage ceiling by uploading new documents, all other ways of breaking past the ceiling (such as un-deleting documents or lowering the ceiling) remain unaffected, and our administrator team only takes corrective action when there is a clear abuse of the software — you can stay a few megabytes <em>above</em> the ceiling for as long as you wish. As for the limit on how many users can join a community, there are even fewer restrictions — it would be quite harsh to prevent the 2011-2012 members from joining only because the 2010-2011 members have not left yet — so we ask our customers to return below those ceilings as fast as possible, and only do it ourselves if there is abuse.
+
+There is a conceptual shift here from <strong>No Inconsistent Data In The Database</strong> to <strong>Detect And Correct Inconsistent Data</strong>. This step can be a bit difficult to stomach, especially if you are used to letting your database keep your data clean for you, but for many constraints the shift is actually worth it.
+
+In the early design phase, we moved RunOrg from a standard MySQL architecture over to CouchDB, a NoSQL solution that provides absolutely no constraints beyond having a unique primary key. There are currently no foreign key constraints in the system, nor are there any unique constraints beyond enforcing many-to-many relationships (and these are fundamentally primary keys). This seemed like a huge challenge at first, but the system has grown to support complex data structures and business rules that go beyond standard document-based CRUD, simply by accepting that pieces of data <em>can</em> be missing or be duplicated, and applying an <em>a posteriori</em> solution, possibly involving user intervention, has worked for us so far.
+
+Of course, what is true for document databases is not necessarily true in the SQL world. While we impose no constraints on the relationships between documents, we are pretty strict about the structure of documents themselves (especially since they are being read from OCaml, a strict static language), and there is no simple way of representing "Foo holds a list of Bars" in SQL without a foreign key (in CouchDB, it's standard JSON...)
+
+This is the important information here: those are <em>structural</em> constraints, they define a data structure in the database that must be respected by your <em>implementation</em>, as opposed to <em>non-structural</em> constraints that merely define relationships between higher-level entities and must be respected by your <em>users</em>. Identify the latter, and consider whether you can shift them to <em>a posteriori</em> constraints instead.
+
+<small>Article Image © Calsidyrose — <a href="http://www.flickr.com/photos/calsidyrose/5836796139/">Flickr</a></small>

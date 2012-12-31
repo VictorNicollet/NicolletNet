@@ -1,0 +1,79 @@
+@title 2D Transforms 
+@draft
+
+A point in a 2D space is commonly identified as an <em>(x,y)</em> pair, representing its distance to the origin along the x-axis and the y-axis. Objects in 2D space have two additional properties that make no sense for mere points: scale and angle (I will ignore here shearing and anisotropic scaling).
+
+[caption id="attachment_565" align="aligncenter" width="276" caption="A square, scaled and rotated."]<img class="size-full wp-image-565" title="transform" src="http://www.nicollet.net/wp-content/uploads/2009/03/transform.png" alt="A square, scaled and rotated." width="276" height="219" />[/caption]
+
+An obvious question is, how to represent such transformations in a computer program, such as a video game? The simplest way one could think of is to use a structure that contains:
+<pre style="padding-left: 30px;">struct position
+{
+  float x;
+  float y;
+  float angle;
+  float scale;
+};</pre>
+This works in most situations. Most simple 2D video games will be able to get away with this simple version without much difficulty. But there is one thing that it cannot do easily.
+<h3>Relative Transforms</h3>
+Suppose for a moment that the object we're moving around is a spaceship. That spaceship has one gun at the end of each wing, which means positions <em>(-2,0)</em> and <em>(2,0)</em> relative to the center of the spaceship. Now, the ship is placed at a certain position, rotated and scaled. Where should the bullets be fired from?
+
+[caption id="attachment_566" align="aligncenter" width="342" caption="What is the absolute position and angle of the guns?"]<img class="size-full wp-image-566" title="transform2" src="http://www.nicollet.net/wp-content/uploads/2009/03/transform2.png" alt="What is the absolute position and angle of the guns?" width="342" height="108" />[/caption]
+
+On the one hand, we have an absolute position (where the ship is, its angle and its scale) and on the other hand we have a relative position (where the gun is, relative to the center of the ship). The objective is to determine the absolute position of the gun. Mathematically, if an object is at position <em>(a,b)</em> relative to an object that is at position <em>(x,y)</em> with scale <em>s</em> and angle <em>?</em>, then its absolute position <em>(a,'b)</em> is:<em>
+</em>
+<p style="padding-left: 30px;"><em>a' = x + s a </em>cos<em> </em><em>?</em> - <em>s b</em> sin <em>?
+b' = y + s b </em>cos<em> </em><em>? + s a </em>sin<em> </em><em>?</em>
+
+But what happens if the ship itself is part of a greater whole? Or what if the gun itself is in fact a turret that can rotate independently around a point on the wing?
+
+To handle this, we define a transform as "something that moves an object from a certain position, angle and scale (the source) to another position, angle and scale (the destination)". The ship has an absolute transform, which moves it from point (0,0), scale 100%, angle 0° to its actual position, scale and angle. The gun has a relative transform, which moves it from the ship's position, scale and angle to its actual position, scale and angle.
+
+So, the absolute transform of a gun is obtained by applying the absolute transform (move the ship to where it should be) then the relative transform (move the gun to where it should be based on the ship's position). And once you have the absolute transform of the gun, you can deduce its position, scale and angle.
+
+The problem is that using the above "position, scale, angle" representation for transforms is not handy, because applying two transforms one after another gets complicated very fast. One solution is to use a matrix, which is a commonly used tool for representing transforms. Another solution is using complex numbers.
+<h3>Complex Numbers</h3>
+A complex number is an object of the form <em>a + <strong>i</strong>b</em>, where <em>a</em> is the real part and <em>b</em> is the imaginary part. Complex number multiplication uses the property that <em><strong>i</strong>² = -1</em>. From there, we deduce the rules for complex number addition and multiplication:
+</p><p style="padding-left: 30px;"><em>(a + <strong>i</strong>b) + (a' + <strong>i</strong>b') = (a + a') + <strong>i</strong>(b + b')</em></p>
+<p style="padding-left: 30px;"><em>(a + <strong>i</strong>b) (a' + <strong>i</strong>b') = (aa' - bb') + <strong>i</strong>(ab' + a'b)</em></p>
+
+So, how does this help us? Well, consider our original position/angle/scale approach, call these <em>x</em>, <em>y</em>, <em>?</em> and <em>s</em> and build the complex number function:
+<p style="padding-left: 30px;"><em>t(z) = s (</em>cos<em> </em><em>?</em><em> + <strong>i</strong> </em>sin<em> </em><em>?</em><em>) z + (x + <strong>i</strong>y)</em></p>
+
+This function represents a relative transform. Calling it on a complex number <em>(a + <strong>i</strong>b)</em> will return a complex number <em>(a' + <strong>i</strong>b')</em> such that <em>(a',b')</em> will be the absolute position of a point that was at relative position <em>(a,b)</em> from the center of the transformed object:
+<p style="padding-left: 30px;"><em>a' = x + s a </em>cos<em> </em><em>?</em> - <em>s b</em> sin <em>?
+b' = y + s b </em>cos<em> </em><em>? + s a </em>sin<em> </em><em>?</em>
+
+These are the exact formulas we discussed above!
+
+So now, applying two transforms in a row is easy. If <em>gun(z)</em> is the he transform of the gun on the plane's wing, and <em>plane(z)</em> is the transform of the plane in the world, then the transform of the gun in the world is <em>plane(gun(z))</em>. And since the functions are actually linear complex functions, composing them is exceedingly easy:
+</p><p style="padding-left: 30px;"><em>t(z) = a</em><em> z + b
+t'(z) = a</em><em>'</em><em> </em><em>z + b'</em><em>
+t'(t(z)) = a'</em><em> </em><em>(a</em><em> z + b)</em><em> + b' = aa'</em><em> z</em><em> + (a'b + b'</em>)
+
+Or, in terms of C++:
+<pre style="padding-left: 30px;">struct transform
+{
+  std::complex&lt;double&gt; a, b;
+
+  transform(double x, double y, double angle = 0.0, double scale = 1.0)
+    : a(scale * std::cos(angle), scale * std::sin(angle)), b(x, y)  {}
+
+  transform &amp;operator *=(const transform&amp; o)
+  {
+    b += a * o.b;
+    a *= o.a;
+    return *this;
+  }
+
+  double x() const { return b.real(); }
+  double y() const { return b.imag(); }
+  double angle() const { return std::arg(a); }
+  double scale() const { return std::abs(a); }
+};
+
+transform operator*(const transform &amp;f, const transform &amp;g)
+{
+  transform result(f);
+  return f *= g;
+}</pre>
+Here, <em>t' * t</em> represents the transform <em>t'(t(z))</em>.</p>

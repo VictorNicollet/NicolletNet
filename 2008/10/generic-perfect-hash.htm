@@ -1,0 +1,116 @@
+@title Generic Perfect Hash
+@draft
+
+A hash function is a pure function: when called on the same argument twice, it returns the same value. A real-world hash function is also expected to return a useful key: a small value (in terms of memory footprint) with a trivial comparison operator, and such that the probability of collision (two different arguments having the same key) is small.
+
+Such hash functions are useful: they turn a large object that is difficult to store and compare (the argument) into a small one that is easy to store and compare, with the benefit that if the small objects are different, then the large objects are different, and if the small objects are equal then there is a very high probability that the large objects are also equal.
+
+A perfect hash function has a probability of collision of zero: two objects are equal if and only if their keys are equal.
+
+The problem is that generic perfect hash functions cannot exist. If a hash function always creates a 32-bit number, then that hash function can only discriminate between 4 294 967 296 different objects. Meaning that if you manipulate 4 294 967 297 objects, you will have a collision and the function will not be perfect.
+
+Specific perfect hash functions do exist: if the entire set of manipulated objects is used, then a perfect hash function can be found. However, this requires knowledge of the set, which is not always possible.
+<h2>Approximation</h2>
+I propose here an approximation of a generic perfect hash function, which uses the Objective Caml garbage collection to make an arbitrary number of values fit within an Objective Caml integer.
+
+The interface to this approximation is as follows:
+<blockquote>
+<pre style="background: #ffffff none repeat scroll 0% 50%; color: #000000;"><span style="color: #800000; font-weight: bold;">type</span> <span style="color: #808030;">'</span>a handle
+<span style="color: #800000; font-weight: bold;">val</span> <span style="color: #808030;">(</span><span style="color: #808030;">!</span><span style="color: #808030;">!</span><span style="color: #808030;">)</span> <span style="color: #808030;">:</span> <span style="color: #808030;">'</span>a handle <span style="color: #808030;">-&gt;</span> <span style="color: #808030;">'</span>a
+<span style="color: #800000; font-weight: bold;">val</span> make <span style="color: #808030;">:</span> <span style="color: #800000; font-weight: bold;">unit</span> <span style="color: #808030;">-&gt;</span> 'a <span style="color: #808030;">-&gt;</span> 'a handle</pre>
+</blockquote>
+Here is what happens:
+<ul>
+	<li>'make ()' creates a new perfect hash function that handles values of a certain type. When called on an argument, that hash function returns a handle that is associated to that argument. If two handles are associated to arguments that are structurally equal, then the handles are referentially equal. If two handles are associated to arguments that are not structurally equal, then the handles are not structurally equal either (however, comparison of two handles from distinct hash functions is unspecified).</li>
+	<li>'!! handle' returns the argument to which a handle was associated. Since this is a perfect hash function, there is only exactly one argument associated with each handle.</li>
+</ul>
+A simple implementation of the above consists in creating a hash table that maps arguments to handles, and an integer reference. If the argument is in the hash table, the hash function returns the associated handle. Otherwise, the integer reference is incremented, a handle is created from that integer reference (to ensure structural inequality), added to the hash table, and returned.
+
+The problem with that simple implementation is that it is not GC-friendly: even if the values which are hashed disappear from the user code, the hash table will keep them alive until the program ends or the hash function itself is flushed (which, if the function was global, never happens).
+<h1>Optimization</h1>
+The proposed optimization is to make the previous implementation GC-friendly by using weak references. The implementation idea is as follows:
+<ul>
+	<li>The hash function stores an array of weak references to handles, and a hash table mapping values to indices in that array.</li>
+	<li>Whenever a major GC iteration occurs, the hash function contents are scanned. If a weak reference is gone, then the corresponding hash table entry disappears.</li>
+	<li>The value associated to a handle is stored outside the handle and in the hash function, so that it remains available once the handle is gone, in order to clean up.</li>
+</ul>
+The final implementation is as follows:
+<blockquote>
+<pre style="background: #ffffff none repeat scroll 0% 50%; color: #000000;"><span style="color: #000084; font-weight: bold;">type</span> 'a handle =
+    { id : <span style="color: #000084; font-weight: bold;">int</span> ; owner : 'a handles }
+<span style="color: #000084; font-weight: bold;">and</span> 'a handles = {
+      <span style="color: #000084; font-weight: bold;">mutable</span> handles : 'a handle Weak.t ;
+      <span style="color: #000084; font-weight: bold;">mutable</span> values : 'a option <span style="color: #000084; font-weight: bold;">array</span> ;
+      hash : ('a,<span style="color: #000084; font-weight: bold;">int</span>) Hashtbl.t
+    } 
+
+<span style="color: #000084; font-weight: bold;">let</span> find_free_index handles =
+  <span style="color: #000084; font-weight: bold;">let</span> i = <span style="color: #000084; font-weight: bold;">ref</span> 0 <span style="color: #000084; font-weight: bold;">in</span>
+  <span style="color: #000084; font-weight: bold;">let</span> s = Array.length handles.values <span style="color: #000084; font-weight: bold;">in</span>
+  <span style="color: #000084; font-weight: bold;">while</span> !i &lt; s &amp;&amp; handles.values.(!i) &lt;&gt; <span style="color: #000084; font-weight: bold;">None</span> <span style="color: #000084; font-weight: bold;">do</span> incr i <span style="color: #000084; font-weight: bold;">done</span> ;
+  <span style="color: #000084; font-weight: bold;">if</span> !i &lt; s <span style="color: #000084; font-weight: bold;">then</span> !i
+  <span style="color: #000084; font-weight: bold;">else</span> <span style="color: #000084; font-weight: bold;">begin</span>
+    <span style="color: #000084; font-weight: bold;">let</span> new_handles = Weak.create (s*2) <span style="color: #000084; font-weight: bold;">in</span>
+    <span style="color: #000084; font-weight: bold;">let</span> new_values = Array.make (s*2) <span style="color: #000084; font-weight: bold;">None</span> <span style="color: #000084; font-weight: bold;">in</span>
+    Weak.blit handles.handles 0 new_handles 0 s ;
+    Array.blit handles.values 0 new_values 0 s ;
+    handles.handles &lt;- new_handles ;
+    handles.values &lt;- new_values ;
+    s
+  <span style="color: #000084; font-weight: bold;">end</span> 
+
+<span style="color: #000084; font-weight: bold;">let</span> get handles <span style="color: #000084; font-weight: bold;">value</span> =
+  <span style="color: #000084; font-weight: bold;">match</span> <span style="color: #000084; font-weight: bold;">begin</span>
+    <span style="color: #000084; font-weight: bold;">try</span> Weak.get handles.handles (Hashtbl.find handles.hash <span style="color: #000084; font-weight: bold;">value</span>)
+    <span style="color: #000084; font-weight: bold;">with</span> Not_found -&gt; <span style="color: #000084; font-weight: bold;">None</span>
+  <span style="color: #000084; font-weight: bold;">end</span> <span style="color: #000084; font-weight: bold;">with</span>
+    | <span style="color: #000084; font-weight: bold;">Some</span> handle -&gt; handle
+    | <span style="color: #000084; font-weight: bold;">None</span> -&gt;
+        <span style="color: #000084; font-weight: bold;">let</span> handle =
+          { id = find_free_index handles ; owner = handles }
+        <span style="color: #000084; font-weight: bold;">in</span>
+        Weak.set handles.handles (handle.id) (<span style="color: #000084; font-weight: bold;">Some</span> handle) ;
+        handles.values.(handle.id) &lt;- <span style="color: #000084; font-weight: bold;">Some</span> <span style="color: #000084; font-weight: bold;">value</span> ;
+        Hashtbl.add handles.hash <span style="color: #000084; font-weight: bold;">value</span> handle.id ;
+        handle 
+
+<span style="color: #000084; font-weight: bold;">let</span> (!!) handle =
+  <span style="color: #000084; font-weight: bold;">match</span> handle.owner.values.(handle.id) <span style="color: #000084; font-weight: bold;">with</span>
+    | <span style="color: #000084; font-weight: bold;">Some</span> x -&gt; x
+    | <span style="color: #000084; font-weight: bold;">None</span> -&gt; <span style="color: #000084; font-weight: bold;">assert</span> <span style="color: #000084; font-weight: bold;">false</span> 
+
+<span style="color: #000084; font-weight: bold;">let</span> clean handles =
+  <span style="color: #000084; font-weight: bold;">for</span> i = 0 <span style="color: #000084; font-weight: bold;">to</span> Array.length handles.values <span style="color: #000084; font-weight: bold;">do</span>
+    <span style="color: #000084; font-weight: bold;">if</span> not (Weak.check handles.handles i) <span style="color: #000084; font-weight: bold;">then</span>
+      <span style="color: #000084; font-weight: bold;">match</span> handles.values.(i) <span style="color: #000084; font-weight: bold;">with</span>
+        | <span style="color: #000084; font-weight: bold;">Some</span> x -&gt;
+            Hashtbl.remove handles.hash x ;
+            handles.values.(i) &lt;- <span style="color: #000084; font-weight: bold;">None</span>
+        | <span style="color: #000084; font-weight: bold;">None</span> -&gt; ()
+  <span style="color: #000084; font-weight: bold;">done</span> 
+
+<span style="color: #000084; font-weight: bold;">let</span> make_handler size =
+  <span style="color: #000084; font-weight: bold;">let</span> handles =
+    {
+      handles = Weak.create size ;
+      values = Array.make size <span style="color: #000084; font-weight: bold;">None</span> ;
+      hash = Hashtbl.create size
+    }
+  <span style="color: #000084; font-weight: bold;">in</span>
+  <span style="color: #000084; font-weight: bold;">let</span> alarm = <span style="color: #000084; font-weight: bold;">ref</span> <span style="color: #000084; font-weight: bold;">None</span> <span style="color: #000084; font-weight: bold;">in</span>
+  <span style="color: #000084; font-weight: bold;">let</span> handler = Weak.create 1 <span style="color: #000084; font-weight: bold;">in</span>
+  Weak.set handler 0 (<span style="color: #000084; font-weight: bold;">Some</span> handles) ;
+  alarm := <span style="color: #000084; font-weight: bold;">Some</span>
+    (Gc.create_alarm (<span style="color: #000084; font-weight: bold;">fun</span> () -&gt;
+      <span style="color: #000084; font-weight: bold;">match</span> Weak.get handler 0 <span style="color: #000084; font-weight: bold;">with</span>
+        | <span style="color: #000084; font-weight: bold;">None</span> -&gt; (<span style="color: #000084; font-weight: bold;">match</span> !alarm <span style="color: #000084; font-weight: bold;">with</span>
+            | <span style="color: #000084; font-weight: bold;">None</span> -&gt; ()
+            | <span style="color: #000084; font-weight: bold;">Some</span> alarm -&gt; Gc.delete_alarm alarm)
+        | <span style="color: #000084; font-weight: bold;">Some</span> handles -&gt; clean handles)) ;
+  handles 
+
+<span style="color: #000084; font-weight: bold;">let</span> make () =
+  <span style="color: #000084; font-weight: bold;">let</span> handles = make_handler 128 <span style="color: #000084; font-weight: bold;">in</span>
+  (<span style="color: #000084; font-weight: bold;">fun</span> <span style="color: #000084; font-weight: bold;">value</span> -&gt; get handles <span style="color: #000084; font-weight: bold;">value</span>)</pre>
+</blockquote>
+This code is hereby placed in the public domain, without warranty of any kind.

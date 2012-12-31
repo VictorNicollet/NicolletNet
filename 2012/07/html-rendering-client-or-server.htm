@@ -1,0 +1,55 @@
+@title HTML rendering : client or server ?
+@draft
+
+To create a typical web application, you must solve a two-step problem :
+<ul>
+	<li>You have to display some HTML on the client (because that's where the browser runs).</li>
+	<li>That HTML includes data that comes mostly from the server (because that's where your database is).</li>
+</ul>
+<h4>A Quick History of HTML Generation</h4>
+The earliest solution was to have the server generate the full HTML and send it to the client. This stategy had the benefit of avoiding the execution of client-side code, which back in the early 2000's was significantly more painful than it is today both in terms of performance and in terms of having to write actual code in that broken/dirty/insane JavaScript language.
+
+Even with the advent of AJAX — whereby the client uses JavaScript code to query the server for more data without loading the page — the standard <em>modus operandi</em> was to respond to AJAX requests with server-provided HTML code.
+
+Then JavaScript evolved — or rather, its reputation and ecosystem did — and generating HTML on the client stopped being treated as the Really Bad Idea everyone thought it would be. The trojan horse that broke down the server-heavy culture around 2008 was progressive enhancement. The server would still generate self-sufficient HTML code, but client-side code would improve it by adding UI features : date pickers, sortable columns in tables, transition effects, etc. This paradigm shift was so effective that in 2012, almost every single web site or application involves some kind of client-side processing — but most of the HTML generation still happens on the server even today.
+
+For a few years now, minorities have been pushing another kind of architecture : generate most of the HTML on the client side, and have the server provide the data through APIs in computer-friendly formats such as JSON or XML.
+<h4>Apples and Oranges</h4>
+Comparing client-heavy and server-heavy stategies involves two separate questions :
+<ul>
+	<li>Who renders the HTML ?</li>
+	<li>Who decides what should be rendered ?</li>
+</ul>
+The first question is the easier one. Generating HTML on the client reduces server load : there is less string concatenation and HTML escaping to perform, and JSON/XML use less bandwidth than presentation-ready HTML. The client-side templates have to be downloaded, of course, but you don't need to use server bandwidth for them : CDN bandwidth will be cheaper. But, and there is a <em>but</em>, the client-side performance is reduced : parsing JSON/XML and generating HTML uses more memory and processing time than just printing some server-rendered HTML.
+
+The key to this comparison is : <strong>if you care about server load, you're doing it wrong</strong>. If your application is designed correctly, any server overload caused by rendering HTML can be solved by adding more servers. Sure, adding more servers costs money, but unless you have hundreds of millions of users and no monetization strategy and you're running out of VC money, then spending money to improve customer experience is a no-brainer.
+
+Does this mean client-side rendering is pointless ? Hell no ! The reduction in bandwidth usage also means better performance for the <em>client</em>, since they don't have to wait as long for their pictures of cats to be downloaded. So, the actual question you should be asking is: do the performance gains from bandwidth optimization exceed the losses from having to render the HTML on the client ?
+
+This leads to architectures where server-side rendering is used for those pieces where it makes sense, and client-side rendering is used for those other pieces where it matters, and where an arbitrary default (server-side or client-side) is used whenever you just don't care.
+
+« Aha ! » you say, « Wouldn't this result in a complete mess as far as the code base is concerned ? »
+
+Well, it doesn't have to, and you can certainly prevent it from happening if you pay attention to...
+<h4><strong>...who decides what should be rendered ?</strong></h4>
+The code-is-a-complete-mess problem happens because you have tens of thousands of code that run on the server and thousands more that run on the client, and dealing with two codebases that interact with each other takes special care. There are three main architectures available for dealing with this situation :
+<ol>
+	<li>In the <strong>Client-Driven</strong> strategy, client code drives everything : it reacts to user input, queries the server for data using well-established APIs, and presents the resulting data back to the user. This is the web version of the traditional application-and-library separation where a library (here, the server) publishes and implements an opaque API. In other words, <em>the client calls server-side functions</em>. I consider <a href="http://backbonejs.org/" target="_blank">Backbone</a> a good illustration of this strategy.</li>
+	<li>In the traditional <strong>Server-Driven</strong> strategy, the client forwards user input to the server, and the server decides what the client should render. The pieces of HTML returned by the server may contain complex client-side behavior, which may include client-side HTML generation, but that behavior is initiated and parametrized by the server, and usually limited in scope. In other words, <em>the server calls client-side functions</em>.  My own framework, <a href="https://github.com/VictorNicollet/Ohm" target="_blank">Ohm</a>, uses this paradigm, as do most traditional frameworks (Zend, ASP.NET MVC, etc).</li>
+	<li>In the <strong>Shared Code</strong> strategy, there is a single code base where individual pieces may be marked as running on the client, on the server, or both. In other words, <em>there is no client-side or server-side code, only client-side or server-side execution</em>. Google's <a href="https://developers.google.com/web-toolkit/" target="_blank">GWT</a> takes a step in this direction, but <a href="http://opalang.org/" target="_blank">Opa</a> and <a href="http://ocsigen.org/eliom/" target="_blank">Eliom 2.0</a> go all the way.</li>
+</ol>
+Choosing between these strategies is not a matter of performance — as I have already established, the key to performance is to do each task where it belongs, whether on the client or the server, and each of these strategies lets you easily decide where a given task is performed.
+
+Ultimately, picking one of these strategies is largely a matter of which frameworks and languages you are most comfortable with.
+<h4>A quick example</h4>
+Here's an example screenshot from my project, RunOrg (click to enlarge) :
+<p style="text-align: center;"><a href="http://www.nicollet.net/wp-content/uploads/2012/07/raw.png" target="_blank"><img class="aligncenter" title="raw" src="http://www.nicollet.net/wp-content/uploads/2012/07/raw.png" alt="" width="578" height="267" /></a></p>
+Here are the various elements on the page painted in various colors :
+<p style="text-align: center;"><a href="http://www.nicollet.net/wp-content/uploads/2012/07/colored.png"><img class="aligncenter" title="colored" src="http://www.nicollet.net/wp-content/uploads/2012/07/colored.png" alt="" width="578" height="267" /></a></p>
+In order, these are :
+<ul>
+	<li><strong>Red</strong> : The navigation bar, which is the same on every single page of the application. <em>Doing the rendering on the client side would save little bandwidth (the HTML/JSON ratio is close to 10:9)</em>, so it is rendered and sent by the server as the contents of the first page loaded by the client.</li>
+	<li><strong>Orange</strong> : the notification count, which is a small component that loads the number of unread notifications by repeatedly polling the server. All the rendering (displaying the number and adding a specific CSS class) happens on the client, with the server merely sending back an integer in JSONP format, <em>because sending back HTML would nearly triple the response size</em>. The polling loop is started by the server, which provides the URL that must be queried.</li>
+	<li><strong>Green </strong>:  the page body, loaded through AJAX. When the page is first loaded, the server tells the client to respond to changes in the URL fragment by querying a certain URL and displaying the returned HTML as the page body. In particular, this section (the « add new members » section of the administration panel) has been rendered on the server and sent as raw HTML, <em>because it is not displayed often enough to warrant downloading the client-side template to render it</em>.</li>
+	<li><strong>Blue</strong> : this two-row grid has been filled with data that was provided by the user — the client-side code parsed the plaintext entered by the user in a text field, extracted e-mails and names, and displayed them back as a grid for checking before it is sent to the server. All the grid HTML has been constucted on the client side, <em>because it does not involve any server-provided data and thus avoids an unnecessary HTTP request</em>.</li>
+</ul>

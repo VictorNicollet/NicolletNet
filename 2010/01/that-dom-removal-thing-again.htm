@@ -1,0 +1,15 @@
+@title That DOM removal thing, again
+@draft
+
+Earlier this month, I pondered what looked like <a href="http://www.nicollet.net/2010/01/dom-removal-and-events/" target="_blank">a bug in JavaScript/DOM/jQuery</a>: removing an element from the DOM with jQuery (either manually with remove() or by setting the html() of its parent to something else) kept most of the data bound to the element around, but removed all event handlers from it. You could then re-insert the element, but its event handlers would be lost.
+
+I then gathered from several sources, such as <a href="http://stackoverflow.com/questions/2027706/why-do-registered-events-disappear-when-an-element-is-removed-from-dom">Stack Overflow</a>, that this is a jQuery issue (or rather, feature) and not a JavaScript one.
+
+The <a href="http://javascript.crockford.com/memory/leak.html">underlying cause</a> is explained by Douglas Crockford:
+<blockquote>When a DOM object contains a reference to a    JavaScript object (such an    event handling function), and when that JavaScript object contains a reference    to that DOM object, then a cyclic structure is formed. This is not in itself    a problem. At such time as there are no other references to the DOM object and    the event handler, then the garbage collector (an automatic memory resource    manager) will reclaim them both, allowing their space to be reallocated. The    JavaScript garbage collector understands about cycles and is not confused by    them. Unfortunately, IE's DOM is not managed by JScript. It has its own memory    manager that does not understand about cycles and so gets very confused. As    a result, when cycles occur, memory reclamation does not occur.</blockquote>
+A common solution to this problem is to remove the cycles when the element is removed from the DOM. Since a major source of cycles in your average jQuery program is the presence of event handlers, then removing the event handlers when an element is removed from the DOM solves the problem most of the time.
+
+With the release of jQuery 1.4, the new documentation for <a href="http://api.jquery.com/remove/" target="_blank"><code>.remove()</code></a> makes mention of this fact:
+<blockquote>In addition to the elements themselves, all bound events and jQuery data  associated with the elements are removed.</blockquote>
+The documentation for <a href="http://api.jquery.com/html/" target="_blank"><code>.html()</code></a> still makes no mention of this. If you want to remove an element and keep all the goodies you bound to it, jQuery 1.4 provides you with <a href="http://api.jquery.com/detach/" target="_blank"><code>.detach()</code></a>:
+<blockquote>The <code>.detach()</code> method is the same as <code>.remove()</code>, except that <code>.detach()</code> keeps all jQuery data associated with the removed elements. This method is useful when removed elements are to be reinserted into the DOM at a later time.</blockquote>

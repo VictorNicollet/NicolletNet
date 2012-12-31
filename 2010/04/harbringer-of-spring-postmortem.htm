@@ -1,0 +1,134 @@
+@title Harbringer of Spring postmortem
+@draft
+
+Yesterday was the seventh installment of the <a href="http://www.gamedev.net/community/forums/topic.asp?topic_id=566163" target="_blank">Three Hour Game Development Contest</a>, hosted on GameDev.Net by capn_midnight. The premise is that a theme is provided and contestants have three hours to design, implement and deliver a complete video game using art, libraries and technology of their choice, that is somehow related to that theme. The contest results will be revealed today.
+
+<a href="http://www.nicollet.net/harbringer"><img class="aligncenter size-thumbnail wp-image-1308" title="harbringer-of-spring" src="http://www.nicollet.net/wp-content/uploads/2010/04/harbringer-of-spring-150x150.png" alt="harbringer-of-spring" width="150" height="150" /></a>
+
+My entry is called <a href="http://nicollet.net/harbringer">Harbringer of Spring</a>, a game where you have to step on dirt tiles to make grass grow there, and step on the stone tile when there's grass everywhere. To increase difficulty, water tiles cannot be traversed, and bridge tiles turn into water tiles once they are stepped over. It's written in HTML-CSS-jQuery, sou can play it online. The original intent is vaguely inspired from the <a href="http://en.wikipedia.org/wiki/Seven_Bridges_of_K%C3%B6nigsberg" target="_blank">Bridges of Königsberg </a>mathematical problem where you have to cross all bridges exactly once.
+
+The technical details:
+<ul>
+	<li>233 lines of JavaScript code, divided into 100 lines of level data and 133 lines of actual gameplay code.</li>
+	<li>53 lines of HTML</li>
+	<li>174 lines of CSS, divided into 103 lines for the general UI (title, links) and 71 lines for the map and tileset.</li>
+	<li>Uses <a href="http://jquery.com/" target="_blank">jQuery 1.4.2</a> to interact with the document.</li>
+	<li>Uses the <a href="http://lostgarden.com/2007/05/dancs-miraculously-flexible-game.html" target="_blank">PlanetCute tileset</a>, because I couldn't be bothered with graphics.</li>
+</ul>
+Here's the step-by-step rundown of how I developed this entry (the given time is actually a countdown to the time the game must be delivered).
+
+<strong>3:15</strong> (that's 15 minutes before the contest begins): I've already decided that the game shall be written in HTML-CSS-jQuery, so I set up my work environment accordingly. Desktop 1 will be my development environment, with a browser on the left monitor containing documentation for jQuery and an xterm on the right monitor connected to the nicollet.net server through SSH, running an emacs with two vertically split buffers. Desktop 2 will be my testing environment, with a browser containing the game on the left monitor and a maximized Firebug on the right monitor.
+
+I also create the index.html, style.css and game.js files, download (with wget) the latest minified version of jQuery, and create an img directory for my images. I'm a bit bored, so I decide to add the "© 2010 Victor Nicollet" footer to the document.
+
+<strong>3:00</strong> : apparently, the theme has already been given out a little earlier. Time to start brainstorming. A few ideas I get right off the bat: a game like Sim City where you have to build spring factories in a world covered by winter. The Silk icon set from FamFamFam contains some weather icons, but they're really small. Perhaps I could instead build a Risk-like game by placing absolutely positioned stacks of units on a world map image? I start browsing the web for acceptable tile sets, just in case.
+
+<strong>2:45</strong> : I stumble upon the PlanetCute tileset (courtesy of <a href="http://www.gamedev.net/community/forums/topic.asp?topic_id=544073" target="_blank">the GameDev.Net thread on art resources</a>). The concept seems simple enough to implement a 2D tile map quickly, and I like the grass/dirt contrast. I download (with wget) the file and unzip it into img. The water tiles are quite cute, so I'm starting to think about "Spring" in terms of "Hot Spring" or something. Anyway, I need to be drawing tiles, I might as well get that out of the way while letting my right brain think about the theme.
+
+<strong>2:30</strong> : through a clever combination of float:left, position:absolute and background-image CSS trickery (with some help from Firebug for empirically guessing the pixel offsets I need) I manage to render the tile map, with the possibility of a "selection" golden light overlayed on top. It's all controlled by classes on the root tile elements, so controlling it from jQuery will be easy.
+
+I do have a problem, however: even though the root tile elements match the flat area on top of the tile graphics, the actual tile graphics are taller, and the CSS hover property seems to detect hovering even though I'm not above the root tile per se. I have no idea about how to resolve this quickly, so I'll give up on selecting tiles with the mouse (there are plenty of things you can do with keyboard controls, and given the time I have at my disposal, trying to fix the issue might take much too long.
+
+In the mean time, I thought about a simple "step over tiles to paint them" gameplay similar to <a href="http://en.wikipedia.org/wiki/Q*bert" target="_blank">Q*bert</a>. The trouble is that the existing graphical framework does not support animations, so adding enemies to the fray might be a bad idea. Yet, "paint the nodes" reminds me of graph theory, which in turn reminds me of the Bridges of Königsberg problem. I quickly decide to add non-traversable areas (I <em>did</em> like those water tiles) with bridges that may only be crossed once. Being able to only use a resource once means having to decide when to use it and what for, and these kinds of decisions provide a nice puzzle game design. So be it. Time to implement!
+
+<strong>2:00</strong> : the first half hour is the hardest, because I have to set up the general layout of the game code before I can see anything move on the screen. I go for a simple architecture in jQuery-powered JavaScript : an initialization function sets up the DOM and places references to individual DOM tiles in a 2D array. Everything related to the game will be a member of the global «g» object. The code looks like this so far:
+<blockquote>
+<pre><strong><span style="color: #0000ff;">var</span></strong> $world   = $(<span style="color: #ff0000;">'#lyt-world'</span>);
+g.$t = [];
+<strong><span style="color: #0000ff;">for</span></strong> (<strong><span style="color: #0000ff;">var</span></strong> y = 0; y &lt; 6; ++y ) {
+  <span style="color: #0000ff;"><strong>var</strong></span> r = [];
+  <span style="color: #0000ff;"><strong>for</strong></span> (<span style="color: #0000ff;"><strong>var</strong></span> x = 0; x &lt; 9; ++x) {
+    r.push($(<span style="color: #ff0000;">'&lt;div class="tile"&gt;&lt;div class="tile-img"/&gt;&lt;div class="tile-sel"/&gt;&lt;/div&gt;'</span>).appendTo($world));
+  }
+  g.$t.push(r);
+}</pre>
+</blockquote>
+If you've already done tile-based rendering, you will probably recognize the YX way of doing things: tile x,y can be found at <code>g.$t[y][x]</code>. I've also decided that a level array named «l» will hold the levels, in an array-of-strings fashion (space is dirt, tilde is water, plus is bridge and hash is stone). This is what the first level looks like:
+<blockquote>
+<pre>{
+  name : <span style="color: #ff0000;">'1. The beginning...'</span>,
+  tile : [
+    <span style="color: #ff0000;">"   ~~~~~ "</span>,
+    <span style="color: #ff0000;">"    ~#+  "</span>,
+    <span style="color: #ff0000;">"~~~+~~~  "</span>,
+    <span style="color: #ff0000;">"~   ~~~ ~"</span>,
+    <span style="color: #ff0000;">"~~+~~~~+~"</span>,
+    <span style="color: #ff0000;">"~        "</span>
+  ],
+  init : [1,1]
+}</pre>
+</blockquote>
+Another major architectural decision was how to represent tiles that had been walked on. One possibility was to implement "on step" rules which altered the map whenever the player moved (but that would involve making a copy of the map present in the level definition). The other possibility was to store the list of all positions that had been stepped on in a way that's easy to query for "has the player stepped there yet?". JavaScript has dictionaries so I went with the latter, so the rendering code looked like this:
+<blockquote>
+<pre>render : <strong><span style="color: #0000ff;">function</span></strong>() {
+  <span style="color: #0000ff;"><strong>for</strong></span> (<span style="color: #0000ff;"><strong>var</strong></span> y = 0; y &lt; 6; ++y) {
+    <strong><span style="color: #0000ff;">for</span></strong> (<span style="color: #0000ff;"><strong>var</strong></span> x = 0; x &lt; 9; ++x) {
+      <span style="color: #0000ff;"><strong>var</strong></span> t = this.map[y].charAt(x),
+         $t = g.$t[y][x];
+
+      <span style="color: #0000ff;"><strong>var</strong></span> xy = [x,y].join();
+
+      $t.attr(<span style="color: #ff0000;">'class'</span>,[
+        <span style="color: #ff0000;">'tile'</span>,
+        [x,y].join() == <span style="color: #0000ff;"><strong>this</strong></span>.pos.join() ? <span style="color: #ff0000;">'show'</span> : <span style="color: #ff0000;">''</span>,
+        t == <span style="color: #ff0000;">' '</span> &amp;&amp; xy <span style="color: #0000ff;"><strong>in</strong></span> <span style="color: #0000ff;"><strong>this</strong></span>.stepped ? <span style="color: #ff0000;">'grass'</span> : <span style="color: #ff0000;">''</span>,
+        t == <span style="color: #ff0000;">' '</span> &amp;&amp; !(xy <span style="color: #0000ff;"><strong>in</strong></span> <span style="color: #0000ff;"><strong>this</strong></span>.stepped) ? <span style="color: #ff0000;">'dirt'</span> : <span style="color: #ff0000;">''</span>,
+        t == <span style="color: #ff0000;">'~'</span> || t == <span style="color: #ff0000;">'+'</span> &amp;&amp; xy <span style="color: #0000ff;"><strong>in</strong></span> <span style="color: #0000ff;"><strong>this</strong></span>.stepped ? <span style="color: #ff0000;">'water'</span> : <span style="color: #ff0000;">''</span>,
+        t == <span style="color: #ff0000;">'+'</span> &amp;&amp; !(xy <span style="color: #0000ff;"><strong>in</strong></span> <span style="color: #0000ff;"><strong>this</strong></span>.stepped) ? <span style="color: #ff0000;">'wood'</span> : <span style="color: #ff0000;">''</span>
+      ].join(<span style="color: #ff0000;">' '</span>));
+    }
+  }
+},</pre>
+</blockquote>
+This made the "step onto tile" code exceedingly simple:
+<blockquote>
+<pre>step : <strong><span style="color: #0000ff;">function</span></strong>(xy) {
+ <span style="color: #0000ff;"><strong>this</strong></span>.stepped[xy.join()] = <strong><span style="color: #0000ff;">true</span></strong>;
+ <span style="color: #0000ff;"><strong>this</strong></span>.pos = xy;
+},</pre>
+</blockquote>
+Using Firebug, it was fairly easy to test this by manually calling the step and rendering functions.
+
+<strong>1:45</strong> : implementing controls meant, mostly, catching keydown events on the document, detecting arrow key presses, and calling a "try step" function with the appropriate movement vector (that function would check if the movement was possible, then call the actual step function, and finally rendering the entire thing). What took me the longest was finding out what the key values were (I eventually found out by logging the key values to the Firebug console).
+
+The game is now officially playable. I pour myself some hot Earl Grey Tea, eat a warm pancake, and give the first level a few test runs.
+
+<strong>1:40</strong> : it was pretty obvious that refreshing the entire page to restart the level was not very nice. In the name of polish, I add a "try again" button.
+
+<strong>1:35</strong> : turning a bridge into water as soon as it is stepped on feels weird. I split the "stepped" dictionary into "steppedOn" and "steppedOff" dictionaries that are filled independently, and adjust the rendering code accordingly.
+
+<strong>1:30</strong> : the game is quite simple. Maybe I could make it more complex if I forced the player to finish on a specific tile? I add stone tiles to the mix.
+
+<strong>1:25</strong> : I implement a "all tiles painted green" function and add a test in the "step" function to check the win condition (all tiles painted green and sitting on a stone tile). Winning starts the next level. The game is now officially in Alpha! Knowing that I can now deliver this simple game as is, I decide to move on to level design and design as many levels as possible.
+
+Also, my fiancée just fell asleep. I guess I'll plug in my headphones before I resume listening to Rammstein.
+
+<strong>1:15</strong> : after a bit of testing, it appears necessary to add a level selector, if only for level design purposes (I don't want to have to solve seven levels just to test the eight). I now have two playable levels. I guess I should start designing more: aside from the game finished screen, everything's implemented. In fact, there's no instructions manual or tutorial yet, and the "step on the stone tile when you're done" idea is not really that obvious.
+
+<strong>1:00</strong> : I write a few short text bubble to explain the game logic, place them in a layer that is only visible on the first level, and position them in Firebug. Now, the level design can start!
+
+<strong>0:55</strong> : level 3 (Chess) is over. It's pretty easy to solve.
+
+<strong>0:50</strong> : I search for the actual Bridges of Königsberg on Wikipedia, and implement it as a (rather simple) level 4.
+
+<strong>0:40</strong> : I reuse the chessboard from  level 3, add another stone tile to confuse players, solve it while stepping on as few bridges as possible, then turn the unused bridges into water tiles. Seems obvious to me, but apparently this ended up being the most difficult level in the game.
+
+<strong>0:30</strong> : Out of ideas. I'll try a random layout and work from there. This ends up as level 6 (Detour).
+
+<strong>0:25</strong> : Still out of ideas. Let's draw a happy face: level 7 (Happy).
+
+<strong>0:15</strong> : Still out of ideas. I randomly draw something up, test it, and that's it. I would have liked to draw more levels, but there was some polishing left to do (namely, the <em>game finished</em> screen).
+
+<strong>0:10</strong> : <em>Game finished</em> screen is over. Let's start packaging the stuff.
+
+<strong>0:05</strong> : Last minute bug fix: apparently the overflow:hidden on the tile map behaved badly when the try again and select level elements were floated to the right and were past a certain height (on certain browsers). I add a clear:both to the tile map.
+
+<strong>0:00</strong> : as expected, I don't have <em>zip</em> on my server, my aptitude cache is not up to date, and I don't want to risk spending 10 minutes updating it. <em>I should have fixed that before the contest!</em> Still. I tar-gzip the stuff, download it on a Windows computer, extract it then turn it into a zip file, and upload it back to the server. There's no time hunting for capn_midnight's mail address, so I just post the links in the thread.
+
+<strong>-0:05</strong> : I manage to locate the captain's address, so I mail the file there.<strong>
+</strong>
+
+<strong>-0:10</strong> : ?????
+
+<strong>-0:15</strong> : Profit.
+<div id="_mcePaste" style="overflow: hidden; position: absolute; left: -10000px; top: 1648px; width: 1px; height: 1px;">http://en.wikipedia.org/wiki/Q*bert</div>

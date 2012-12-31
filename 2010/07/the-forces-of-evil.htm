@@ -1,0 +1,21 @@
+@title The Forces of Evil
+@draft
+
+Bad luck happens. <strong>There's always an element of chance that you cannot control</strong>, no matter how many failsafes and backup plans you have.
+
+A few years ago, my employer decided to move to new offices in downtown Paris. The power went out several times that week, as our new landlord ironed out the specifics of software engineers renting the space: our developement and CVS servers, and their air conditioning, used up a lot more power than the previous tenants.
+
+For those of you unfamiliar with the software engineering world, the CVS server is the place where the source code is stored. You can live without it for a few hours, since you usually have a copy of whetever you're working on stored on your own computer, but losing the data is the second worse thing that could happen to a software company (the first being that the entire development team gets hit by a bus).
+
+Since the data was so critical, we had several layers of shielding to protect it. First, there was a daily backup. Second, weekly backups were kept for a year in a remote facility. Third, the data was stored on RAID drives, meaning that should one drive fail, it could be replaced without losing any data and without the users even noticing. Fourth, the RAID drives had their own backup battery power, so that they could finish writing whatever they were writing when the power went out. Fifth, there was a failsafe that prevented the drive from writing anything if the batteries were missing.
+<p style="text-align: left;"><strong>The bad news is that the failsafe did not work</strong>: the connector had been damaged during the move, and thought that batteries were present. The batteries were out of order, but the drives thought they were present, so they tried to finish writing the data, and ended up writing the correct data at the wrong location. These erroneous writes went unnoticed for a week, until people found C code showing up in Java source files. And by then, the daily backups were all corrupted. Oh, and the local copies several developers had kept were also corrupted.</p>
+<p style="text-align: left;">We ended up using the previous weekly backup, <strong>losing several man-months in the process</strong>, and reapplying any modifications left on our computers.</p>
+<p style="text-align: left;">Of course, we chose to move at a time where no critical deadlines were looming precisely because we were afraid something went wrong, so we could afford losing those man-months. <strong>We could reduce the impact of bad luck, but we couldn't prevent it altogether</strong>.</p>
+
+<h3 style="text-align: left;">Related Posts</h3>
+<ul>
+	<li><a title="Permanent Link to &quot;Suicide Bomber Training Camp&quot;" rel="bookmark" href="../2010/07/suicide-bomber-training-camp/">Suicide Bomber Training Camp</a> : only brains and experience can help you fight the forces of evil</li>
+	<li><a title="Permanent Link to &quot;The One Slide&quot;" rel="bookmark" href="../2010/05/the-one-slide/">The One Slide</a> : bring your enemies to their knees with a single powerpoint slide</li>
+	<li><a title="Permanent Link to &quot;ACID Outside Databases&quot;" rel="bookmark" href="../2008/11/acid-outside-databases/">ACID Outside Databases</a> : because this data loss is mostly an ACID fail<a title="Permanent Link to &quot;ACID Outside Databases&quot;" rel="bookmark" href="../2008/11/acid-outside-databases/">
+</a></li>
+</ul>

@@ -1,0 +1,54 @@
+@title Heaps of Knowledge
+@draft
+
+A question I like to ask for evaluating programming skill is, "Implement Heap Sort" (in whatever language I need programming in).
+
+Heap sort looks something like this (the example is in C++, but the implementation is fairly similar in just about any imperative language):
+<blockquote>
+<pre style="color:#000000;background:#ffffff;"><span style="color:#000084; font-weight:bold; ">void</span> swap(<span style="color:#000084; font-weight:bold; ">int</span> &amp;a, <span style="color:#000084; font-weight:bold; ">int</span> &amp;b) {
+  <span style="color:#000084; font-weight:bold; ">int</span> c = a;
+  a = b;
+  b = c;
+}
+
+<span style="color:#000084; font-weight:bold; ">void</span> sift(<span style="color:#000084; font-weight:bold; ">int</span> *data, <span style="color:#000084; font-weight:bold; ">int</span> i, <span style="color:#000084; font-weight:bold; ">int</span> size) {
+  <span style="color:#000084; font-weight:bold; ">int</span> l = i * 2 + 1, r = l + 1;
+  <span style="color:#000084; font-weight:bold; ">int</span> argmax = i;
+  <span style="color:#000084; font-weight:bold; ">if</span> (l &lt; size &amp;&amp; data[argmax] &lt; data[l]) argmax = l;
+  <span style="color:#000084; font-weight:bold; ">if</span> (r &lt; size &amp;&amp; data[argmax] &lt; data[r]) argmax = r;
+  <span style="color:#000084; font-weight:bold; ">if</span> (argmax != i) {
+    swap(data[i], data[argmax]);
+    sift(data, argmax, size);
+  }
+}
+
+<span style="color:#000084; font-weight:bold; ">void</span> heapsort(<span style="color:#000084; font-weight:bold; ">int</span> *data, <span style="color:#000084; font-weight:bold; ">int</span> size) {
+  <span style="color:#000084; font-weight:bold; ">for</span> (<span style="color:#000084; font-weight:bold; ">int</span> i = (size-1)/2; i &gt;= 0; --i) sift(data,i,size);
+  <span style="color:#000084; font-weight:bold; ">for</span> (<span style="color:#000084; font-weight:bold; ">int</span> i = size; i &gt;= 2; --i) {
+    swap(data[i-1],data[0]);
+    sift(data,0,i-1);
+  }
+}</pre>
+</blockquote>
+This short version requires some experience to get right, as well as knowledge of the algorithm. I suspect that a large number of programmers have never heard of heap sort, and of those who have heard of it, few will know how to implement it on their own. Of course, if you ask someone who knows how to write, you will usually get a pleasant surprise. But most of the time, you'll be facing someone who just doesn't know the answer. That's the entire point: what people know <em>is</em> important, but it's far more important to know how people will react when they don't know (and especially, how quickly they can learn).
+
+If the programmer doesn't know what heap sort is, you can nudge him in the right direction by explaining how heap sort works. Basically, heap sort is an improvement over the naive <strong>selection sort</strong>: instead of simply extracting the maximum element from the unsorted area in the array, heap sort turns the unsorted area into a heap—a binary tree where the root is the maximum element of the tree and each sub-tree is also a heap—thereby making extraction of a maximum a <em>?(log n)</em> task instead of the usual <em>?(n)</em>. The trick behind heap sort is that the unsorted area of the array can be seen as a heap, by deciding that every index in the array is a node in the tree, with the left child being at index (2n+1) and the right child being at index (2n+2).
+
+From there, it's fairly elementary to deduce that the algorithm should first turn the entire array into a heap, then remove the first element, restore the heap, and repeat the process until the heap is empty. The sift function itself should be guessed fairly easily by anyone with any experience in recursive functions (it is, after all, merely a question of constructing a large heap from two smaller heaps).
+
+The benefits I see to the question are:
+<ul>
+	<li><strong>See how the interviewee or student handles a situation where he has no idea about how to answer a question.</strong> Do they stare without saying a word? Do they get angry at an impossible question? Or do they admit they don't know, and try to gather more information?</li>
+</ul>
+<ul>
+	<li><strong>Determine how much general Computer Science knowledge the candidate has.</strong> As you explain Heap Sort, do they already know what heaps and selection sort are? Do they have to ask what a binary tree is? Do they have to ask what an array or a sort is, or how to swap two values?</li>
+</ul>
+<ul>
+	<li><strong>Detect positive laziness and knowledge of standard libraries.</strong> Does the candidate mention they'd use the standard library sort in production code? In C++, do they already know of std::make_heap or std::swap?</li>
+</ul>
+<ul>
+	<li><strong>Test basic knowledge of recursion and iteration.</strong> Does the interviewee 'get' the principle of sifting on the first try? Are the bounds for the two for-loops correct? Can the interviewee evaluate the complexity of the function?</li>
+</ul>
+<ul>
+	<li><strong>Test basic knowledge of the language idioms.</strong> Are the functions declared correctly? Are the control structures used correctly? Is the choice of a storage type appropriate for the array?</li>
+</ul>

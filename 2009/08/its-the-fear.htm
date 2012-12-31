@@ -1,0 +1,12 @@
+@title It's The Fear
+@draft
+
+Today, I ran <code>rm -rf *</code>. As root. On a production server.
+
+The problem is not that I lost any important data—my surgical strike removed precisely the outdated files that had to be erased, and nothing else.
+
+The problem is that I did it unconsciously. I did not stop to check that I was doing the right thing, which means that had my <code>pwd</code> been off by an inode or two I would have blasted important files away instead of junk. And would have spent the rest of the evening and night restoring them. And when I noticed this, moments after doing it, I went into a short-lived panic as I checked everything after the deed. Those were my two seconds of fear for the week, I guess.
+
+Being a system administrator is all about being permanently afraid of the next thing that will happen. When you don't mistype <code>rm -rf *~</code> as <code>rm -rf * ~</code> or overwrite original data with an incorrect tab-completed pipe-to-file, you end up with security holes that can and will be exploited at one point.
+
+Did you know that changing an user password in the mysql.user table only takes effect on the next MySQL reboot? And that if the password is not a valid hash, MySQL assumes no password is required? Not all security holes appear right away.

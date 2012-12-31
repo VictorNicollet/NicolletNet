@@ -1,0 +1,171 @@
+@title An Object Philosophy : The Tools
+@draft
+
+There comes a time in every programmer's career when the question of Object-Oriented Programming crops up. Various sources attempt to explain Object-Oriented Programming, though subtle nuances exist that often make such definitions incompatible with each other. Even worse, every programmer usually builds over the years his own version of what OOP really is about, and severe clashes can happen as a consequence.
+
+<a href="http://en.wikipedia.org/wiki/Object-oriented_programming" target="_blank">Wikipedia's approach</a> is a quite pragmatical one: it accepts the existence of multiple definitions, and merely attempts to explain those concepts that are shared by most. Some define the core of OOP as the <a href="http://www.objectmentor.com/resources/articles/isp.pdf" target="_blank">ISP</a>, <a href="http://www.objectmentor.com/resources/articles/lsp.pdf" target="_blank">LSP</a>, <a href="http://www.objectmentor.com/resources/articles/ocp.pdf" target="_blank">OCP</a>, <a href="http://www.objectmentor.com/resources/articles/dip.pdf" target="_blank">DIP</a> and <a href="http://www.objectmentor.com/resources/articles/srp.pdf" target="_blank">SRP</a> <span style="text-decoration: line-through;">acronyms </span>principles. Others take a build-your-own approach from a set of <a href="http://paulgraham.com/reesoo.html" target="_blank">basic premises</a>. It only seems fair that I could get my own stab at it as well.
+
+Object-Oriented Programming is usually used to refer to two distinct yet related concepts:
+<ul>
+	<li>A set of tools that can be used for design and for programming: classes, objects, messages, inheritance, code metrics, design patterns...</li>
+	<li>The ways in which that set of tools may be used to construct software that guarantees certain benefits, such as low-cost maintenance or reuse of existing code.</li>
+</ul>
+It is impossible, and foolish, to separate the two. Using classes, objects and the other tools without proper discipline or skill does not bring any of the benefits that are associated with OOP—even worse, programmers who come expecting proper OOP use of these tools will be surprised and will often have a lot to do to correct the situation. No single Object-Oriented concept is a magic bullet capable of working wonders on its own.
+
+Today, I'll discuss the tools. The next article in the series will deal with the mindset.
+
+Object-Oriented tools are language-independent and implementation-independent. Most languages have their own ways of providing support for these tools, and they can sometimes even be used in those languages that don't provide any kind of helpful support. Considering Object-Oriented Programming as "<em>What happens in Language X</em>" often leads to trying to replicate language X features in language Y, even though language Y also provides support for OOP in a different way. Besides, since programming languages seldom provide the entire OOP toolset out of the box, restricting oneself to a single language also reduces the horizon of potential tools.
+<h2>Objects</h2>
+One thing everyone manages to agree on is that Object-Oriented Programming is about <strong>objects</strong>—what objects are, or how they should be used, is already a matter of disagreement in certain places. My own take on objects is that you don't need to know what they are, you merely need to know how to manipulate them. This means that an OOP object can be implemented as a Java object, an Objective Caml abstract type or a C structure, as long as it behaves like OOP objects should.
+
+First, where do objects come from? Before you can manipulate them, you must create them. The easiest way of getting a brand new object in your program is to create it yourself from scratch. Writing the string "Hello" in your source code will automatically create a string object representing "Hello" when the program is run. Most programming languages provide means of creating certain categories of objects directly in the code: strings, integers, floating-point numbers, booleans, functions and classes are typical examples. Yes, <em>functions</em> and <em>classes</em> are, from an Object-Oriented Programming perspective, <em>objects</em>. Some programming languages also allow the creation of arbitrarily complex objects on-the-fly as a literal (the Objective part of Objective Caml allows this, for instance), but most languages only allow the creation of complex objects from <em>classes</em>. I'll get back to this class business later.
+<h2>Messages</h2>
+The sole purpose of objects is to receive <strong>messages</strong>.A message is a one-shot two-way communication channel between a piece of code and an object. The code sends a request to the object, and the object sends a response to the code. What the response looks like is up to the object, two distinct objects may respond differently to the same request and even a single object may respond differently to the same request at two distinct points in time. Both the request and the response carry some data—this data is usually a set of objects. A request also has an identifier that helps determine what the request is about: a "getAccountBalance" identifier means that the request is about getting the balance of an account, while a "setDuration" means that the request is about changing the duration of something.
+
+Not all objects can process all messages. For instance, one cannot expect a rubber duck to respond to a "getAccountBalance" message. So, not being able to process a message is a possibility to be considered—one of the main advantages of having language support for OOP is that statically typed languages can check at compile-time whether all messages are going to be processed successfully. But, again, more on that later.
+
+At this point, most OOP manuals summon forth a class definition of some form and happily declare "this class describes sets of objects, its methods define messages that the object can receive". I find that approach quite annoying, because it forevers equates in the minds of the readers <em>object</em> with <em>instance of a class</em> and <em>message</em> with <em>class method—</em>the consequence being that readers then find themselves at a loss when they encounter languages with class-less objects (such as Objective Caml) or class-independent implementations of Object-Oriented Programming (such as Service-Oriented Architectures).
+<h2>Everything is an object</h2>
+So, my example is going to be one simple piece of C pseudocode instead:
+<pre style="padding-left: 30px;">int squared(int x)
+{
+  return x * x;
+}
+
+printf("%dn", squared(10));</pre>
+In C terms, this pseudocode defines a function that returns its squared argument, then outputs the square of 10 on the standard output.
+
+In Object-Oriented terms,  this creates a new object and gives it the name <em>squared</em>. It does so by using a "function literal" which creates a brand new object by specifying what the object does when it receives a "function call" message: in this situation, the behavior would be to extract an integer object from the request, send that integer a "multiply by yourself" message, then respond with the result. Our example then sends the "function call" message associated with the integer literal 10 to the <em>squared</em> object, then binds the response to another "function call" message sent to the <em>printf</em> object.
+
+In other words, a plain old piece of C code without a single occurrence of the <em>class</em> keyword can be interpreted as an object-oriented program. This extends even further: any piece of imperative code can be interpreted as sending messages to objects. Going even further, even pure functional code without even a hint of imperative design can also be expressed as sending messages to objects: every function is an object that can process the "function call" message.
+
+So, in languages without classes, you can usually find:
+<ul>
+	<li>Primitive objects : integers, booleans, floating-point numbers and similar kinds of values are objects which are created from literals. They accept a wide range of messages which correspond to their operators (add, multiply, subtract, boolean-and, boolean-or, and so on).</li>
+</ul>
+<ul>
+	<li>Aggregate objects : C structures, OCaml record types, Javascript objects (ignoring the <em>this</em> keyword) that are a collection of sub-objects that can be accessed by name. They support "set value X" and "get value X" messages for every member X. They are created as literals by assigning the appropriate names with the appropriate initial values. They may or may not require preliminary definition of their type (for checking purposes in strongly typed languages) and extension of their contents by sending a "set value Y" message for an yet-undefined member Y.</li>
+</ul>
+<ul>
+	<li>Functions : these objects accept only one message ("call function"). They are created as a literal which describes how the data is extracted from the request, what operations are performed on it, and what data is sent back as part of the response.</li>
+</ul>
+<h2>Semantic shifting</h2>
+If Object-Oriented Programming was all about looking at previously written programs and noticing how they are Object-Oriented, there wouldn't really be much of a point to doing it. The good news is that OOP is not only about observing objects within existing code: it can also be used to introduce brand new behaviors into existing objects. This happens by performing a semantic shift of what a <em>message</em> and an <em>object</em> is: you decide that a certain construct you just invented is an object, and that another construct is a message.
+
+Let's look at our C pseudocode example again:
+<pre style="padding-left: 30px;">int squared(int x)
+{
+  return x * x;
+}</pre>
+This can be interpreted as creating  a new object, "<em>squared</em>", which can handle the "function call" message. But it could also be interpreted as defining a new message, "<em>squared</em>", which can be sent to integers. After all, since this is all a matter of interpretation, both interpretations can be correct at the same time: as long as squared(10) is a one-shot two-way communication channel between some code and the integer 10, it's a message.
+
+This semantic shift can be applied in almost all situations: a function with at least one argument can be seen as both an object that accepts a "call function" message, and as a message that can be sent to one of its arguments (with the other arguments as its associated data). So, now, you can go around and extend any of the objects that the programming language provides you with by creating the appropriate functions.
+<h2>Polymorphism</h2>
+Back to our "<em>squared</em>" message. That message can certainly be applied to integers, but it's equally valid to apply it to floating-point numbers. Besides, if we (by some miracle, or perhaps some feature of the language) managed to create a new kind of object which also supported multiplication by itself (such as a complex number) then the "<em>squared</em>" message could also be sent to that object. This is because that message merely requires that the object it's applied to supports multiplication by itself and so it can be applied to any such object. This is called <strong>polymorphism</strong>: when a message can be sent to any object, regardless of its <em>nature</em>, as long as it supports a certain set of operations. This provides the benefit of avoiding code repetition: you only define your "<em>squared</em>" message once, and then you can apply it everywhere. In a theoretical, ideal object-oriented programming language (the part is played here by Smalltalk, a very nice OOP language), you would just write this line once:
+<pre style="padding-left: 30px;">squared := [:x | x * x ]</pre>
+<h2>Interfaces</h2>
+The problem is that languages don't play nice with the concept of polymorphism. To determine whether a program behaves correctly at runtime, the language uses a type system. This type system allows expressing certain constraints over the values, and some rules to determine which constraints imply that the program works.
+
+The C type system is a fairly crude one. Every value has a type, with types being mutually distinct. So, you have the type of all integers, and the type of all floating point numbers. And a function argument has only one type. So, our polymorphism example, applied to two types, becomes:
+<pre style="padding-left: 30px;">int squared(int x)
+{
+  return x * x;
+}
+
+float squared(float x)
+{
+  return x * x;
+}</pre>
+The problem, of course, is that there is no way in the C type system to express the constraint "supports multiplication by itself". So, although the semantics of "multiply the argument by itself" are clear, the C compiler cannot understand that it's safe to define one such function. For that matter, the Java, C++ and Objective Caml type systems won't let us define such a function either. This is one of the reasons I chuckle when I hear Java advocates tout Java as a "pure object-oriented programming language": despite all the effort poured into creating a clean object model, a lot of elementary Java operations (including multiplication) are not messages, and several elementary Java types (including integers) are not objects. If you're looking for a pure OOP language (you don't <em>need</em> one to do proper OOP, of course), I strongly suggest Smalltalk.
+
+Back to the point: languages that support OOP actively, yet have a static type system, provide the notion of <strong>interface</strong> to help with type-checking. An interface is a set of constraints and requirements, stating what messages can be received by the object, what data has to be sent as part of the request, and what data will be returned as part of the response. So, one can express an interface with a  "<em>multiply by</em>" message, and the define the "<em>squared</em>" function to work on all objects with that interface: the language will then see that the interface provides the "<em>squared</em>" function with all it needs (namely, the "<em>multiply by</em>" message) and consider the types to be correct.
+
+In Java, the interface and function would look like this:
+<pre style="padding-left: 30px;">interface Multipliable
+{
+  // Accepts "multiplyBy" message
+  Multipliable multiplyBy(Multipliable);
+}
+
+Multipliable squared(Multipliable x)
+{
+  // Send "multiplyBy" message
+  return x.multiplyBy(x);
+}</pre>
+Of course, we had to use explicit message names here, because the multiplication operator in Java is not a message supported by the type system. On the other hand, Objective Caml is a tad smarter, because it can guess the interface based on the messages being sent:
+<pre style="padding-left: 30px;">let squared x =
+  x # multiplyBy x
+
+(* squared : (&lt; multiplyBy : 'a -&gt; 'b ; .. &gt; as 'a) -&gt; 'b *)</pre>
+Another consequence of Objective Caml's more expressive type system is that it allows retrieving the correct type. For instance, if you pass an integer into Java's "<em>squared</em>" function, you would get back a Multipliable object, but you wouldn't know if it was an integer or something else. This can be annoying, because you, as a programmer, know that it's an integer, but the language won't let you use it as such until you remind the compiler that it should trust you (and it will still check it at runtime). By contrast, Objective Caml types are parametric. An integer would probably have a <em>"multiplyBy : integer -&gt; integer</em>" function, so the squared function would correctly return an integer.
+
+But all of that is idle bickering about type systems that deviates from the purpose of the article.
+<h2>Classes</h2>
+A very important element of object-oriented programming is the notion of <strong>class</strong>. Earlier on, I said that objects could only be constructed at runtime by literals. That is, you create a new object and set its various properties right away. This, of course, makes it difficult to define categories of similar objects, because you have to define them one at a time and also make sure they share similar properties.
+
+Another way of creating objects has been proposed in several programming languages, to the point of becoming (mistakenly) a synonym for OOP. A class is an object—even though some impure programming languages do not treat it as such—which defines a single message called a <em>constructor</em>. Upon receiving a constructor message, the class creates (by some arcane magic implemented by the compiler) a brand new object with a predetermined set of properties that are a combination of the data sent with the constructor message and the data provided when the class itself was created.
+
+The exact syntax for sending the constructor message varies from language to language, but usually involves something along the lines of "<em>new Classname(arguments)</em>".
+
+In practice, a class defines two things:
+<ul>
+	<li>The data to be carried by the object. This data is either created from scratch by the constructor, gathered from the global scope, or extracted from the constructor message itself.</li>
+	<li>The list of messages that the object can process, along with the code to perform said processing.</li>
+</ul>
+Again, the exact syntax for defining a class varies. In Objective Caml, the constructor message is described as part of the class name and used to initialize the values in the object, while the messages to be processed are called "methods":
+<pre style="padding-left: 30px;">class vector2d (x,y) =
+object
+  val x = x
+  val y = y
+  method length = sqrt(x *. x +. y *. y)
+end
+
+let v = new vector2d (1.0,2.0) in
+  v # length</pre>
+[Edit : corrected small typo] In Java (as well as C++ and C#) the constructor is described as if it were a method, which can sometimes be confusing. Also, the language does not automatically guess which interfaces are implemented by a certain object, so they have to be specified as part of the class definition.
+<pre style="padding-left: 30px;">class Vector2d
+{
+  private float x;
+  private float y;
+  public Complex(float x, float t)
+  {
+    this.x = x;
+    this.y = y;
+  }
+  public float Length()
+  {
+    return Math.sqrt(x * x + y * y);
+  }
+}
+
+Vector2d v = new Vector2d(1.0,2.0);
+v.Length();</pre>
+In Javascript, classes are constructors, with methods being defined as part of that constructor's prototype:
+<pre style="padding-left: 30px;">function vector2d(x,y)
+{
+  this.x = x;
+  this.y = y;
+}
+
+vector2d.prototype.length = function()
+{
+  return Math.sqrt(this.x * this.x + this.y * this.y);
+}
+
+var v = new vector2d(1.0,2.0);
+v.length();</pre>
+<h2>Class extensions</h2>
+In fact, classes support another message besides constructors: <strong>inheritance</strong>, or extension. When extending a class or inheriting from a class (two ways of expressing the same concept), one create creates a new class which imports all the contents of another class, then adds its own set of contents. Most type systems apply a subtype relationship to inheritance, meaning that a function which can operate on an instance of the original class can also operate on an instance of the inheriting class.
+
+Inheritance is a strange beast: on the one hand, it behaves a little like interfaces (and is in fact the only way of replacing interfaces in languages that don't have them, such as C++) to provide polymorphism but on the other hand it is a non-polymorphic way of extending the functionality of a class. It happens quite often that entire programs avoid using inheritance at all, because interfaces solve all their polymorphism needs and they do not need the extension features of inheritance.
+<h2>A summary</h2>
+Object-oriented programming introduces the following set of concepts:
+<ul>
+	<li>An <strong>object</strong> is a value manipulated by the program. Integers, booleans, strings, functions and classes are examples of objects. Objects are usually created using literals provided by the programming language.</li>
+	<li>A program works by sending <strong>messages</strong> to objects. A message transmits a request (with arguments) to an object and the object responds with some data. Calling a function on an argument can be seen as sending a message, and calling a member function or method can also be interpreted as sending a message.</li>
+	<li>An <strong>interface</strong>, in a statically typed programming language, represents a set of messages that an object must be able to process. This is used to ensure that a function argument can be used without causing a runtime error.</li>
+	<li>A <strong>class</strong> is a special object which can receive constructor messages. Every constructor message constructs a brand new object that is returned as part of the response. Usually, an object created from a class is said to be an instance of that class.</li>
+	<li>Classes can <strong>inherit</strong> from one another, which can be useful in some cases to extend its functionality in a non-polymorphic manner.</li>
+</ul>
+The next article in the series is <a href="http://www.nicollet.net/2009/01/an-object-philosophy-2">here </a>(starting on January 9, 2009).
+<p style="padding-left: 30px;"></p>

@@ -1,0 +1,35 @@
+@title Amazon-WikiLeaks sets a Scary Precedent
+@draft
+
+For those of you living under a rock and not having an internet connection down there, here's the story so far:
+<ul>
+	<li>WikiLeaks, originally hosted in Sweden, announces that it will publish several hundred thousand U.S. classified documents.</li>
+	<li>A hacker runs a denial of service attack on WikiLeaks, bringing them down.</li>
+	<li>WikiLeaks uploads some of their data to Amazon's S3 file hosting service, and goes live</li>
+	<li><a href="http://edition.cnn.com/2010/US/12/01/wikileaks.amazon/index.html">Amazon pulls the plug on the WikiLeaks hosting</a> within 48 hours.</li>
+</ul>
+I will not under any circumstances condemn or condone what either WikiLeaks or Amazon did there. That topic is too complex for me (and, I suspect, most people) to form an adequately justified opinion, and my biased unjustified opinions are best kept off the Internet.<a href="http://wikileaks.org/img/wallpapers/wall3.jpg"><img class="aligncenter size-full wp-image-2163" title="wall3" src="http://www.nicollet.net/wp-content/uploads/2010/12/wall3.png" alt="" width="500" height="321" /></a>
+
+On the other hand,<strong> </strong>what Amazon did was terrifying. After toiling for years to convince the general business public that moving to the  <em>Cloud</em> does not imply accidental data loss or vicious hackers accessing your secrets, <strong>Amazon have reminded us of a basic, uncomfortable truth:</strong> <strong>they who handle your data can kill you</strong> <strong>on a whim</strong>.
+
+«<em>But WikiLeaks is not dead!</em>»
+
+I know. Keep in mind that WikiLeaks team has backup copies with strong encryption stored by a multitude of anonymous individuals, access to international hosting in a variety of safe havens, a dedicated team of sysadmins on call to move around the site and the data whenever something dies, and a willingness to fight for the availability of that information even if it entails going to jail. The reliability of their data storage exceeds that of almost any other entity on the planet, <em>including Amazon S3</em>. To them, having their hosting shut down is a minor inconvenience. To a normal business with their data to the Cloud, and all the bills, orders, paychecks, contracts and documents for the last year are lost: it's an unmistakable death sentence.
+
+How can Amazon S3 do this? Here's the relevant part of the <a href="http://aws.amazon.com/agreement/#3" target="_blank">Amazon Web Services customer agreement</a>:
+<blockquote><strong>3.4. Termination or Suspension by Us for Cause.</strong> We may suspend your right and license to use any individual Service or any set of Services, or terminate this Agreement in its entirety (and, accordingly, your right to use all Services), for cause effective as set forth below:
+
+<strong>3.4.1.</strong> Immediately upon our notice to you in accordance with the notice provisions set forth in Section 15 below if:
+
+[...]
+
+(vii) we receive notice or we otherwise determine, in our sole discretion, that you may be using AWS Services for any illegal purpose or in a way that violates the law or violates, infringes, or misappropriates the rights of any third party;</blockquote>
+This grants Amazon the right to terminate your service by snapping their fingers (and sending you an email) if there's any hint of you doing something that might be construed as illegal.
+
+«<em>You're another guy who stumbled upon a piece of legalese in a customer agreement, misunderstood it, and tells everyone how evil that corporation actually is...</em>»
+
+No, I'm not. I knew this termination clause had to be in there before I even looked, because it's a fairly standard one and even my own business has it. Amazon needs this part to be able to eliminate child pornography or copyrighted books/songs/movies stored on its servers without waiting for a judge to determine that the content is actually illegal. There's nothing evil about having that clause, and the reason we accept this situation is that we expect Amazon (and any other service) to use this power responsibly: as long as you don't store any illegal files, you need not fear anything.
+
+Keep in mind that while obtaining those leaked documents was illegal, distributing them has not yet been ruled illegal. It might happen in the near future on the grounds that it endangers individuals and/or governments, or it might end up under the protection of the First Amendment, and there seem to be fairly intelligent and reasonable people arguing for both sides.
+
+You just moved your data/computations to Amazon to eliminate any data loss or denial of service risks. But now, there's the risk of Amazon shutting down your account — what are you doing to make sure that isn't going to happen? How do you intend to get back up once it happens? Is it really worth it?

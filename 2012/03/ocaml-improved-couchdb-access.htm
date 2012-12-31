@@ -1,0 +1,76 @@
+@title OCaml : improved CouchDB access. 
+@draft
+
+My current project is written in OCaml and uses CouchDB for persistent storage. This article discusses our strategy for improving the performance of our database access layer.
+
+One of our heaviest database hitters is our « Notifications » dashboard : it contains several notifications such as « <strong>James Bond</strong> has written a message on the event <strong>Tommorow Never Dies</strong> by the <strong>MI5</strong> organization. » The data presented for each notification comes from several CouchDB documents : a notification document, a message document, an user-profile document, an user-profile-picture document, an event document and an organization document. On a typical dashboard, this represents around 120 documents. A naïve database access layer (one that performs one query per document) would take nearly half a second to extract all that information from the database, not counting the information needed to render the rest of the page.
+
+The recommended <strong>CouchDB</strong> strategy for this situation is, I believe, a mess. First, all documents involved in rendering the notifications should be present in the same database, or at least a denormalized copy of their data should be. Then, the view that returns the notifications to be rendered should be designed to also contain the documents related to those notifications : the notification document contains the identifier of its dependencies, so it can <code>emit([doc.usr_id,doc.time],{_id,doc.author_id})</code> to include the user document in the view output. This has the side-effect of completely messing up paging, as it is no longer possible to just grab the first 20 notifications if every notification has a variable number of dependencies.
+
+The traditional <strong>SQL</strong> strategy for this situation is arguably simpler : <code>INNER JOIN</code> all the required data, then <code>LEFT OUTER JOIN</code> the optional data, and let the ORM map all of that to actual notifications-and-dependencies. Still, it means that notifications cannot be encapsulated, because a single query should be able to get the necessary data for all notifications, so it should know how those notifications are represented.
+
+Our project uses one CouchDB database for each document type. There's a database that contains only notifications, a database that contains only user profiles, and so on. The application is responsible for bringing together the necessary data by performing GET queries against all the databases. For instance, the code that extracts the notification data from the database looks like this :
+<pre style="color: #000020; padding-left: 30px;"><span style="color: #200080; font-weight: bold;">let</span> render_event_message msg_id <span style="color: #308080;">=</span>
+  <span style="color: #200080; font-weight: bold;">let</span> message <span style="color: #308080;">=</span> Message<span style="color: #008c00;">.</span>get msg_id <span style="color: #200080; font-weight: bold;">in</span>
+  <span style="color: #200080; font-weight: bold;">let</span> author  <span style="color: #308080;">=</span> Profile<span style="color: #008c00;">.</span>get <span style="color: #308080;">(</span>message <span style="color: #308080;">#</span> author<span style="color: #308080;">)</span> <span style="color: #200080; font-weight: bold;">in</span>
+  <span style="color: #200080; font-weight: bold;">let</span> picture <span style="color: #308080;">=</span> Picture<span style="color: #008c00;">.</span>get <span style="color: #308080;">(</span>author <span style="color: #308080;">#</span> picture<span style="color: #308080;">)</span> <span style="color: #200080; font-weight: bold;">in</span>
+  <span style="color: #200080; font-weight: bold;">let</span> event   <span style="color: #308080;">=</span> Event<span style="color: #008c00;">.</span>get <span style="color: #308080;">(</span>message <span style="color: #308080;">#</span> event<span style="color: #308080;">)</span> <span style="color: #200080; font-weight: bold;">in</span>
+  <span style="color: #200080; font-weight: bold;">let</span> org     <span style="color: #308080;">=</span> Organization<span style="color: #008c00;">.</span>get <span style="color: #308080;">(</span>event <span style="color: #308080;">#</span> org<span style="color: #308080;">)</span> <span style="color: #200080; font-weight: bold;">in</span>
+  Html<span style="color: #008c00;">.</span>render_notification ~message ~author ~picture ~event ~org
+
+<span style="color: #200080; font-weight: bold;">let</span> render_item <span style="color: #308080;">=</span> <span style="color: #200080; font-weight: bold;">function</span>
+  <span style="color: #308080;">|</span> <span style="color: #308080;">`</span>EventMessage msg_id <span style="color: #308080;">-&gt;</span> render_event_message msg_id
+  <span style="color: #308080;">|</span>  <span style="color: #308080;">...</span> <span style="color: #308080;">-&gt;</span> <span style="color: #308080;">...</span> 
+
+<span style="color: #200080; font-weight: bold;">let</span> render usr_id <span style="color: #308080;">=</span>
+  <span style="color: #200080; font-weight: bold;">let</span> items <span style="color: #308080;">=</span> Notification<span style="color: #008c00;">.</span>for_user usr_id <span style="color: #200080; font-weight: bold;">in</span>
+  Html<span style="color: #008c00;">.</span>concat <span style="color: #308080;">(</span>List<span style="color: #008c00;">.</span>map render_item items<span style="color: #308080;">)</span></pre>
+This architecture has two main benefits. First, the segregation of different document types into separate databases makes it easier to split the load onto multiple servers should the need arise, and querying the documents by their identifier makes it easy to insert a simple key-value cache between the database and the application. Secondly, and I believe this is the most important benefit, the code structure is very straightforward, as it is written exactly like one would expect it to be written instead of bending all over for performance reasons, and adding a new kind of notification does not involve changing any existing code, merely adding entirely new code that can be safely encapsulated away in another module.
+
+Obviously, if the above code performs one <code>HTTP GET</code> for every call to a <code>get</code> function, the performance will be disastrous. The solution is to use batching, which involves grouping several queries into a single HTTP request:
+<pre style="padding-left: 30px;">GET http://localhost:5984/db/_all_docs?include_docs=true&amp;keys=[1,2,3]</pre>
+This is three times as fast, but obtains the same data as:
+<pre style="padding-left: 30px;">GET http://localhost:5984/db/1
+GET http://localhost:5984/db/2
+GET http://localhost:5984/db/3</pre>
+All that remains to be done is to make sure the OCaml-CouchDB interface batches requests together. This is where we originally hit another snag : the application runs each <code>get</code> call in isolation, and it must return a value for execution to continue before it even knows what the next call will be. In order for batching to be possible, the application must be able to call several <code>get</code> functions in parallel, but without the design overhead of making the parallelization explicit.
+
+The solution was to use a monad-based pre-emptive threading model, such as <a href="http://ocsigen.org/lwt/"><code>Lwt</code></a> — the one we use is called <code>Ohm</code> and has several key differences to <code>Lwt</code>, but the underlying thread principles are the same.
+
+When using <code>Ohm</code>, one manipulates queries instead of values. For instance, <code>Profile.get id</code> is not the profile with identifier <code>id</code>, but rather the query that fetches the profile with identifier <code>id</code>. What this means is that, instead of returning the HTML of the page to be displayed in response to a request, <strong>every RunOrg request handler returns a database query that returns that HTML</strong>. The evaluation engine then evaluates that query, optimizing it on the fly.
+
+The most frequent operation performed on queries is deciding what will happen to the value returned by the query. For instance, to return the picture of an author, one binds a secondary query (get the picture) to a primary query (get the author):
+<pre style="color: #000020; padding-left: 30px;">Run<span style="color: #008c00;">.</span>bind
+  <span style="color: #308080;">(</span><span style="color: #200080; font-weight: bold;">fun</span> author <span style="color: #308080;">-&gt;</span> Picture<span style="color: #008c00;">.</span>get <span style="color: #308080;">(</span>author <span style="color: #308080;">#</span> picture<span style="color: #308080;">)</span><span style="color: #308080;">)</span>
+  <span style="color: #308080;">(</span>Author<span style="color: #008c00;">.</span>get author_id<span style="color: #308080;">)</span></pre>
+In order to keep things readable, the above is equivalent to :
+<pre style="color: #000020; padding-left: 30px"><span style="color: #200080; font-weight: bold;">let</span><span style="color: #308080;">!</span> author <span style="color: #308080;">=</span> ohm $ Author<span style="color: #008c00;">.</span>get author_id <span style="color: #200080; font-weight: bold;">in</span>
+Picture<span style="color: #008c00;">.</span>get <span style="color: #308080;">(</span>author <span style="color: #308080;">#</span> picture<span style="color: #308080;">)</span></pre>
+The second most frequent operation is implicit parallelization, by performing a query for every element of a list, using <code>Run.list_map</code> instead of <code>List.map</code>. The query optimizer will notice this, and will attempt to run all those queries in parallel.
+
+The syntax extension makes the query-based code look very similar to the natural code :
+
+<pre style='color:#000020;'><span style='color:#200080; font-weight:bold; '>let</span> render_event_message msg_id <span style='color:#308080; '>=</span>
+  <span style='color:#200080; font-weight:bold; '>let</span><span style='color:#308080; '>!</span> message <span style='color:#308080; '>=</span> ohm $ Message<span style='color:#008c00; '>.</span>get msg_id <span style='color:#200080; font-weight:bold; '>in</span>
+  <span style='color:#200080; font-weight:bold; '>let</span><span style='color:#308080; '>!</span> author  <span style='color:#308080; '>=</span> ohm $ Profile<span style='color:#008c00; '>.</span>get <span style='color:#308080; '>(</span>message <span style='color:#308080; '>#</span> author<span style='color:#308080; '>)</span> <span style='color:#200080; font-weight:bold; '>in</span>
+  <span style='color:#200080; font-weight:bold; '>let</span><span style='color:#308080; '>!</span> picture <span style='color:#308080; '>=</span> ohm $ Picture<span style='color:#008c00; '>.</span>get <span style='color:#308080; '>(</span>author <span style='color:#308080; '>#</span> picture<span style='color:#308080; '>)</span> <span style='color:#200080; font-weight:bold; '>in</span>
+  <span style='color:#200080; font-weight:bold; '>let</span><span style='color:#308080; '>!</span> event   <span style='color:#308080; '>=</span> ohm $ Event<span style='color:#008c00; '>.</span>get <span style='color:#308080; '>(</span>message <span style='color:#308080; '>#</span> event<span style='color:#308080; '>)</span> <span style='color:#200080; font-weight:bold; '>in</span>
+  <span style='color:#200080; font-weight:bold; '>let</span><span style='color:#308080; '>!</span> org     <span style='color:#308080; '>=</span> ohm $ Organization<span style='color:#008c00; '>.</span>get <span style='color:#308080; '>(</span>event <span style='color:#308080; '>#</span> org<span style='color:#308080; '>)</span> <span style='color:#200080; font-weight:bold; '>in</span>
+  return $ Html<span style='color:#008c00; '>.</span>render_notification ~message ~author ~picture ~event ~org
+
+<span style='color:#200080; font-weight:bold; '>let</span> render_item <span style='color:#308080; '>=</span> <span style='color:#200080; font-weight:bold; '>function</span>
+  <span style='color:#308080; '>|</span> <span style='color:#308080; '>`</span>EventMessage msg_id <span style='color:#308080; '>-></span> render_event_message msg_id
+  <span style='color:#308080; '>|</span>  <span style='color:#308080; '>...</span> <span style='color:#308080; '>-></span> <span style='color:#308080; '>...</span> 
+
+<span style='color:#200080; font-weight:bold; '>let</span> render () <span style='color:#308080; '>=</span>
+  <span style='color:#200080; font-weight:bold; '>let</span><span style='color:#308080; '>!</span> usr_id    <span style='color:#308080; '>=</span> ohmctx (#user) <span style='color:#200080; font-weight:bold; '>in</span>
+  <span style='color:#200080; font-weight:bold; '>let</span><span style='color:#308080; '>!</span> items     <span style='color:#308080; '>=</span> ohm $ Notification<span style='color:#008c00; '>.</span>for_user usr_id <span style='color:#200080; font-weight:bold; '>in</span>
+  <span style='color:#200080; font-weight:bold; '>let</span><span style='color:#308080; '>!</span> html_list <span style='color:#308080; '>=</span> ohm $ Run<span style='color:#008c00; '>.</span>list_map render_item items <span style='color:#200080; font-weight:bold; '>in</span>
+  return $ Html<span style='color:#008c00; '>.</span>concat html_list
+</pre>
+
+The benefits of the query optimizer include :
+<ol><li>The above 120 queries are reduced to around 12 queries, most of them batches. It's not perfect &mdash; manual optimization could have brought this down to 8 queries &mdash; but it's quite good for an approach that does not change the structure of the code. </li>
+<li>Batch requests to different databases can be performed in parallel.</li>
+<li>The optimizer also caches values that are read from the database, which is quite useful for frequently-accessed values : a typical user receives most notifications from only a handful of organizations.</li>
+</ol>  

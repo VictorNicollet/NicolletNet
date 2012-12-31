@@ -1,0 +1,23 @@
+@title CSS Strategery
+@draft
+
+How do you prevent CSS from becoming a mess? Here are some tasty bits from my own design strategy.
+<h3>Nature</h3>
+CSS is based on rules, used to select only certain elements in the document and apply effects to these elements. While the rules themselves have some small level of semantics applied to them, most of the time the actual meaning is provided by the author, which makes it essential to decide exactly how the semantics should be described.
+
+Most rules deal with an object with a certain <em>nature</em>. At this most basic level, the nature is merely the element the rule is applied to. For instance, for <code>div.header a:link {}</code> the nature is "link", and for <code>p img {}</code> the nature is "image". Some rules have no nature: <code>p * {}</code> does apply to anything, and <code>div {}</code> doesn't really specify what the semantic nature of the div is. Nature can be further described using a class or identifier: <code>img#logo {}</code> applies to <em>the</em> logo, <code>p span.mailaddr {}</code> applies to spans that contain mail addresses.
+
+One way of doing bad CSS is relying too much on nature. It consists in giving almost every element in the tree a specific nature by means of classes or identifiers, and then individually applying a rule to every nature. The problem is that quite often the intended meaning is to have the same nature, but to exist in different context.
+<h3>Context</h3>
+For instance, is a link in a menu different from a link in the actual page contents? Both are links, the difference between them is not one of nature, but one of context. In a way, while the nature is everything tied to the last element in the rule, the context is everything else in that rule.
+<pre style="text-align: center;"><strong><span style="color: #ff6600;">.header</span> <span style="color: #0000ff;">a:link</span></strong> {}
+<strong><span style="color: #ff6600;">.contents</span> <span style="color: #0000ff;">a:link</span></strong> {}</pre>
+Orange is context, blue is nature. Splitting selector parts between context and nature does not change the overall size of the rule selector: <code>a.header:link</code> is ultimately the same length as <code>.header a:link</code>. However, relying on context means the XHTML is simpler: instead of having to decorate every link with a class, you merely have to decorate those elements that contain only header links (which, quite surprisingly, is usually the "header" block itself).
+
+By consequent, it is essential to move as much information as possible to the context, within reasonable limits. The real question is what these limits really are.
+<h3>Defaults</h3>
+To put it bluntly, there's no reason to tag a paragraph in the news section as having class "news" if all paragraphs in the news section have class "news". In general, if the majority of elements with a default XHTML semantic have the same semantic in your document in a certain context, then that should be made the default semantic for those elements within that context. So you can avoid writing horrible things like:
+<pre style="text-align: center;"><strong><span style="color: #ff6600;">div.contents p.content_text</span> <span style="color: #0000ff;">em.content_text_emphasis</span></strong> {}</pre>
+And instead use the more reasonable:
+<pre style="text-align: center;"><strong><span style="color: #ff6600;">div.contents p</span> <span style="color: #0000ff;">em</span></strong> {}</pre>
+<p style="text-align: left;">The main benefit is not that your CSS is shorter, although that does happen as well, but that your XHTML document is shorter, since you don't have to add classes to every element.</p>

@@ -1,0 +1,61 @@
+@title Comment Branches
+@draft
+
+<img class="aligncenter size-full wp-image-2620" title="branches" src="http://www.nicollet.net/wp-content/uploads/2011/11/branches.png" alt="" width="675" height="100" />Your development job is making changes in your software. Writing, testing and debugging those changes takes some time.
+
+If your job is anywhere as hectic as mine, you will have to fix and deploy urgent patches, even when your application code is in a half-written, half-debugged state because of <em>the feature of the month</em>.
+
+This is what <em>branches</em> are for. You keep two versions of the code, one of which is called the <strong>trunk </strong>and is always ready for deployment, and another which holds the changes that you are working on.
+
+When your feature is done, you <em>merge</em> the two versions together. You want to keep the merge operation painless. To do so, you have several kinds of branches available.
+
+The <strong>repository branch</strong> is built into your SourceSafe/subversion/git/whatever. It creates two independent copies, and you need to migrate changes from the trunk to every branch out there as soon as possible, or the merge will make you wish for a sweet and merciful death.
+
+By the way, changeset-oriented tools (like git or mercurial) make this easer, while revision-oriented tools (like subversion) make it harder.
+
+The <strong>feature branch</strong> is done using programming logic. The code you deploy to production supports the new feature, but it is turned off for everyone except yourself. This technique is great for adding features, but inefficient when changing existing ones.
+
+A side effect of the feature branch is that you can stress-test new code by rolling it out to increasing numbers of users progressively.
+
+The <strong>comment branch</strong> is an odd gambit. It involves ripping out an entire module and replacing it with another that has a <em>different</em> interface. This will involve large amounts of re-wiring all over the code base, and these will take hours or days before they can be compiled, let alone <em>tested</em>.
+
+Use a comment structure such as this one:
+<pre style="padding-left: 30px;"><span style="color: #008000;">/*[*/</span> old code <span style="color: #008000;">/*|* new code *]*/</span></pre>
+It is trivial to build a text-replacement macro that turns the above into the code below and back:
+<pre style="padding-left: 30px;"><span style="color: #008000;">/*[* old code *|*/</span> new code <span style="color: #008000;">/*]*/</span></pre>
+Use the macro to switch between development mode (when you write new code and desperately try to get it to compile) and fix mode (when you edit the old code and deploy it). For consistency, always commit the <em>old </em>version to the repository.
+
+Why use <strong>comment branches</strong> instead of <strong>repository branches</strong> ? Maybe your source control tool sucks at branches. I use Subversion. Yes, I know. Legacy, pain and unlikely hopes of a brighter future.
+
+When a trunk change occurs in a part that has been erased or reworked in the branch, that change <em>will</em> cause a conflict that <em>will</em> require manual intervention. Even with git or mercurial. For a large number of small changes sprinkled over a large codebase that is routinely involving many small updates, repository branches turn into a merge minefield.
+
+Does your branch involve a small number of well-defined files ?
+
+Then you should use <strong>repository branches</strong>, because conflicts will only happen in those files, and will usually be easy to fix.
+
+Does your branch involve many changes in many files everywhere in the project ?
+
+Then use <strong>comment branches</strong>.
+
+Last and possibly least, there is the <strong>TODO-branch</strong>. This involves non-breaking, purely cosmetic changes. 25% of my project uses this syntax for historical reasons:
+<pre style="padding-left: 30px;">Table.get id |-&gt; function 
+   | None       -&gt; return 0
+   | Some value -&gt; return value.count</pre>
+Then, a convention change happened, and this is used instead:
+<pre style="padding-left: 30px;">let! value_opt = breathe (Table.get id) in
+match value_opt with  
+   | None       -&gt; return 0
+   | Some value -&gt; return value.count</pre>
+Then, another convention change happened, and this should be used instead
+<pre style="padding-left: 30px;">let! value = breathe_req_or (return 0) (Table.get id) in
+return value.count</pre>
+And then, there's the current version:
+<pre style="padding-left: 30px;">let! value = breathe_req_or (return 0) $ Table.get id in
+return value.count</pre>
+Whenever I change coding conventions, I do not spend the time to reformat the tens of thousands of lines of code in my application. That would have been wasteful. Instead, every time a piece of code is refactored, it is refactored to the most recent style.
+
+The same happens when using an old and a new version of a given API. My code uses two libraries for handling HTML forms, uses both Javascript and Coffeescript, and a variety of similar two-hammers-one-nail situations.
+
+These are, for all practical purposes, branches. They are work that is being performed for long durations. The benefit of TODO-branches is that code in the middle of such changes is still compatible with the trunk. It all happens in the head of the developer, who remembers what changes should be done the next time a piece of code is rewritten.
+
+<small>Article Image &copy; Dominic Alves &mdash; <a href="http://www.flickr.com/photos/dominicspics/422131893/">Flickr</a></small>

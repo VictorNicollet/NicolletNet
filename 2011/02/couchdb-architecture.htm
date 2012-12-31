@@ -1,0 +1,100 @@
+@title Idle Musings on CouchDB Architectures
+@draft
+
+<img class="size-full wp-image-2229 alignright" style="margin-left: 25px; margin-bottom: 25px;" title="logo" src="http://www.nicollet.net/wp-content/uploads/2011/02/logo.png" alt="" width="175" height="150" />One of my recent application design decisions was to go the full NoSQL route, using <a href="http://couchdb.apache.org/" target="_blank">CouchDB</a> as the database. For those of you who never heard of it, CouchDB has the following benefits that I rely on:
+<ul>
+	<li><strong>Flexible format</strong>. It stores any JSON-encoded object instead of lines with pre-defined data columns. In fact, there is no built-in schema, so the application code is free to store any kind of data format in there without having to run ALTER TABLE statements. This was the biggest selling point for me, because it drastically reduces the development time of any database-related code.</li>
+	<li><strong>Lock-free Master-Master replication</strong>. Out of the box : you can have two CouchDB instances running on two servers, and send write requests to both, and they will <em>eventually</em> be in sync. This is great for both spreading the write load and for handling server failure gracefully. The catch: your application is partially responsible for not screwing things up.</li>
+	<li><strong>Complex Queries</strong>. As far as queries go, CouchDB only caters to <em>high-performance</em> queries. Just like in a traditional RDBMS, query performance is improved by defining an index. The difference is that if no index is defined, you <em>cannot run</em> the query on CouchDB (whereas with SQL, the query would run by doing full table scans or in-memory sorting or similar low-performance fallback solutions).  This means that if your queries run, they'll run <em>fast</em>, but it also requires you to put more thought into any requests you might need to make. On the other hand, CouchDB indexes (they're called <em>views</em>) are much more powerful than standard SQL indexes. If you wanted to, say, sort a list of users by the number of non-ASCII characters in their name, you could certainly do so.</li>
+</ul>
+The general consensus over NoSQL is that it should mean «Not Only SQL» : use an SQL database for the added query flexibility and transaction management, and use a non-SQL solution where performance requirements create a need for it. The typical solution would be to have the SQL database act as a Master and regularly update the data in the otherwise read-only non-SQL database. And there are <a href="http://www.infoq.com/presentations/Enterprise-NoSQL" target="_blank">pretty good points to be made about that</a>, such as Enterprise products being expected to respond to a vast range of queries.
+
+Still, RunOrg¹ is not (<em>yet</em>) intended as an Enterprise product, and all the data display goes through the web screens we design — so there's no serious pain in writing the CouchDB views at the same time.
+
+And while CouchDB does not support transactions, there is a clean way in which transaction-like effects can be achieved (with the added benefit of being lock-free): every document in a CouchDB database stores a <em>revision hash</em>, and updating or deleting an element requires you to provide the current revision hash as part of the query. So, the typical update process looks like this:
+<ol>
+	<li>Read current document.</li>
+	<li>Construct new document based on existing data.</li>
+	<li>Send the update query, using the revision hash from step 1.</li>
+	<li>If step 3 failed (because the document was changed while you were working on it), go back to step 1.</li>
+</ol>
+If you've ever used Subversion <em>et al</em>,  you can recognize steps 1-2-3 as being Update, Merge, Commit. It's that simple. The catch: it's limited to only one document at a time, so <em>you cannot atomically update two documents</em>.
+
+Of course, if you've ever used CouchDB, you probably know all of this, so let's get to the point already. When you design your CouchDB databases, there are several important things you need to keep in mind. In no particular order, they are:
+<h4><img src="http://runorg.com/public/icon/time.png" alt="" /> You Need Asynchronous Processing</h4>
+Any CouchDB setup needs some tending-to on a regular basis. Databases have to be compacted (I do so hourly, but I expect this to evolve as the number of users increases), changes between databases will need to be propagated and conflicts will have to be detected and handled.
+
+In addition to that, you will probably have application-related needs, such as sending e-mail (you don't want to lock the HTTP request until the SMTP conversation is over, especially if you're sending more than one message at a time), processing image files or office documents (you probably want to do that processing on a different server with the appropriate software anyway) or long-running requests.
+
+In short, you need one or more asynchronous processing bots and interacting with the database. To make things easier and reuse the data access code, I just write my software to be able to run in both async-bot mode and in HTTP-server mode. This ended in designing "save task to database for later execution" construct in my supporting library.
+<h4><img src="http://runorg.com/public/icon/chart_organisation.png" alt="" /> Determine the Master Data and Propagate</h4>
+While the CouchDB view system is fairly flexible, it's not universal. The textbook example is blog article tags. The tags on a given article would be stored as an array in the article document itself:
+<pre style="padding-left: 30px;">{
+  "title" : "Idle Musings on CouchDB Architectures",
+  "body"  : "...",
+  "tags"  : [ "Architecture" , "CouchDB" ]
+}
+</pre>
+This simple format lets you <strong>1.</strong> see an article's tags, <strong>2.</strong> find all articles with a given tag and <strong>3.</strong> count the number of articles for each tag. It does not, however, let you find the ten most used tags — you could certainly query the entire "number of articles for each tag" view and then sort the data in memory, but if an application contains tens of thousands of one-document tags, you're basically querying 1000 lines for every line you display.
+
+The suggested solution is to create another database (usually in the same database server) to store documents representing the tags in a more adapted format, such as:
+<pre style="padding-left: 30px;">{
+  "_id" : "Architecture",
+  "num" : 18
+}
+</pre>
+This format lets you easily sort the document on the num field. Problem Solved!
+
+How you actually copy the data from one database to the other is up to you. Just keep in mind:
+<ul>
+	<li>Always clearly determine which documents or fields are original data and which are cache data. You don't want to mistakenly update the master from the slave, or update the slave instead of the master. Try to keep the distinction at database level (this database contains slave data), and only resort to slave fields when it's absolutely necessary.</li>
+	<li>You <strong>need</strong> to have a periodic refresh process that rebuilds the cache from scratch, just in case it ended up out of sync. Depending on your data, a day-long process, an hourly process or a midnight process might be more adapted.</li>
+	<li>How fresh must your data be? Perfect freshness means you need to update the cache as part of the normal document-saving process — great for having up-to-date data, but slows things down. Minute-level freshness lets you delegate the cache update to an async process that detects the change and refreshes the cache. With hour-level freshness, you can rely solely on the complete cache rebuild.</li>
+</ul>
+Either way, have a consistent picture in mind of how you want to achieve this before you need it — trust me, copying data to another database is a lot easier than hand-crafting the perfect data structure to handle every query you need.
+<h4><img src="http://runorg.com/public/icon/table_row_insert.png" alt="" /> Don't Update, Insert-and-Merge instead</h4>
+Updates are slower than plain inserts because you need to read the original data  first, and they create the risk of conflicts with Master-Master replication. The textbook example is with Alice and Bob updating a given document in their respective databases: Alice sets the title to <em>Foo</em>, and Bob adds a few words to the article's body. Then, replication happens, a conflict appears and you need to determine what the title and body should be — in this case, the sane thing to do would be to keep Alice's title and Bob's edits to the body, but you don't have enough information when resolving the conflict to actually know that.
+
+Now, consider a different strategy: Alice inserts a "set title to <em>Foo</em>" line in her database while Bob inserts a "change document body" line in his database. You can then retrieve the current version of a document by reading all the lines related to that document and merging them together according to whatever rules you see fit (and, for bonus performance points, save the result to another cache database as described above). When the replication happens, both lines will appear in both databases, the merge code will run again, and both changes will appear in the resulting document.
+
+And you get a free revision history with the ability to selectively cancel changes down the line. Or, you can decide to compact older inserts (when it becomes obvious that there's no risk of collision anymore) to save memory and improve merge performance.
+
+Please note that this applies only to <em>master</em> data — <em>slave</em> data conflicts can be trivially solved by refreshing the cache from the master, so update slave data to your heart's content.
+<h4><img src="http://runorg.com/public/icon/key_delete.png" alt="" /> Avoid Unique Constraints</h4>
+This is possibly the single most annoying issue with CouchDB, but it's pretty much part of the distributed Master-Master package. The basic idea is this: you need a given field or value provided by the user to be unique. For instance, you don't want two accounts to have the same username. So, when users pick their user name, you need to atomically check if it's available and reserve it. This is impossible in a Master-Master scheme without expensive locks or elaborate cross-transactional strategies.
+
+The first thing you should try is to eliminate that constraint or turn it into something a little bit more amenable. For instance, if two users reserve the same e-mail address as their username, you could detect that once it happened and merge the accounts — they probably belong to the same user. When it's applicable, the detect-collision-and-merge solution is the one that's easier for performance.
+
+The last resort solution, which isn't actually that bad, is to give up on Master-Master replication <em>for that specific feature</em>. You can have a dedicated database to store username-id relationships:
+<pre style="padding-left: 30px;">{
+  "_id"    : "victor.nicollet",
+  "account": "3958377a5093b22673a26b6c33002e02"
+}</pre>
+The actual account would be stored in a different database which does use Master-Master replication:
+<pre style="padding-left: 30px;">{
+  "_id"     : "3958377a5093b22673a26b6c33002e02",
+  "username": "victor.nicollet",
+  "fname"   : "Victor",
+  "lname"   : "Nicollet",
+  "passhash": "..."
+}
+</pre>
+All creation requests would first try to create the username document in the first database — if it's already taken, an insert conflict happens immediately and you can react by asking the user for another username. If no conflict happens, you can then insert the document in the second database with no fear of conflicts. The same process happens when trying to change the username of an existing account.
+
+This solution works as long as the number of creation requests remains small, and you can afford the round-trip to the central database — which might be on a different continent (or worse, you might be working offline).
+<h4><img src="http://runorg.com/public/icon/cut.png" alt="" /> On The Splitting Of Databases</h4>
+With CouchDB, there's the inherent restriction that a given database must be entirely contained within a single server. Replication lets you split the <em>request</em> load, but the <em>storage</em> load remains the same as both duplicates must store the exact same data eventually. In addition to that, the underlying storage strategy is insert-only, meaning that if you update a given document a thousand times, you eat up a thousand times the memory footprint of that document — and in order to run a compaction, the server needs to have enough disk space to store both the uncompacted database and the newly compacted one, so <strong>always make sure you're not running close to full disk usage</strong>.
+
+Keeping the database small is done in a number of ways. For instance, keeping ID values small (I use 11-character base-62 UUIDs) or having short fields name in the JSON documents. One of the most potent techniques is simply splitting the contents across several databases.
+
+One splitting strategy is to act based on the ID or another reasonably distributed property of the document. If even ID values are on server 0 and odd ID values are on server 1, you do not hinder your query-by-ID possibilities at all (you can determine if the ID is even or odd quite easily in the application, and pick the appropriate server). On the other hand, views don't work anymore, since neither server can aggregate the entire range of existing values. You can get views to work by striving to keep together subsets of values that are queried together — RunOrg¹ stores items together on a per-association basis, so all items of a given association are available on the same server and can be map-reduced together — but this makes query-by-ID harder to achieve. Tradeoffs, as usual.
+
+Another splitting strategy is to act based on the type of the document. Put user accounts in database A, posted articles in database B, article incremental updates in database C and user comments in database D. As long as there's no database-level interaction between the different documents, this will work, and the code loading a document knows what kind of document it's loading and where it should load it from. The catch: a view from database B cannot return documents from database A (so, no querying for "the article and its comments" or "the updates and their authors"). Be aware of that limitation ahead of time.
+<h4><img src="http://runorg.com/public/icon/map.png" alt="" /> Keep A Schema</h4>
+Not requiring a schema is no excuse for not having one available. It always helps to remember what is being stored where and how (and why!), which documents are updated from which others, and so on. While standard relational representations can work, don't be afraid to include document-store-related representation features, such as the way for an item to reference a list of other items, and views.
+<h4><img src="http://runorg.com/public/icon/heart.png" alt="" /> Final Words</h4>
+As it stands, CouchDB is certainly expressive enough for our needs, once a few elementary features (propagation and asynchronous tasks) are available. The high flexibility of the data model, combined with the fact that an application can easily be made to read several document formats and convert to the latest one when possible, greatly improves the speed at which new modules are developed — right now, model code accounts for 5% of work time, with refactoring at 15% and user interface (HTML-CSS-JS) towers at a heartbreaking 80%.
+
+What are your takes on CouchDB? Do you use it? Did you try it? Any experiences you might have that would be worth sharing?
+
+<small>¹ <a href="http://www.runorg.com/" target="_self">RunOrg</a> is my  Start-Up ; we provide an online tool that helps associations,  unions,  organizations and communities manage their members, contacts,   activities, events, knowledge and online presence.</small>

@@ -1,0 +1,56 @@
+@title Persistent Data, Again
+@draft
+
+As a follow-up on <a href="http://www.nicollet.net/2009/02/ocaml-web-sites/" target="_blank">yesterday's discussion</a> of Objective Caml as a web language and to reminisce an <a href="http://www.nicollet.net/2008/09/sql-generation-part-1/" target="_blank">earlier post</a> about persistent data, I will discuss today an example of Objective Caml interface for representing persistent data.
+
+First, what's persistent data? Its name implies that it <em>persists </em>(for instance, between program runs). In the web domain, persistent data is data that persists on the server in-between requests. This is equivalent with the former definition if every request runs a program, but distinct if a single program serves all requests. Even then, however, it's interesting to have the data actually persist in order to resist crashes and maintenance operations that would take the server down, or simply to allow transferring the server from one host to another.
+
+Almost all dynamic web sites use some form of persistent data. Most of them rely on a database (such as the MySQL part of LAMP) and the file system. The three most important concepts related to persistent data are:
+<ol>
+	<li><strong>How robust it is</strong>. Caches tend to be persistent, but data inside can be destroyed at any moment because it's known to be recomputable. Volatile information, such as session data, needs to survive in-between requests, but is only as safe as the user's browser cookies, so it is acceptable to destroy it if the server shuts down. Persistent information is expected to stay around once it's written, because it cannot be retrieved, but extreme situations wiping off some of this data can still be acceptable. Critical information, especially if it has legal importance, should not be lost regardless of what happens.</li>
+	<li><strong>How fresh it is</strong>. Sometimes, it's extremely important for data to be fresh: a financial transaction shouldn't be based on data from two transactions ago. Other times, freshness is less essential: a thirty-second or one-minute latency on friend status updates is less critical. This affects whether the system can use read-only mirrors instead of reading from the core storage of the system,  whether locks have to be placed on certain tables and whether transactional isolation levels are high or low.</li>
+	<li><strong>Who can access it</strong>. Database systems provide systems from restricting access to various parts of a data structure, but they are often not granular enough, nor are they actually used to implement permissions for practical reasons (users are per database system, not per database, and you don't want a program running on a single database to pollute the user space of the entire system). Some data can be read by anyone, some data can only be written by its owner or a super-administrator, some data can only be read by its creator and their friends. Most systems implement an authorization system on top of the database to handle this.</li>
+</ol>
+In addition to this, there's a variety of optimization questions such as storing files on the filesystem or the database, what columns to index, and so on. These don't affect the use of the data: the behavior is the same and only the performance changes.
+
+How I want data to appear and be used in a program is the following:
+<p style="padding-left: 30px;">Declaring some data structure, such as a read-only persistent string (the write operations are assumed to be performed inside the module that declares the structure) that is always fresh. I also assume that the module Persist was created from a functor that allows specifying the permission system to be used.</p>
+
+<pre style="padding-left: 60px;">val admin_email : string Persist.value_readonly_fresh</pre>
+<p style="padding-left: 30px;">Defining the data structure. This defines the actual type of the object (for instance, a read-write object instead of a read-only object), an unique identifier that  helps match the persistent data with a value in the database, a serialization object that explains how the data should be serialized and also helps the type inference algorithm deduce the full type of the data, and authentication information for reads and writes. The creation is not a side-effect: it merely creates a new database from an old one, including the new piece of data.</p>
+
+<pre style="padding-left: 60px;">let database, admin_email =
+  Persist.value_readwrite_fresh
+    ~where:  database
+    ~what:   Serialize.string
+    ~name:   "config/admin-email"
+    ~read:   (fun me -&gt; true) <strong>(* Anyone can read the admin email. *)</strong>
+    ~write:  (fun me -&gt; me = Auth.Admin) <strong>(* Only admin can change it. *)</strong>
+    ()</pre>
+<p style="padding-left: 30px;">Using the data for reading and writing the admin email. Accesses never have side-effects: instead, they manipulate a context object that represents the state of the database. When modifications are done, the context can be commited to the database.</p>
+
+<pre style="padding-left: 60px;">let ensure_admin_mail me context mail =
+  try
+<strong>    (* Try to see if a value is present. *)</strong>
+    let _ = admin_email # get me context in context
+  with Persist.ValueNotSet -&gt;
+    <strong>(* Change returns the new context or raises access exception *)</strong>
+    admin_email # set me context mail</pre>
+<p style="padding-left: 30px;">Once the database context has been modified by the context, it is committed. The expected behavior is that all changes are applied to the database and become visible to any new contexts (the old contexts still see the old value). If any of the data that was read from the context as 'fresh' has changed since the context was created, then it means the data was not actually fresh, which results in an exception being thrown (the expected behavior, then, is to repeat the request). In practice, if locking rules are correct, freshness errors should never occur.</p>
+
+<pre style="padding-left: 60px;">let () = Persist.commit database context</pre>
+Alternative persistent types would exist : sets (unordered lists of values with "insert", "delete", "exists", "count" and "select all" queries) and maps (unordered key-value associations with "get", "set", "remove", "count", "find", "find all" and "select all").
+
+All of this begs the question of how the database and context are transmitted. The database has to be transmitted at module initialization time so that the persistent values can appear as part of the module interface. This means that the module is in fact a functor. Something like this:
+<pre style="padding-left: 30px;">module type DATABASE =
+sig
+  val structure : Persist.database ref
+end
+
+module Admin :
+  functor (Database : DATABASE) -&gt;
+sig
+  val email : string Persist.value_readonly_fresh
+  val ensure_mail : Auth.me -&gt; Persist.context -&gt; string -&gt; Persist.context
+end</pre>
+Then, the context itself is passed around as argument-and-return-value, as usual in functional programming.

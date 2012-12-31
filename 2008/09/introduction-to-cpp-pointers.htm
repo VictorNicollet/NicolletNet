@@ -1,0 +1,226 @@
+@title An Introduction to C++ Pointers
+@draft
+
+This entire text was originally part of a <a href="http://www.gamedev.net/community/forums/viewreply.asp?ID=3174491">post</a> I made on the GameDev.Net forums, which I've reformatted slightly. It exposes what is in my opinion a good explanation of what C++ pointers are and what they can be used for, starting with the elementary concepts required to introduce the hellish semantics that they provide. Of course, this article in itself is no match for starting programming with a language that uses reference semantics, but it's still a good starting point.
+
+Without any more discussion, here is the explanation:
+<h3>Values</h3>
+C++ programs manipulate <em>values</em>. Typical values include integers, such as 42, characters, such as 'x', objects of more complex types, such as <span style="font-family: courier new,courier; color: #999999;">std::string</span> or <span style="font-family: courier new,courier; color: #999999;">std::fstream</span>, and also instances of any class you define in your program.
+<h3>Variables and References</h3>
+Values need to be manipulated, which involves giving them a name. A <em>reference</em> is a name given to a value. Creating a reference is done like so:
+<blockquote>
+<pre>Type &amp; name = value;</pre>
+</blockquote>
+Where <span style="font-family: courier new,courier; color: #999999;">value </span>is usually the return value of a function or operator...
+<blockquote>
+<pre>std::ostream &amp;o = (std::cout &lt;&lt; "Text.");</pre>
+</blockquote>
+...but might also be another name given to the same value:
+<blockquote>
+<pre>std::ostream &amp;o = std::cout;</pre>
+</blockquote>
+Another way to create a reference is as a function argument:
+<blockquote>
+<pre>void foo(Type &amp; name)</pre>
+</blockquote>
+This will cause the value which was passed as argument to be available under that name in the entire function body. This can be quite useful if you wish to modify that value.
+
+Of course, almost any program needs to create values. In C++, values are always created using operator <span style="font-family: courier new,courier; color: #999999;">new </span>(except for literals such as 42 or "Hello", which simply exist). operator new exists in several versions. The default version generates dynamic values, which exist until <span style="font-family: courier new,courier; color: #999999;">delete </span>is called:
+<blockquote>
+<pre>int &amp; value = * new int;
+value = 10;
+std::cout &lt;&lt; value;
+delete (&amp;value);</pre>
+</blockquote>
+This causes performance problems if used too often, because dynamic memory allocation is slow in a non-garbage-collected language like C++. This is why another, faster version exists: placement new creates a new value using existing memory. Of course, the lifetime of the value is then limited by the lifetime of the memory which was used to create it, and it must of course be manually destroyed by calling its destructor:
+<blockquote>
+<pre>std::string &amp; str = * new (existing_memory) std::string("Hello");
+str += " world!";
+std::cout &lt;&lt; str;
+str.~string();
+// existing_memory dies somewhere after this line</pre>
+</blockquote>
+The existence of placement new allows the programmer to use memory areas which are faster than the free store used by the default operator new: it may use stack memory, a specially reserved portion of global memory, or a subset of the memory used by another value, by increasing speed of allocation. For instance, using stack memory:
+<blockquote>
+<pre> int &amp; value = * new (alloca(sizeof(int))) int;</pre>
+</blockquote>
+Since allocating objects on the stack, in global memory or as a subset of an object is a very repetitive task which involves obtaining the memory, computing the size to be allocated, and then calling the destructor of the object right before the memory is gone, the C++ language provides shortcuts to do this. Take for example stack allocation of a string:
+<blockquote>
+<pre>void sayhello()
+{
+  std::string &amp; str = <span style="text-decoration: underline;">* new (alloca(sizeof(std::string))) std::string</span>("Hello");
+  str += " world!";
+  std::cout &lt;&lt; str;
+  <span style="text-decoration: underline;">str.~string();</span>
+}</pre>
+</blockquote>
+I have underlined the repetitive tasks that are related to stack allocation. The shortcut provided by C++ in this situation is as follows:
+<blockquote>
+<pre>void sayhello()
+{
+  auto std::string str("Hello");
+  str += " world!";
+  std::cout &lt;&lt; str;
+}</pre>
+</blockquote>
+The main differences here are the presence of the <span style="font-family: courier new,courier; color: #999999;">auto </span>keyword, the absence of the <span style="font-family: courier new,courier; color: #999999;">&amp;</span> in the definition of the reference, and the absence of the <span style="font-family: courier new,courier; color: #999999;">str.~string()</span> destructor call at the end of the function. The first two differences cause C++ to allocate a new block of memory on the stack (auto) which will be released when the function returns and initialize it with a new value from the string literal "Hello". The auto keyword also causes the compiler to generate destructor calls: the object will be automatically destroyed right before the function exits (since that is when the stack allocation is released). In this situation <span style="font-family: courier new,courier; color: #999999;">auto </span>is aptly named a <em>storage specifier</em>.
+
+The other storage specifier is static, which uses global memory: defining a local variable as <span style="font-family: courier new,courier; color: #999999;">static </span>causes the compiler to allocate some memory for it as part of the global data span (at compile-time) and then initialize the value at that spot in memory the first time the variable's definition is encountered. Since <span style="font-family: courier new,courier; color: #999999;">auto </span>is the default storage specifier, it is generally omitted from the definition, which leads to the typical variable definition that most C and C++ programmers are used to:
+<blockquote>
+<pre>std::string str("Hello");
+str += " world!";
+std::cout &lt;&lt; str;</pre>
+</blockquote>
+Variables at global scope automatically use global storage.
+
+Member variables of structures or classes use the third type of allocation: they use a bit of reserved memory that was part of the value of which they are a member, and they are initialized there as part of that value's constructor. Their destructor is automatically called as part of the value's destructor. Before:
+<blockquote>
+<pre>struct super
+{
+  std::string &amp; str;
+  some_memory_buffer;
+  super() : str(* new (some_memory_buffer) std::string) {}
+  ~super() { str.~string(); }
+};</pre>
+</blockquote>
+After:
+<blockquote>
+<pre>struct super
+{
+  std::string str;
+  // No explicit memory buffer
+  // Automatic construction
+  // Automatic destruction
+};</pre>
+</blockquote>
+To summarize: references are names given to values. C++ provides special shortcuts to create a value and bind it to a reference at the same time, with special rules about when the created value is to be destroyed.
+<h3>Iterators and Sequences</h3>
+A <em>sequence </em>is, as its name hints at, a sequence of values. It could be, for instance, the sequence 1, 2, 3, 4. Or, it could be the set of opponents in a video game, in an arbitrary order. Or, it could be the sequence of characters being read from <span style="font-family: courier new,courier; color: #999999;">std::cin</span>. In short, sequences are the fundamental concept used to represent groups of objects that are to be manipulated together.
+
+A typical representation of sequences is through <em>iterators</em>, which are means of iterating over a sequence (accessing its elements in order). The basic operations required to iterate are the ability to read the "current value", the ability to move on to the "next value", and the ability to determine if the end of the sequence was reached and there are no values left. For instance, pseudocode to add together values of a sequence through iteration:
+<blockquote>
+<pre>a = 0
+while not end-of-sequence(iter)
+  a += value(iter)
+  iter = next(iter)</pre>
+</blockquote>
+Various languages provide various forms of iterators, but the three operations outlined above are always present. For instance, Objective Caml uses <span style="font-family: courier new,courier; color: #999999;">(it = [])</span>, <span style="font-family: courier new,courier; color: #999999;">List.hd</span> <span style="font-family: courier new,courier; color: #999999;">it</span> and <span style="font-family: courier new,courier; color: #999999;">List.tl it</span> as the end-of-sequence, value and next operations. C++ uses <span style="font-family: courier new,courier; color: #999999;">it == end</span>, <span style="font-family: courier new,courier; color: #999999;">*it</span> and <span style="font-family: courier new,courier; color: #999999;">++it</span> as the end-of-sequence, value and next operations. So, C++ code to add together the values of a sequence (represented by two iterators of type <span style="font-family: courier new,courier; color: #999999;">Iter </span>representing the first iterator of the sequence and the first iterator past the sequence) would be:
+<blockquote>
+<pre>template&lt;typename Iter&gt;
+int sum(Iter begin, Iter end)
+{
+  int a = 0;
+  while (begin != end)
+  {
+    a += *begin;
+    ++begin;
+  }
+  return a;
+}</pre>
+</blockquote>
+The begin-end representation of sequences is standard. The <span style="font-family: courier new,courier; color: #999999;">end </span>iterator is the first iterator after the sequence: as such, it has no associated value, and trying to obtain the iterator after <span style="font-family: courier new,courier; color: #999999;">end </span>is invalid. So, you cannot <span style="font-family: courier new,courier; color: #999999;">*end</span> or <span style="font-family: courier new,courier; color: #999999;">++end</span>. You can, however, compare <span style="font-family: courier new,courier; color: #999999;">end </span>with another iterator to see if that other iterator has reached the end of the sequence.
+
+The point of using a past-the-end iterator (one that isn't in the sequence, but is actually right after it) instead of a last-element iterator (one that corresponds to the last element in the sequence) is twofold. First, it makes code less complex, because the condition "I have reached the past-the-end iterator on this iteration" is easier to evaluate than "I was working on the last iterator on the previous iteration". Second, it allows representation of empty sequences (since the empty sequence has no last element and as such could not be represented using a last-iterator approach).
+
+An iterator which supports only <span style="font-family: courier new,courier; color: #999999;">*it</span> and <span style="font-family: courier new,courier; color: #999999;">++it</span> is called a forward iterator. Some iterators also support <span style="font-family: courier new,courier; color: #999999;">--it</span> (which moves to the previous element), making it a bidirectional iterator. Some iterators also support <span style="font-family: courier new,courier; color: #999999;">it + n</span> and<span style="font-family: courier new,courier; color: #999999;"> it - n</span>, allowing the iterator to move an arbitrary number of steps backward or forward in a single jump, which is called a random access iterator. Iterators may in turn be read-only (input iterator), write-only (output iterator) or support both read and write.
+
+Iterators are a very powerful concept: most of the things in C++ which look like sequences can be turned into iterators.
+<ul>
+	<li>The sequence of elements in a vector is represented by <span style="font-family: courier new,courier; color: #999999;">vect.begin()</span> and <span style="font-family: courier new,courier; color: #999999;">vect.end()</span>, which are random access read-write iterators (or read-only, if the vector is constant).</li>
+	<li>The sequence of elements in a list is represented by <span style="font-family: courier new,courier; color: #999999;">list.begin()</span> and <span style="font-family: courier new,courier; color: #999999;">list.end()</span>, which are bidirectional read-write iterators (or read-only, if the list is constant).</li>
+	<li>The sequence of objects of type <span style="color: #999999;">T</span> read from an <span style="font-family: courier new,courier; color: #999999;">std::istream</span> such as <span style="font-family: courier new,courier; color: #999999;">std::cin</span> is represented by <span style="font-family: courier new,courier; color: #999999;">std::istream_iterator&lt;T&gt;(std::cin)</span> and <span style="font-family: courier new,courier; color: #999999;">std::istream_iterator&lt;T&gt;()</span> (past-the-end iterator) which are forward input iterators.</li>
+	<li>Adding a sequence of elements at the end of any non-associative standard library container <span style="font-family: courier new,courier; color: #999999;">c</span> is represented by <span style="font-family: courier new,courier; color: #999999;">std::back_inserter(c)</span>, with no end iterator (this could be an infinite sequence) and is a forward output iterator.</li>
+</ul>
+The list goes on and on. This system is then combined with iterator-based algorithms, such as <span style="font-family: courier new,courier; color: #999999;">std::copy(src_begin, src_end, dest_begin)</span>, where <span style="font-family: courier new,courier; color: #999999;">src_begin</span> and <span style="font-family: courier new,courier; color: #999999;">src_end</span> are at least forward input iterators representing the input sequence to be copied, and <span style="font-family: courier new,courier; color: #999999;">dest_begin</span> is at least a forward output iterator representing where the input sequence should be copied to. As such, reading as many integers as possible from standard input and placing them in a vector is as simple as:
+<blockquote>
+<pre>std::vector&lt;int&gt; integers;
+std::copy( std::istream_iterator&lt;int&gt;(std::cin),
+           std::istream_iterator&lt;int&gt;(),
+           std::back_inserter(integers) );</pre>
+</blockquote>
+Or, we could add together the values read on the standard input using our function above:
+<blockquote>
+<pre>std::cout &lt;&lt; sum( std::istream_iterator&lt;int&gt;(std::cin),
+                  std::istream_iterator&lt;int&gt;() );</pre>
+</blockquote>
+Just like we could add together the elements of a vector:
+<pre>std::cout &lt;&lt; sum( integers.begin(), integers.end() );</pre>
+<h3>Pointers</h3>
+Pointers are a concept originally introduced in C. From a semantic point of view, pointers are <em>random access read-write iterators</em>. As iterators, they represent sequences of contiguous elements of the same type—such sequences are created either using a vector, or using a block allocation approach such as new[] or arrays.
+
+Given a block of <span style="font-family: courier new,courier; color: #999999;">N</span> objects of type <span style="font-family: courier new,courier; color: #999999;">T</span>, a pointer representing that sequence is of type <span style="font-family: courier new,courier; color: #999999;">T*</span>.
+
+Depending on the nature of the block, obtaining the first pointer begin in the sequence varies.
+<ul>
+	<li><span style="font-family: courier new,courier; color: #999999;">T *begin = new T[N];</span> will directly return the first pointer in the sequence.</li>
+	<li>If <span style="font-family: courier new,courier; color: #999999;">a</span> is an array of <span style="font-family: courier new,courier; color: #999999;">N</span> objects of type <span style="font-family: courier new,courier; color: #999999;">T</span> then <span style="font-family: courier new,courier; color: #999999;">T *begin = a;</span> will create the first pointer in the sequence of elements of a.</li>
+</ul>
+<ul>
+	<li>Otherwise, if <span style="font-family: courier new,courier; color: #999999;">t</span> (of type <span style="font-family: courier new,courier; color: #999999;">T</span>) is the first element of a sequence (as opposed to the first iterator of a sequence), then <span style="font-family: courier new,courier; color: #999999;">T *begin = &amp;t;</span> is the first iterator of the sequence.</li>
+</ul>
+The past-the-end iterator of a sequence is simply defined as <span style="font-family: courier new,courier; color: #999999;">T *end = begin + N;</span>
+<blockquote>
+<pre>int values[10] = { 1, 2, 3, 4, 5, 6, 7, 8, 9, 10 };
+std::cout &lt;&lt; sum(values, values + 10);</pre>
+</blockquote>
+As with any other iterator, going beyond the bounds of a sequence (before begin or after end) results in undefined behavior, which will usually lead to random misbehavior of your program.
+
+All of the above also holds when N = 1 (which means that a single object is also a one-object sequence, which can as such be manipulated using a pointer).
+
+The main problem with pointers is that this is not everything. If pointers were merely iterators, then people would have no more trouble with them than they would have with the other iterators in the standard library. However, pointers were introduced in the C language as a means to represent several other concepts.
+
+The first of these concepts is reference semantics. You see, in C, there are no references per se: every time you create a variable, it also creates a value. This makes it difficult to handle dynamic memory (because every variable you create already has its own value, so how do you give your dynamic memory a name in order to use it?) and allow functions to modify a variable in another function (because all the arguments to your function are, by default, brand new values that will disappear when the function returns, and you have no access to the values in the calling function). The solution adopted was to decide that, since pointers are read-write iterators, and every value is a one-element sequence by definition, then pointers can be used to give indirect names to values.
+
+For instance:
+<blockquote>
+<pre> /* Solve aX² + bX + c */
+int find_solutions(float a, float b, float c, float *x1, float *x2)
+{
+  float delta = b * b - 4f * a * c;
+  float sq;  
+
+  if (delta &lt; 0f)
+    return 0;</pre>
+<pre>  sq = sqrt(delta);
+  *x1 = (- b - sq) / (2 * a);
+  *x2 = (- b + sq) / (2 * a);
+  return 2;
+}</pre>
+<strong><span style="color: #ff6600;">Important note: the above is a C function which uses idioms not found or advised in C++ code. The C++ equivalent would use references instead of pointers, and would probably return a </span><span style="font-family: courier new,courier; color: #ff6600;">boost::optional&lt;std::pair&lt;float,float&gt;&gt;</span><span style="color: #ff6600;"> anyway.</span></strong></blockquote>
+This function needs to return the number of solutions (zero or two), but it also needs to send back the values of those solutions. In order to do so, it uses a trick which consists in being given two iterators to one-value sequences and modifying the unique value in each sequence. Since a copy of an iterator of a sequence is a new iterator of that same sequence, the iterator allows the function to modify the original sequence—and the values inside that sequence are the values from within the calling function.
+<blockquote>
+<pre>int main()
+{
+  float x1, x2;
+  float *px1 = &amp;x1; // An iterator to the one-element sequence 'x1'
+  float *px2 = &amp;x2; // An iterator to the one-element sequence 'x2'  
+
+  find_solutions(1f, 0f, -1f, px1, px2);   
+
+  // The function call changed the contents of the sequences
+  // iterated by px1 and px2, namely x1 and x2. As such, the
+  // values of x1 and x2 have been changed.
+}</pre>
+</blockquote>
+Of course, C++ provides references, which is why pointers are not used for pass-by-reference in C++ at all (as references provide a far more simple representation of one-element sequences).
+
+Another use of pointers, which remained in C++, is the representation of <em>reseatable </em>references. In C++, a reference is a name given to a value, and the value is bound to the name forever. It is not possible to bind the name to another value (though it is possible, of course, to bind several names to the same value). Reseating a reference means binding it to another value, and is possible in languages such as C# or Java, but not in C++.
+
+However, pointers are merely iterators, and it's possible to assign an iterator to another (thereby changing the sequence that the iterator is traversing, or the point in the sequence where the iterator is)—after all, this is the entire point of traversing a sequence with a single iterator!
+
+Therefore, when it becomes useful to have a reference to a value, but the ability to change that value is also useful, people sometimes use a pointer (though, in modern C++, there are other types, such as <span style="font-family: courier new,courier; color: #999999;">boost::shared_ptr</span> or <span style="font-family: courier new,courier; color: #999999;">boost::weak_ptr</span>, which do a far better job). For instance, if you wish to reference a fighter's target (and fighters can change targets at will):
+<blockquote>
+<pre>struct fighter
+{
+  object *target;
+}</pre>
+</blockquote>
+As such, a fighter's target can be changed by changing the pointer so that it corresponds to another value instead of the original one.
+
+A third use of pointers, introduced in C, was optional semantics. An option type allows the possibility for a value to be absent. For instance, one could decide that sqrt returns a float option: either its argument is positive and it returns a float, or it is negative and then it returns nothing.This is quite similary to the option types found in ML languages, for instance Objective Caml's <span style="font-family: courier new,courier; color: #999999;">'a option</span>.
+
+Instead of defining an option type distinct from an iterator type (as C++ does for all its iterators), C merged the two together, and this carried over to C++. A pointer can be constructed from the <em>integer constant zero</em>, and thus becomes the <em>null pointer</em>. This is a compile-time effect: the compiler notices that you're assigning zero to a pointer, and transforms that integer into the actual value of the null pointer (which may be something entirely different from zero).
+
+The null pointer may not be used in any way (increment, decrement, arithmetic, dereferencing), except to be compared for equality with another pointer, to be assigned a new pointer, or to be tested as a boolean condition (a null pointer always evaluates to <span style="font-family: courier new,courier; color: #999999;">false</span>, while other pointers evaluate to <span style="font-family: courier new,courier; color: #999999;">true</span>).
+
+To summarize: pointers are bidirectional read-write iterators used in C for reference semantics and reseatable reference semantics, as well as a clunky option type.

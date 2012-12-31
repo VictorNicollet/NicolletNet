@@ -1,0 +1,148 @@
+@title Back/Refresh/Bookmark
+@draft
+
+A feature shared by almost any web search engine in existence is the ability to return to the list of results if the result you check out wasn't what you hoped it would be. Even better, you actually return to the same page in the search results that you were on in the first place, so you can just resume your search.
+
+<em>Sounds obvious?</em>
+
+It is, when you're using a technology straight out of the 90's such as plain vanilla HTTP. The original problem that led to the design of HTTP was that you had many resources publicly available on the web, but there was no simple way to tell your friends where the <span style="text-decoration: line-through;">latest naughty lady bitmaps</span> important accounting files were. Thus were born the Uniform Resource Locators, known nowadays as URLs, which obviously helped locate resources in a way that was uniform across servers. Of course, for this to work, reaching out for the same URL twice should bring back the same piece of data both times (or, at the very least, a piece of data that is similar within reasonable expectations, such as being the "latest version" of the same data).
+
+This is what <a href="http://www.w3.org/Protocols/rfc2616/rfc2616-sec9.html#sec9.3" target="_blank">HTTP GET</a> does: locate and fetch a resource from the tubes, bringing back the same resource every single time.
+<blockquote>The GET method means retrieve whatever information (in the form of an    entity) is identified by the Request-URI.</blockquote>
+This is why your web browser can implement <em>back</em>, <em>refresh</em> and <em>bookmark</em> but your SSH client can't. And this is also why HTTP POST does not play nice with <em>back</em>, <em>refresh</em> and <em>bookmark</em> (it involves posting data, which may have an impact if done more than once, such as double-posting on a forum).
+<h4>The Good</h4>
+Google <em>et alii</em> play into this game: every search result page is a resource, which can be located through an URL that contains all the information about that page. Of course, the resource is generated on the fly on the server, but to the user (and the browser) it looks as if a static resource was present on the internet, so pressing the <em>back</em> button brings you back to the same URL, and this yields the expected data.
+
+Note that many web browsers will also remember some other things about the visited page, such as the scroll position and any text you entered in the fields. This is important, because this lets you refresh a page without losing the data you entered.
+<h4>The Bad</h4>
+Of course, it's hard to think in terms of resources-each-bound-to-locators when you're not dealing with resources. And besides, the "user gets form, user posts form, user is redirected to new page" mechanism can be quite limiting when you're trying to be clever. And it all looks so different from how desktop applications work!
+
+I am regularly brought on the brink of intellectual suicide when faced with "web applications" that maul the very spirit of HTTP with spiked baseball bats covered in hot pepper oil. No <em>back</em>, no <em>refresh</em>, no <em>bookmark</em>... These designers hope (and in this, they are quite correct) that as long as their application looks and feels like an application, there will be no affordances that would cause the user to use these forbidden buttons.
+
+A list of elements is the most ubiquitous example in modern computing: clicking on an element opens a detailed view of that element. The "application" way of doing this is opening a new window to display the details, so that the user may close the window or cancel their way out of it to go back to the list. No sane user will try to use the <em>back</em> feature to return to the list, because that's not how the desktop taught us to behave.
+
+This can be imitated on the web with a new browser window, or with a modal window using javascript and (possibly) AJAX.
+
+On the other hand, if the application <em>replaces</em> the list with the detailed view, then it's using the "web" way of doing things, and the "show me the previous screen" reflex of pressing <em>back</em> will kick in really soon. Too bad pressing back breaks the application. And pressing forward again to return to a reasonable state won't work either.
+
+I will not delve into the sheer stupidity of moving against affordances that are so deeply ingrained in the average internet user for <em>design </em>reasons (and even doing so for <em>technical </em>reasons is pretty bad).
+<h4>The Ugly</h4>
+And then, there's the matter of AJAX. The good thing about AJAX is that it lets you dynamically update only a part of your page, without having to refresh the rest. The bad thing about AJAX is that it lets you dynamically update only a part of your page, without having to refresh the rest.
+
+That's because every single thing you did on your AJAX page will be lost the moment your user presses <em>back</em> or <em>refresh</em>. If your lists are managed through AJAX, then the user will navigate to page 3, then click on the link, which will bring them to another page, then press back, which will (as expected) bring them back to the page with the list... that was reset to page 1, because there's no way for the browser to know that the complex javascript state that kept your list on page 3 had to be remembered in the history.
+
+For a real-life example, <a href="http://www.extjs.com/deploy/dev/examples/layout-browser/layout-browser.html" target="_blank">try this link</a> (from the ExtJS library), click around a bit, and then refresh — you're back to step zero. Since everything happens on a single page in a new tab/window, there's no back button to be used.
+
+The good news is that there are tricks available for handling <em>back</em>/<em>refresh</em>/<em>bookmark</em> in JavaScript. Another example would be <a href="http://www.extjs.com/deploy/dev/examples/history/history.html" target="_blank">this one</a>, from ExtJS again, which handles the <em>back</em> part almost correctly (still no luck on <em>refresh</em>/<em>bookmark</em>), or <a href="http://www.asual.com/jquery/address/samples/events/#/about" target="_blank">this example</a> based on the excellent jQuery Address plugin, which manages to do all three properly.
+<h4>The hash : a hack on top of a hack</h4>
+Back in the days where documents could be quite large in order to be handled offline as a single file, people had to come up with a way of navigating though them. The adopted solution was to use anchors. Somewhere in your file, you would add a named anchor, such as <code>&lt;a name="myAnchor"&gt;</code>. Then, appending <code>#myAnchor</code> to the URL of the document would scroll the anchor into view (well, the anchor was invisible, but you get my meaning).
+
+So, you could link to a part of a document from the document itself by using the URL-with-hash as the target of a link. And you could link to it from other pages, which let you send your readers to <a href="http://www.w3.org/TR/REC-html40/struct/links.html#h-12.2.1" target="_blank">the appropriate location</a> on the referenced document.
+
+It became fairly standard for web browsers to implement this system so that:
+<ul>
+	<li>Clicking on an anchor (or changing the anchor part of the URL) would not reload the document if it was already being displayed.</li>
+	<li>The anchor was taken into account by <em>back</em>/<em>refresh</em>/<em>bookmark</em>.</li>
+	<li>JavaScript would have read-write access to the anchor part of the URL (usually as <code>window.location.hash</code>).</li>
+</ul>
+This, in turn, provides several ways of solving the <em>back</em>/<em>refresh</em>/<em>bookmark</em> in heavy JavaScript situations.
+
+The first one, used by the ExtJS example above, is to alter the hash every single time you change the application state in a relevant way (what is relevant is left for the developer to decide), and simultaneously push information about the state in some kind of storage.
+
+Then, as the user presses <em>forward</em> and <em>back</em>, the hash-changing will keep the user on the same page and let the JavaScript read from the storage whatever state needs to be applied to elements and restores that state accordingly. The problem is that, when the page is refreshed (or bookmarked and loaded later), everything but the hash will disappear in a puff of garbage-collected smoke, so that no memory of the stored states will remain.
+
+The second solution is to store those states <strong>in the hash</strong>, so that they will be available even if you refresh, or bookmark the link, or give it to someone else.  This is what the jQuery Address example does, by storing the name of the selected tab in the hash, and then reading that name from the hash to activate the relevant tab whenever <em>back</em> or <em>refresh</em> happen.
+<h4>Deep Linking</h4>
+Quick note: this solution is sometimes referred to as <strong>deep linking</strong>. In fact, deep linking represents the very ability to open any page in a web site by entering its URL (so, if you find this article in a Google search, then Google is by definition deep linking into my site so you can access the article directly). As explained above, deep linking is <a href="http://www.textuality.com/tag/DeepLinking2.html">a natural consequence of how HTTP works</a>:
+<blockquote>The conclusion is that any attempt to forbid the practice of "Deep   Linking" is based on a misunderstanding of the technology [...]</blockquote>
+The entire point of those hash-based tricks is to enable (or restore) deep linking in heavy JavaScript web sites. Quite ironic, given that not so long ago we were trying to forbid it.
+<h4>The Middle Path : a hash behind the hash</h4>
+Of course, between those two solutions, there's the middle way: store some fundamental information in the hash, and keep the rest in a separate storage area. This way, <em>back</em> will be fully functional, <em>refresh</em> will still manage to keep enough relevant information around to be useful, and the hash will be small enough so that it remains below allowed size limits.
+
+This third strategy is quite simple to manage by starting from the second approach, keeping a global hash table to store the detailed state, and adding the key of the current detailed state to the summarized state.
+
+This is basically saying, store the current (detailed) state of components A and B in the hash table with key <code>0x3ffc</code>, then store <code>0x3ffc</code> in the hash along with the current (summarized) state of component C. When that hash is reactivated because of <em>back</em>, the detailed state will be available based on the key, and when reactivated because of <em>refresh</em>, the summarized state will be replaced and the unavailable detailed state will be replaced by defaults.
+<h4>Model Zero : Keep Stuff Around</h4>
+The simplest situation for this kind of thing is when developers absolutely need to keep some part of the page on the user's computer. It could be, for instance, a media player that has to remain present on the page even as the user browses the web site. Refreshing the page would drop the media player, which would cause the music to stop, so the page must stay, and content must be updated on the fly.
+
+Of course, you don't want to have AJAX-related link problems: Google does not follow JavaScript links, so if the entire link tree of your website is implemented in JavaScript, only your home page will be known to Google.
+
+A classic design technique found on <a href="http://www.deezer.com/" target="_blank">Deezer</a> is to keep two URLs for every page. One URL contains the hash, the other doesn't. By default, links use the non-hash URL, and as such can be followed by Google. If JavaScript is enabled, links automatically start using the hash URL instead.
+
+For example, the non-hash URL for a search for "nicollet" on Deezer is:
+<p style="padding-left: 30px;"><a href="http://www.deezer.com/en/music/result/all/nicollet" target="_blank">http://www.deezer.com/en/music/result/all/nicollet</a></p>
+
+The hash URL for that same search is:
+<p style="padding-left: 30px;"><a href="http://www.deezer.com/en/#music/result/all/nicollet" target="_blank">http://www.deezer.com/en/#music/result/all/nicollet</a></p>
+
+Both display the same page, so the algorithm for displaying the hash URL is basically, "load all the data for the non-hash URL and use it, while keeping the few elements that have to stay around, such as the music player". Quite simple, and it does not detract a lot from the typical way of designing web pages in a non-AJAX world.
+
+Sure, Deezer is flash-based, but equivalent JavaScript techniques are used by Facebook when they need to keep a chat box around, and (if you need a public JS-based example anyone can visit) by <a href="http://jukebo.fr/" target="_blank">Jukebo.fr</a>.
+
+This is actually what the <a href="http://www.asual.com/jquery/address/" target="_blank">jQuery Address</a> plugin was designed to do: run through all the links on a given page and turn their no-hash URL targets into hash-based URL targets, then provide the user with a "hash was changed" event that they can respond to by doing whatever they feel should be done (such a loading bits of data from the server for the new URL).
+
+As a whole, Model Zero is fairly simple to implement and use, and requires only minimal support from the server, such as controllers that display partial views instead of complete views if called with a certain parameter.
+<h4>Model One : Components on a Page</h4>
+... starring <a href="http://en.wikipedia.org/wiki/Snakes_on_a_Plane" target="_blank">Samuel L. Jackson</a>. This is the simplest model that does not involve simply mirroring server-side pages on the client, and it usually happens when a normal page contains some kind of JavaScript component, such as <a href="http://jqueryui.com/demos/tabs/default.html" target="_blank">jQuery UI tabs</a> that are expected to be refreshed appropriately, or an <a href="http://www.extjs.com/deploy/dev/examples/grid/paging.html" target="_blank">ExtJS grid</a> with complex state.
+
+The assumption here is that you don't care about Google following the links in your grid (jQuery UI tabs decay to a nice HTML markup when JS is disabled, so they would create no problems), but you do care about your user using <em>back</em>/<em>refresh</em>/<em>bookmark</em> on the page.
+
+The basic idea is that every single component on the page has to be connected to the history handler (be it <code>Ext.History</code>, <code>$.address</code> or anything else) so that they notify it of their state changes, and are notified in return of external address changes.
+
+Depending on which component you are trying to connect to which history handler, things will be more or less difficult. In the rather common situation where you wrote your own component, it will have to provide a "my state changed" event (triggered by your component whenever user interaction causes a change of state) and a "give me a new state" function (called by the history handler whenever the state changes). Somewhere along the way (probably in your component) you will need a serialization-deserialization utility to turn the complex state of your component into a hash-storable string and back.
+
+For additional safety, make sure that setting a state that is already the current state does not trigger the state change callback: depending on your history handler implementation, it might cause an infinite loop, and it ain't pretty.
+
+A quick-and-dirty example to connect jQuery UI tabs to the jQuery address plugin (this should not work as is, and is intended merely as an illustration):
+<pre style="background: #ffffff none repeat scroll 0% 0%; color: #000000; padding-left: 30px;">$(<span style="color: #000084; font-weight: bold;">function</span>(){
+
+  $.address.externalChange(<span style="color: #000084; font-weight: bold;">function</span>(){
+    <span style="color: #000084; font-weight: bold;">var</span> i = $.address.value().<span style="color: #000084; font-weight: bold;">substr</span>(1) || 0;
+    $(<span style="color: #0000ff;">'#tabs'</span>).tabs(<span style="color: #0000ff;">'select'</span>, i);
+  });
+
+  $(<span style="color: #0000ff;">'#tabs'</span>).tabs({
+    select : <span style="color: #000084; font-weight: bold;">function</span>(event){
+      $.address.value(
+        $(<span style="color: #0000ff;">'#tabs'</span>).tabs(<span style="color: #0000ff;">'option'</span>,<span style="color: #0000ff;">'selected'</span>);
+      );
+    }
+  });
+});</pre>
+The first part extracts the state from the hash and selects a tab, the second part reads the currently selected tab and activates it. It relies on the tabs not firing a "select" event if the selected tab was already active, and on externalChange not being triggered by setting the value from the code.
+
+Note that the second part does not compute the new hash value from the event itself, but rather from global data: this is because, if you had two components on the same page, changing any of the two would have to store the new state of <strong>both </strong>components in the URL. In that situation, you would have a single "compute the hash based on the state of both components" function triggered by the on-change events of both components.
+<h4>Model One-Dot-Five : what if I use both of the above?</h4>
+What happens if you load your pages using model zero, and then you have components on these pages that use model one?
+
+This is not very difficult, but it requires some cooperation on the part of model zero, which "owns" the hash for practical reasons. The first possibility is to have model zero use only one channel of your history management tool—for instance, if your tool allows you to specify query strings, you can store your state as ZERO?COMPONENT=STATE&amp;COMPONENT=STATE without difficulties.
+
+The second possibility is to have model zero provide an interface that lets components from the loaded pages register and control parts of what model zero will save to the hash through a modification to its serialization process (again, the query string seems like an obvious choice).
+
+The problem is that the first possibility will not work...
+
+First: since you always remain on the same page, components that disappear from the page do not remove the events you registered with the history manager to handle them. It is the responsibility of model zero (which knows when a page content change happens) to eliminate any callbacks registered by components from model one. Otherwise, on every URL change, all callbacks will be processed, which reduces performance, causes memory leaks and might, in really nasty situations, cause a component on a page you visited five minutes ago to maul the URL of the page you're visiting right now.
+
+Also remember that the hash-was-changed event will trigger an AJAX reload of the page contents, so the new components will by definition not be present on the page when the event is triggered!
+
+So, model zero reloading takes a little more effort now:
+<ol>
+	<li>Detect that a reload is required.</li>
+	<li>Unregister all hash change event handlers registered from child components.</li>
+	<li>Query the content, insert it into the page. It may contain components, which will then register themselves with the hash change event.</li>
+	<li>Propagate the hash change event to the newly created components.</li>
+</ol>
+Since it now needs to unregister child handlers and propagate the hash change after loading is done, model zero needs tighter control over how children are connected to the history handler. I believe the only clean solution here is to make model zero a global object that wraps around the history handler, so that child components only need to interact with the global object.
+
+An interesting interface for this part of the global object would be:
+<p style="padding-left: 30px;"><code>zero.onChange(callback)</code>
+Registers a callback to be called whenever the state of the child components needs to be modified (because of an URL change). Child components, when they initialize themselves, register themselves this way to listen to URL changes. All callbacks registered this way are discarded when the contents of the page change.
+
+</p><p style="padding-left: 30px;"><code>zero.setState(dictionary)</code>
+Changes the query string part of the URL to take into account changes that happened to child components. This does not trigger the change event.
+
+Being global means components initialized in <code>&lt;script&gt;</code> tags in the incoming, server-sent HTML can still reach out for it and register themselves.
+<h4>Model Two : recursive boxing</h4>
+When you look at the previous model, you notice that model one components inside a model zero page is a flat structure only waiting to be made recursive. The key to this is to create a component that acts like a model zero page by loading its content from the server and passing down some information to its own child components.
+<h4>Model Three : client controllers</h4>
+This model gives up any kind of non-javascript usage of the web site. A classic example is <a href="http://mail.google.com/mail/help/intl/en/about.html" target="_blank">gmail </a>(and, just like gmail, you can provide an alternate static HTML version of the web site with greatly reduced features). This approach basically leaves everything in the hands of the JavaScript programmer by letting him define the application as a stateful component, with the hash in the URL being a serialized version of the component state (or the relevant parts thereof). It's also the hardest to work with, since there's basically no high-level architecture, though you may implement a domain-specific one like gmail did.</p>

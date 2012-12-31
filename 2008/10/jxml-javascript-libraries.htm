@@ -1,0 +1,47 @@
+@title JXML : Javascript Libraries
+@draft
+
+Javascript is frequently used to make an HTML web page dynamic. Most modern browsers support Javascript as a scripting language and provide reasonably standard means of binding code to an event (such as clicking on a button), letting code change the content of the page (such as hiding an object) or even interacting with the server (sending a request and retrieving the data). Despite a lot of compatibility and semantic problems (such as the ability to move objects around in the DOM in a sane way), libraries such as jQuery provide further capabilities and make many things simpler.
+
+Yet, there is still much left to be done.
+
+Javascript, for instance, provides no namespacing, leading to collision risks that are usually circumvented by means of a root object that acts as a namespace-like contraption, with the exception that the code within a namespace cannot be spread over several documents. Javascript also provides no standard and reliable means of creating new behavior and data: while it's possible to create new data by altering the innerHtml of elements in the DOM, and while the closure system allows the creation of new behavior, creating a new element in the DOM and binding some new behavior do it is very complex to do without library support.
+
+While jQuery proposes means of associating behavior to elements programmatically, it allows too much freedom, which leads to inconsistencies in the way in which objects are defined and thus restrict the interoperability of jQuery-based creations.
+<h4>JXML : a Javascript Description Language</h4>
+The aim of JXML is to provide a language that provides a single consistent way of defining UI components in Javascript, and allowing them to work in combination with each other. It works by harnessing the raw power of jQuery to allow a large breadth of behavior types while using a strict <a href="http://c2.com/cgi/wiki?ModelDelegate">model-delegate</a> pattern to encapsulate component behavior independently of its display.
+
+JXML is based on XML. Some sample JXML code would be:
+<blockquote>
+<pre style="background: #ffffff none repeat scroll 0% 50%; color: #000000;"><span style="color: #7f0055;">&lt;</span>jx:<span style="color: #7f0055;">namespace</span> name=<span style="color: #0000ff;">"</span><span style="color: #0000ff;">example</span><span style="color: #0000ff;">"</span><span style="color: #7f0055;">&gt;</span>
+  <span style="color: #7f0055;">&lt;</span>jx:<span style="color: #7f0055;">var</span> name=<span style="color: #0000ff;">"</span><span style="color: #0000ff;">default_increment</span><span style="color: #0000ff;">"</span><span style="color: #7f0055;">&gt;</span>0<span style="color: #7f0055;">&lt;/</span>jx:<span style="color: #7f0055;">var</span><span style="color: #7f0055;">&gt;</span>
+  <span style="color: #7f0055;">&lt;</span>jx:<span style="color: #7f0055;">component</span> name=<span style="color: #0000ff;">"</span><span style="color: #0000ff;">incrementer</span><span style="color: #0000ff;">"</span><span style="color: #7f0055;">&gt;</span>
+    <span style="color: #7f0055;">&lt;</span>jx:<span style="color: #7f0055;">param</span> name=<span style="color: #0000ff;">"</span><span style="color: #0000ff;">initial</span><span style="color: #0000ff;">"</span> default=<span style="color: #0000ff;">"</span><span style="color: #0000ff;">{example.default_increment}</span><span style="color: #0000ff;">"</span><span style="color: #7f0055;">/&gt;</span>
+    <span style="color: #7f0055;">&lt;</span>jx:<span style="color: #7f0055;">var</span> name=<span style="color: #0000ff;">"</span><span style="color: #0000ff;">current</span><span style="color: #0000ff;">"</span><span style="color: #7f0055;">&gt;</span>this.param.initial<span style="color: #7f0055;">&lt;/</span>jx:<span style="color: #7f0055;">var</span><span style="color: #7f0055;">&gt;</span>
+    <span style="color: #7f0055;">&lt;</span>jx:<span style="color: #7f0055;">method</span> name=<span style="color: #0000ff;">"</span><span style="color: #0000ff;">increment</span><span style="color: #0000ff;">"</span><span style="color: #7f0055;">&gt;</span>++this.current ; this.change()<span style="color: #7f0055;">&lt;/</span>jx:<span style="color: #7f0055;">method</span><span style="color: #7f0055;">&gt;</span>
+    <span style="color: #7f0055;">&lt;</span><span style="color: #7f0055;">button</span> label=<span style="color: #0000ff;">"</span><span style="color: #0000ff;">Increment</span><span style="color: #0000ff;">"</span><span style="color: #7f0055;">&gt;</span>
+      <span style="color: #7f0055;">&lt;</span>on:<span style="color: #7f0055;">click</span><span style="color: #7f0055;">&gt;</span>
+        this.model.increment()
+      <span style="color: #7f0055;">&lt;/</span>on:<span style="color: #7f0055;">click</span><span style="color: #7f0055;">&gt;</span>
+    <span style="color: #7f0055;">&lt;/</span><span style="color: #7f0055;">button</span><span style="color: #7f0055;">&gt;</span>
+    <span style="color: #7f0055;">&lt;</span><span style="color: #7f0055;">span</span> name=<span style="color: #0000ff;">"</span><span style="color: #0000ff;">display</span><span style="color: #0000ff;">"</span><span style="color: #7f0055;">&gt;</span>
+      <span style="color: #7f0055;">&lt;</span>on:<span style="color: #7f0055;">refresh</span><span style="color: #7f0055;">&gt;</span>
+        this.display.text('The value is ' + this.model.current);
+      <span style="color: #7f0055;">&lt;/</span>on:<span style="color: #7f0055;">refresh</span><span style="color: #7f0055;">&gt;</span>
+    <span style="color: #7f0055;">&lt;/</span><span style="color: #7f0055;">span</span><span style="color: #7f0055;">&gt;</span>
+  <span style="color: #7f0055;">&lt;/</span>jx:<span style="color: #7f0055;">component</span><span style="color: #7f0055;">&gt;</span>
+<span style="color: #7f0055;">&lt;/</span>jx:<span style="color: #7f0055;">namespace</span><span style="color: #7f0055;">&gt;</span></pre>
+</blockquote>
+This code defines an incrementor : a component which contains a button and a bit of text displaying a number. When the button is pressed, the displayed number is incremented. Once the above JXML is compiled and the resulting JS file is included, creating the component is done using:
+<blockquote>
+<pre style="background: #ffffff none repeat scroll 0% 50%; color: #000000;"><span style="color: #000084; font-weight: bold;">var</span> model = <span style="color: #000084; font-weight: bold;">new</span> example.incrementer({initial:10});</pre>
+</blockquote>
+Note, however, that this merely creates the <strong>model </strong>part of the component. All its variables, parameters and methods are available and can be used as-is, for instance writing <span style="font-family: courier new,courier;">model.current = 25</span> or <span style="font-family: courier new,courier;">model.increment()</span>. To create the <strong>UI delegate</strong>, one must specify the position where the delegate should be placed. This is done by passing a function which accepts HTML as its input and places it somewhere in the DOM. For instance, using jQuery:
+<blockquote>
+<pre style="background: #ffffff none repeat scroll 0% 50%; color: #000000;"><span style="color: #000084; font-weight: bold;">var</span> view = model.show(<span style="color: #000084; font-weight: bold;">function</span>(x){$(<span style="color: #0000ff;">"div#target"</span>).html(x)})</pre>
+</blockquote>
+This automatically creates a new UI delegate, inserts it where specified, and decorates it with all the events (such as responding to button clicks). It also returns a view object, which contains a model member (that references the original member) and one member for each named element in the view stored as a jQuery selector. So, for instance, one could write <span style="font-family: courier new,courier;">view.model.increment()</span> or even <span style="font-family: courier new,courier;">view.display.hide('slow')</span>.
+
+Creating a view also registers it within the model. Every time the <span style="font-family: courier new,courier;">change()</span> method of the model is called, all the UI delegates refresh themselves (be careful with infinite refresh loops).
+
+Last but not least, <span style="font-family: courier new,courier;">view.clone(f)</span> is equivalent to <span style="font-family: courier new,courier;">view.model.show(f)</span>, and is useful when storing views in array components (such as lists).

@@ -1,0 +1,120 @@
+@title JavaScript Component Tutorial
+@draft
+
+Earlier this year, I ranted about how <a href="http://www.nicollet.net/2009/04/the-jquery-syndrome/" target="_blank">the graceful degradation model of jQuery made it hard to create complex components</a>. Also, while working with a team on JavaScript components, I had to review all my previous takes on JavaScript architecture in order to build conventions that an entire team can follow.
+<h4>Namespacing</h4>
+To avoid collisions with other libraries, I create an object that uses a name I own. Any namespace name strategy is possible here, from java-like netNicolletCheese (if you have a common project name) to just cheese (if you have a project name that's fairly unique). Then, any code I write goes into that namespace. I may further add sub-namespaces if I have a lot of code. Either way, you have to make sure the namespace exists before adding things to it, thus I add at the top of every file:
+<pre style="padding-left: 30px;">if(!('netNicolletCheese' in this)) this.netNicolletCheese = {};</pre>
+The basic idea is that since I don't know what order my files will be defined in, I have to define the namespace in every single one, while avoiding redefinition. This way, I can include files on an if-needed basis or stick them all together and remove any occurences of the namespace line except the first.
+
+Then, everything is defined as members of that object. Executing any kind of code in library files is forbidden, only function and object definitions are allowed.
+<h3>Components</h3>
+A component is a class that contains data and renders itself somewhere on the page. This is different from the jQuery model of graceful degradation that assumes the rendered data is already present on the page and merely changes its layout. Use with caution, since this loses many benefits of graceful degradation like accessibility or search engine friendliness.
+
+A component is always created as follows:
+<pre style="padding-left: 30px;">instance = new namespace.component(selector, data, options);</pre>
+<ul>
+	<li>It's always assigned to a <strong>variable</strong>. It's a global variable if it's defined at global scope (obviously, this may only happen in the code on a page, not in library code), and a public member variable of another object if it's defined within an object. There are no free-floating components, every single one must be accessible from global scope as this makes command-line debugging way easier, and keeps the structure easier to see.</li>
+	<li>It has a first argument, which is a <strong>selector </strong>(in the jQuery sense). It will be fed to $(...) in order to get the target elements of the component (usually a single one). The typical behavior of a component is to generate some HTML from its internal state and call $(selector).html(...) to display the HTML. The selector is evaluated when the constructor is called, which means you may have to wrap the object initialization in a $(document).ready(...) to wait for the DOM to be instantiated. It also means adding any elements matching the selector later on won't have any effect on the component.</li>
+	<li>It has a second argument, which is the <strong>data </strong>used to initialized the component. For instance, if the component is intended to display a list of elements, the data argument would be that list en JSON notation. This makes it easy to generate that data on the server side using one of the many JSON generators, while also making the component easy to instance on the client side programmatically.</li>
+	<li>It has an optional third argument, which represents the <strong>options </strong>that one may provide the component with (such as width, height, speed, effects, and so on). If it's not part of the main data argument, it's part of the options. The options are a classic JS record.</li>
+</ul>
+<h3>Component Initialization</h3>
+The component is instantiated either when the document is ready, by placing the initialization code in the appropriate event, such as :
+<pre style="padding-left: 30px;">var page = {};
+$(function(){ page.instance = new namespace.component(selector, data, options) });</pre>
+Or it can be instantiated inside another component an an appropriate time.
+
+The constructor itself consists of two distinct operations :
+<ul>
+	<li>Set up any member variables representing the internal object state, using the data argument and options argument.</li>
+	<li>Render the object so that it appears on the page, using the rendering function, and passing the selector to it:
+<pre>this.render(selector);</pre>
+Note that a component may be created without a target selector, simply by using an empty array as the selector. It will remain unrendered until its render function is manually called with a valid selector as its argument.</li>
+</ul>
+<h3>Component Rendering</h3>
+The render function is called during initialization. It's also called whenever the entire component needs to be redrawn. Some components are small, and are redrawn every time, while other components may choose to only redraw parts of their contents and may therefore use other rendering functions for those parts. The rendering function reliably performs up to six operations:
+<ul>
+	<li>It initializes the target, if it was provided. This lets the calling code change the rendering target dynamically.
+<pre>if (typeof(selector) != "undefined") this.$target = $(selector);</pre>
+This is generally useful when a component contains other components : a full rendering of the container means the target DOM elements of the inner components have been destroyed and created anew, and the container must therefore notify the inner components that they have a new target to render to.
+
+Note that the name of the target is always the same: for any component, <code>component.$target</code> is the current target of the component.</li>
+	<li>It optionally determines whether there is a target to begin with, to avoid unnecessary work. This usually takes the form :
+<pre>if (this.$target.get().length == 0) return;</pre>
+In the case where a component is inside a container, the container will create the component <em>before</em> rendering itself (to make things simpler, rendering assumes all sub-components already exist), and therefore provide an empty array as the selector.</li>
+	<li>It generates the full HTML for the component as a string.</li>
+	<li>It inserts the HTML into the DOM, replacing anything that previously existed. This usually happens as:
+<pre>this.$target.html(theGeneratedHtml);</pre>
+</li>
+	<li>It changes the rendering target of any sub-components and tells them to render themselves, usually written by extracting the correct targets from its own target and reverting it to an array of DOM elements:
+<pre>this.subComponent.render(this.$target.find('.subComponent').get());</pre>
+</li>
+	<li>It sets up any relevant events on the generated DOM. For instance, if the generated HTML contains a button, the button's click event may be set to an event handler:
+<pre>this.$target.find('button').click(this.onButtonClick)</pre>
+</li>
+</ul>
+<h3>Component Event Handlers</h3>
+It would be easy to define the "on button click" event simply as follows:
+<pre>namespace.component.prototype.onButtonClick = function()
+{ this.data.frobnicate(); }</pre>
+But that wouldn't work with jQuery, since the events re-bind the 'this' variable on the event handler before calling it. Meaning 'this' would be, in this case, the button DOM element instead of our component. This is bad.
+
+The solution is to create an anonymous function that forwards the call to the appropriate member function:
+<pre>this.$target.find('button').click(function(){this.onButtonClick()})</pre>
+<em>Whoops</em>. <a href="http://www.nicollet.net/2009/05/the-joys-of-javascript-scoping/" target="_blank">'this' doesn't follow lexical scoping</a>, which means this code still has the same problem. However, this can be solved quite easily:
+<pre>var self = this;
+this.$target.find('button').click(function(){self.onButtonClick()})</pre>
+<h3>A short example</h3>
+We can write a short incrementer: a button with a number that increases every time the button is pressed.
+
+<pre style='color:#000000;background:#ffffff;'><span style='color:#696969; '>// Create the namespace if it doesn't exist</span>
+<span style='color:#800000; font-weight:bold; '>if</span> <span style='color:#808030; '>(</span><span style='color:#808030; '>!</span><span style='color:#808030; '>(</span><span style='color:#0000e6; '>'netNicollet'</span> <span style='color:#800000; font-weight:bold; '>in</span> <span style='color:#800000; font-weight:bold; '>this</span><span style='color:#808030; '>)</span><span style='color:#808030; '>)</span> <span style='color:#800000; font-weight:bold; '>this</span><span style='color:#808030; '>.</span>netNicollet <span style='color:#808030; '>=</span> <span style='color:#800080; '>{</span><span style='color:#800080; '>}</span><span style='color:#800080; '>;</span>
+
+<span style='color:#696969; '>// The constructor for our component</span>
+netNicollet<span style='color:#808030; '>.</span>counter <span style='color:#808030; '>=</span> <span style='color:#800000; font-weight:bold; '>function</span><span style='color:#808030; '>(</span>selector<span style='color:#808030; '>,</span> initial<span style='color:#808030; '>)</span>
+<span style='color:#800080; '>{</span>
+  <span style='color:#696969; '>// Set up data members (only one)</span>
+  <span style='color:#800000; font-weight:bold; '>this</span><span style='color:#808030; '>.</span>value <span style='color:#808030; '>=</span> initial<span style='color:#800080; '>;</span>
+
+  <span style='color:#696969; '>// Render the component</span>
+  <span style='color:#800000; font-weight:bold; '>this</span><span style='color:#808030; '>.</span>render<span style='color:#808030; '>(</span>selector<span style='color:#808030; '>)</span><span style='color:#800080; '>;</span>
+<span style='color:#800080; '>}</span>
+
+<span style='color:#696969; '>// The rendering function</span>
+netNicollet<span style='color:#808030; '>.</span>counter<span style='color:#808030; '>.</span>prototype<span style='color:#808030; '>.</span>render <span style='color:#808030; '>=</span> <span style='color:#800000; font-weight:bold; '>function</span><span style='color:#808030; '>(</span>selector<span style='color:#808030; '>)</span>
+<span style='color:#800080; '>{</span>
+  <span style='color:#696969; '>// Change the target (if applicable)</span>
+  <span style='color:#800000; font-weight:bold; '>if</span> <span style='color:#808030; '>(</span><span style='color:#800000; font-weight:bold; '>typeof</span> selector <span style='color:#808030; '>!=</span> <span style='color:#0000e6; '>"undefined"</span><span style='color:#808030; '>)</span>
+    <span style='color:#800000; font-weight:bold; '>this</span><span style='color:#808030; '>.</span>$target <span style='color:#808030; '>=</span> $<span style='color:#808030; '>(</span>selector<span style='color:#808030; '>)</span><span style='color:#800080; '>;</span>
+  
+  <span style='color:#696969; '>// Early-out if no target</span>
+  <span style='color:#800000; font-weight:bold; '>if</span> <span style='color:#808030; '>(</span><span style='color:#800000; font-weight:bold; '>this</span><span style='color:#808030; '>.</span>$target<span style='color:#808030; '>.</span>get<span style='color:#808030; '>(</span><span style='color:#808030; '>)</span><span style='color:#808030; '>.length</span> <span style='color:#808030; '>==</span> <span style='color:#008c00; '>0</span><span style='color:#808030; '>)</span> 
+    <span style='color:#800000; font-weight:bold; '>return</span><span style='color:#800080; '>;</span>
+
+  <span style='color:#696969; '>// Generate the HTML</span>
+  <span style='color:#800000; font-weight:bold; '>var</span> html <span style='color:#808030; '>=</span> <span style='color:#0000e6; '>'&lt;div>'</span> <span style='color:#808030; '>+</span>  <span style='color:#800000; font-weight:bold; '>this</span><span style='color:#808030; '>.</span>value <span style='color:#808030; '>+</span> <span style='color:#0000e6; '>'&lt;/div>'</span>
+    <span style='color:#808030; '>+</span> <span style='color:#0000e6; '>'&lt;button type="button">Increment&lt;/button>'</span><span style='color:#800080; '>;</span>
+
+  <span style='color:#696969; '>// Insert the HTML into the DOM</span>
+  <span style='color:#800000; font-weight:bold; '>this</span><span style='color:#808030; '>.</span>$target<span style='color:#808030; '>.</span>html<span style='color:#808030; '>(</span>html<span style='color:#808030; '>)</span><span style='color:#800080; '>;</span>
+
+  <span style='color:#696969; '>// Set up the events</span>
+  <span style='color:#800000; font-weight:bold; '>var</span> self <span style='color:#808030; '>=</span> <span style='color:#800000; font-weight:bold; '>this</span><span style='color:#800080; '>;</span>
+  <span style='color:#800000; font-weight:bold; '>this</span><span style='color:#808030; '>.</span>$target<span style='color:#808030; '>.</span>find<span style='color:#808030; '>(</span><span style='color:#0000e6; '>'button'</span><span style='color:#808030; '>)</span>
+    <span style='color:#808030; '>.</span>click<span style='color:#808030; '>(</span><span style='color:#800000; font-weight:bold; '>function</span><span style='color:#808030; '>(</span><span style='color:#808030; '>)</span><span style='color:#800080; '>{</span>self<span style='color:#808030; '>.</span>increment<span style='color:#808030; '>(</span><span style='color:#808030; '>)</span><span style='color:#800080; '>}</span><span style='color:#808030; '>)</span><span style='color:#800080; '>;</span>
+<span style='color:#800080; '>}</span>
+
+<span style='color:#696969; '>// The increment operation</span>
+netNicollet<span style='color:#808030; '>.</span>counter<span style='color:#808030; '>.</span>prototype<span style='color:#808030; '>.</span>increment <span style='color:#808030; '>=</span> <span style='color:#800000; font-weight:bold; '>function</span><span style='color:#808030; '>(</span><span style='color:#808030; '>)</span>
+<span style='color:#800080; '>{</span>
+  <span style='color:#696969; '>// Change the state</span>
+  <span style='color:#800000; font-weight:bold; '>this</span><span style='color:#808030; '>.</span>value<span style='color:#808030; '>++</span><span style='color:#800080; '>;</span>
+
+  <span style='color:#696969; '>// Update the graphics</span>
+  <span style='color:#800000; font-weight:bold; '>this</span><span style='color:#808030; '>.</span>render<span style='color:#808030; '>(</span><span style='color:#808030; '>)</span><span style='color:#800080; '>;</span>
+<span style='color:#800080; '>}</span>
+
+<span style='color:#696969; '>// Call this once the document is ready.</span>
+<span style='color:#800000; font-weight:bold; '>var</span> counter <span style='color:#808030; '>=</span> <span style='color:#800000; font-weight:bold; '>new</span> netNicollet<span style='color:#808030; '>.</span>counter<span style='color:#808030; '>(</span><span style='color:#0000e6; '>'body'</span><span style='color:#808030; '>,</span> <span style='color:#008c00; '>1337</span><span style='color:#808030; '>)</span><span style='color:#800080; '>;</span>
+</pre>

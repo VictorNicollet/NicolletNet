@@ -1,0 +1,80 @@
+@title Welcome Back
+@draft
+
+My Christmas Gift of 2004, from my parents, was the nicollet.net domain name and some lightweight hosting. The old nicollet.net server (well, actually, <em>small part of a server</em>) served me well over the years, with over 100k visitors:
+<table border="0" cellspacing="0" cellpadding="3" width="100%">
+<tbody>
+<tr bgcolor="#eeeeee">
+<td><span style="font-family: Verdana,Arial,Helvetica; color: black;"> Total Visitors</span></td>
+<td align="right"><span style="font-family: Verdana,Arial,Helvetica; color: black;">107,104 </span></td>
+</tr>
+<tr bgcolor="#ffffff">
+<td><span style="font-family: Verdana,Arial,Helvetica; color: black;"> Total Pageviews</span></td>
+<td align="right"><span style="font-family: Verdana,Arial,Helvetica; color: black;">1,318,695 </span></td>
+</tr>
+<tr bgcolor="#eeeeee">
+<td><span style="font-family: Verdana,Arial,Helvetica; color: black;"> Total Hits</span></td>
+<td align="right"><span style="font-family: Verdana,Arial,Helvetica; color: black;">1,650,862 </span></td>
+</tr>
+<tr bgcolor="#ffffff">
+<td><span style="font-family: Verdana,Arial,Helvetica; color: black;"> Total Bytes Transferred</span></td>
+<td align="right"><span style="font-family: Verdana,Arial,Helvetica; color: black;">14.54GB </span></td>
+</tr>
+<tr bgcolor="#66ccff">
+<td colspan="2"></td>
+</tr>
+<tr bgcolor="#eeeeee">
+<td><span style="font-family: Verdana,Arial,Helvetica; color: black;"> Average Visitors Per Day</span></td>
+<td align="right"><span style="font-family: Verdana,Arial,Helvetica; color: black;">74 </span></td>
+</tr>
+<tr bgcolor="#ffffff">
+<td><span style="font-family: Verdana,Arial,Helvetica; color: black;"> Average Pageviews Per Day</span></td>
+<td align="right"><span style="font-family: Verdana,Arial,Helvetica; color: black;">911 </span></td>
+</tr>
+<tr bgcolor="#eeeeee">
+<td><span style="font-family: Verdana,Arial,Helvetica; color: black;"> Average Hits Per Day</span></td>
+<td align="right"><span style="font-family: Verdana,Arial,Helvetica; color: black;">1,141 </span></td>
+</tr>
+<tr bgcolor="#ffffff">
+<td><span style="font-family: Verdana,Arial,Helvetica; color: black;"> Average Bytes Transferred Per Day</span></td>
+<td align="right"><span style="font-family: Verdana,Arial,Helvetica; color: black;">10.30MB </span></td>
+</tr>
+<tr bgcolor="#66ccff">
+<td colspan="2"></td>
+</tr>
+<tr bgcolor="#eeeeee">
+<td><span style="font-family: Verdana,Arial,Helvetica; color: black;"> Average Pageviews Per Visitor</span></td>
+<td align="right"><span style="font-family: Verdana,Arial,Helvetica; color: black;">12 </span></td>
+</tr>
+<tr bgcolor="#ffffff">
+<td><span style="font-family: Verdana,Arial,Helvetica; color: black;"> Average Hits Per Visitor</span></td>
+<td align="right"><span style="font-family: Verdana,Arial,Helvetica; color: black;">15 </span></td>
+</tr>
+<tr bgcolor="#eeeeee">
+<td><span style="font-family: Verdana,Arial,Helvetica; color: black;"> Average Bytes Per Visitor</span></td>
+<td align="right"><span style="font-family: Verdana,Arial,Helvetica; color: black;">145,756 </span></td>
+</tr>
+<tr bgcolor="#ffffff">
+<td><span style="font-family: Verdana,Arial,Helvetica; color: black;"> Average Length of Visit</span></td>
+<td align="right"><span style="font-family: Verdana,Arial,Helvetica; color: black;">177sec </span></td>
+</tr>
+</tbody></table>
+Not really impressive over such a long period, but until August 2008 the site didn't contain much beyond a few files I needed on other computers, some pictures and documents I wanted to share, and perhaps small snippets about development that I uploaded once every two months.
+
+Then, on August 2008, the blog started. I had recently uploaded a fresh install of Joomla! for managing my files, and since it more-or-less handled blog-like layouts, I tried to write a blog. That was a mistake, of course: the default install of Joomla!, even more so the 1.5 version with a lot less support for external modules and plug-ins. The best free component for comments I could find was Chronocomments, which didn't work for all my visitors, but did work for many spammers: starting from November, I received more spam on my website than through all my mailboxes combined, totaling around 900 spam comments (and only 8 legitimate comments).
+
+Either way, through some advertising (mainly, by writing useful things on my blog and then linking to my blog from forum threads where those articles would answer the question being asked) I managed to get a reasonable number of visitors (around 60 daily non-bot visitors).
+
+<img class="aligncenter" title="Visitors over time" src="/images/welcome-back.png" alt="" width="561" height="259" />
+
+The visitors for december are only counted up to the 22nd (for some reason, the log analysis tool doesn't want to show more than that.
+<h2>What now?</h2>
+As of today (December 30th), I'm moving on to a new server. The old one supported PHP4 and an old version of MySQL, and didn't have much in the way of freedom (only FTP access was allowed). The new one is a good old dedicated server running Debian Etch 4, on which I've installed myself Apache2, PHP5 and MySQL 5. I have also moved from Joomla! to Wordpress for my blog management software.
+
+The transfer is not yet complete (I spent five hours yesterday converting all my blog articles from the old format to the new one) and I couldn't transfer the comments. My e-mail address (firstname@nicollet.net) is down for the time being, because I have to install a new mail server myself and I won't be able to get around it until the end of the week. I also have to re-upload my teaching material, which will also be done by next week.
+
+The URLs are still a bit wonky (the DNS transfer was completed after Wordpress was installed, so the server still calls itself by its old name, r17474.ovh.net) but should be ironed out soon. The URL naming scheme I decided to use in Wordpress (nicollet.net/year/month/title) is different from the one in Joomla! (nicollet.net/blog/category/id-title) but I am in the process of setting up the appropriate redirections from the old site to the new one so that no articles are lost.
+
+As far as the RSS feeds, however, I'm afraid they'll be discontinued (partly because of the silly URL structure in Joomla! and partly because the structure of the new blog version itself has somewhat changed, and now includes articles independent of the current day, such as this one). Make sure you scroll to the bottom of the page and get the new global feed (or just click <a href="/feed" target="_blank">here</a>).
+
+Happy new year, and good reading!

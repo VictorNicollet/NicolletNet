@@ -1,0 +1,36 @@
+@title More Sales or More Production?
+@draft
+
+Robert loves hot dogs—he can never have enough of them! And now, he's found a $100 bill on the floor, so he might as well buy some Premium Hot Dog Sausages ($3 each) and some Royal Hot Dog Bread ($5 for a five-pack).
+
+How many should he buy?
+
+<a href="http://www.flickr.com/photos/thebusybrain/2632651360/" target="_blank"><img class="aligncenter size-full wp-image-1437" title="2632651360_23f22a1a0d_o" src="http://www.nicollet.net/wp-content/uploads/2010/05/2632651360_23f22a1a0d_o.jpg" alt="2632651360_23f22a1a0d_o" width="600" /></a>
+
+I'll give you the right answer, but first, think about how you looked for the solution. Depending on how you think, you might fall into one of many categories:
+
+<strong>Step-by-step</strong> solving uses the classic «if out of dip, buy chips, if out of chips, buy dip» algorithm: buy one bread pack and five sausages (total cost: $20) to make five hot dogs, repeat until you run out of money (that would be 25 hot dogs).
+
+<strong>Trade</strong> solving starts with a bad situation (I use my $100 to buy twenty packs of bread) and tries to improve it through trading (you can trade 15 pieces of bread for 5 sausages) until you have more sausages than bread. So, you would move from (100, 0) to (85, 5) to (70, 10) to (55, 15) to (40, 20) to (25,25) and stop there.
+
+<strong>Unit cost</strong> solving determines that one piece of bread costs $1 and one sausage costs $3, so a hot dog must cost $4. This would mean 25 hot dogs for $100 dollars (and then, you would check if 25 can be divided by 5, because you can only buy bread in packs of 5).
+
+<strong>Relative cost</strong> solving determines that meat costs three times as much as bread, so the budget for hot dogs should be 75% sausage and 25% bread. And since the budget is $100, that would be $75 = $3 × 25 for sausages and $25=$5 × 5 for bread.
+
+All of these represent various ways in which different people will look at a given situation. Every one of them has something to teach.
+<h3>Honey, We're Out of Bread</h3>
+A business is just like Bob, only instead of hot dogs, a business loves making <em>sales</em>. To make a sale, you need a customer and you need a product. So, there are two problems you can have here: you are either producing more than you can sell, or selling more than you produce.
+
+<strong>Being limited by production</strong> is usually a happy place, because there's often a simple engineering solution to the problem: buy more servers, build more factories, hire more people... but simple does not mean it's easy: building a factory takes time and money; that you can <em>buy</em> more servers, does not mean your software was designed to <em>use</em> more servers; hiring more people is very hard if there are no skilled people around, you cannot hire a hundred world-class singers if you wish to increase your opera production capabilities.
+
+It's also a safe place: if you don't have enough units then some people will just have to wait a little or buy the competitor's product, but at least you won't go bankrupt. But it's not that safe either: maybe you'll miss the high-profit winter holidays because you don't have your game console supply chain up and running; maybe you sold thousands of one-year memberships on your web site without having the hardware or customer service team to back that up; maybe you're a start-up and you're not profitable yet.
+
+<strong>Being limited by sales</strong> is often seen as the unhappy place. You have the product ready (and you're paying lots of money for that) but people just don't buy it. Fixed costs mean that if nobody buys the product, your company will die. And increasing sales is hard for three reasons: your product needs to be the best, people who look at your product need to understand that it is the best, and people just need to look at the product.
+
+Of course, if you have trouble selling your product, there's no point in producing more, and if you can't make enough of it, there's no point in finding more customers. <strong>It is essential for any business to know whether it's being limited by sales or by production</strong>, and react accordingly; if you don't know what is limiting you, how can you spend your money on things that actually matter? Jason Cohen advises tech-oriented startups to «<a title="Permalink to this post" rel="bookmark" href="http://blog.asmartbear.com/put-down-the-compiler-until-you-learn-why-theyre-not-buying.html">Put down the compiler until you learn why they're not buying</a>», and I would add «Don't drop the compiler until you run out of buyers»
+<h3>Predict The Future</h3>
+Of course, it's easy if you can just increase production or sales at the press of a button, but from the moment you decide to do something about it and until the moment you reap the actual results, quite some time can pass. A real-life advertising campaign is prepared weeks to months in advance (though it can get shorter on the internet). Hiring and training someone to be useful is a six-month endeavour. Factories take months or even years to build.
+
+The ideal situation, of course, is to have a fully automated scalable process: if you get a surge of new customers, just pour more money into your infrastructure and new servers will come online to shoulder the load within minutes.  Once this is done, you can concentrate all your time and efforts on finding more customers. But there is no such thing as full automation: an additional 1,000 customers also involves customer support, and while it would be possible to offshore that as well, it's never a good idea. Never let a fully scalable architecture make you forget about your other limitations.
+
+In short, it's not enough to know whether you are production- or sales-limited <em>today</em>, you also need to know where you will stand three months or six months from now, in order to make the right choices today.

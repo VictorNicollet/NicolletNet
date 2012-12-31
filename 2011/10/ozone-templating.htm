@@ -1,0 +1,188 @@
+@title Ozone Templating
+@draft
+
+<img class="aligncenter size-full wp-image-2596" title="mountains" src="http://www.nicollet.net/wp-content/uploads/2011/10/mountains.png" alt="" width="675" height="100" />
+
+There have been recurring requests about an in-depth explanation of how Ozone — our in-house OCaml web framework — handles HTML templates. So, here it is.
+
+A template is usually understood by everyone to be « HTML with holes » that is filled using values from the application itself. It is, in a sense, a DSL that is restricted to describing how HTML should be built.
+
+Here is an example of template Ozone could use, stored in file <em>users.htm</em> :
+<pre style="padding-left: 30px;"><code>&lt;<span style="color: #003366;">h1</span>&gt;<span style="color: #ff6600;"><strong>{t:users.title}</strong></span>&lt;/<span style="color: #003366;">h1</span>&gt;
+&lt;<span style="color: #003366;">ul</span> <span style="color: #008000;">class</span>=<span style="color: #ff0000;">"userlist"</span>&gt;
+  {{<strong><span style="color: #ff6600;">list</span></strong>:
+    &lt;<span style="color: #003366;">li</span> <span style="color: #008000;">id</span>=<span style="color: #ff0000;">"<strong><span style="color: #ff6600;">{v:id}</span></strong>"</span>&gt;
+      &lt;<span style="color: #003366;">img </span><span style="color: #008000;">src</span>=<span style="color: #ff0000;">"<strong><span style="color: #ff6600;">{v:img}</span></strong>"</span>/&gt;
+<span style="font-family: monospace;">      &lt;</span><span style="color: #003366;">a</span><span style="font-family: monospace;"> </span><span style="color: #008000;">href</span><span style="font-family: monospace;">=</span><span style="color: #ff0000;">"<strong><span style="color: #ff6600;">{v:url}</span></strong>"</span><span style="font-family: monospace;">&gt;</span><strong><span style="color: #ff6600;">{v:name}</span></strong><span style="font-family: monospace;">&lt;/</span><span style="color: #003366;">a</span><span style="font-family: monospace;">&gt;
+    &lt;/</span><span style="color: #003366;">li</span><span style="font-family: monospace;">&gt;
+</span><span style="font-family: monospace;">  }}</span><span style="font-family: monospace;">
+</span><span style="font-family: monospace;">&lt;/</span><span style="color: #003366;">ul</span><span style="font-family: monospace;">&gt;
+</span>
+&lt;<span style="color: #003366;">script</span> <span style="color: #008000;">type</span>=<span style="color: #ff0000;">"text/coffeescript"</span> <span style="color: #008000;">params</span>=<span style="color: #ff0000;">"<strong><span style="color: #ff6600;">save_url</span></strong>"</span>&gt;
+list = @$.find <span style="color: #ff0000;">'ul'</span>
+
+save = =&gt;
+  ids = [];
+  list.children(<span style="color: #ff0000;">'li'</span>).each -&gt;
+    ids.push $(@).attr 'id'
+  @ajax save_url, ids
+
+list.children(<span style="color: #ff0000;">'li'</span>).sortable
+  change: save
+&lt;/<span style="color: #003366;">script</span><span style="font-family: monospace;">&gt;
+</span>
+&lt;<span style="color: #003366;">style</span> <span style="color: #008000;">type</span>=<span style="color: #ff0000;">"less"</span>&gt;
+<span style="color: #008000;">.userlist</span> {
+  <span style="color: #003366;">list-style-type</span>: none;
+  <span style="color: #008000;">li img</span> {
+    <span style="color: #003366;">float</span>: left;
+    <span style="color: #003366;">margin-right</span>: 5px;
+    <span style="color: #003366;">width</span>: 50px;
+    <span style="color: #003366;">height</span>: 50px;
+  }
+}
+&lt;/<span style="color: #003366;">style</span>&gt;  </code></pre>
+The template for a sortable list of users contains three things:
+<ul>
+	<li>A piece of HTML, which is the actual « HTML with holes » to be filled later. The holes are marked in orange.</li>
+	<li>A piece of CoffeeScript, which will be extracted from the template file, compiled to javascript and appended to a site-wide javascript file. It will be replaced, in the template, by a hole that will call the extracted javascript with additional parameters provided by the application (in orange).</li>
+	<li>A piece of LESS CSS, which is compiled to CSS and appended to a site-wide CSS file.</li>
+</ul>
+These are not sections — they can appear in any order as long as the elements and attributes are respected so the pre-build tool can identify and extract the CoffeeScript and CSS bits.
+
+Let's examine each of them in order.
+<h4>The HTML Template</h4>
+This is the meat of the template. In order to improve application performance, loading the templates is a multi-step operation that involves intermediary storage formats.
+
+The <em>first</em> step consists in reading in all the necessary templates, parsing them to determine that no variables are undefined, and storing them as a JSON blog in the underlying CouchDB database. This is a manually triggered operation that happens whenever we modify the templates (it's part of our deployment procedure). This step may also involve a bit of cleanup, such as removing semantically irrelevant spaces from the HTML (this cannot be done earlier, because some templates are plaintext instead of HTML, and only the application knows which is which).
+
+The <em>second </em>step happens whenever a new instance of our application begins — maybe it died and needed to restart, maybe Apache decided it needed another worker process to handle a surplus of request, or maybe we added a new server to our web farm. The startup process of our application server does not read anything from the disk — instead, it will read in all the template data from the database, along with all the other bits of configuration: internationalization strings, third party API keys, feature branch triggers, and so on. Then, it will compile every template down to optimized closure-based opcodes for a hole-filling virtual machine.
+
+The <em>third </em>step happens whenever a bit of HTML needs to be rendered. The application provides the hole-filling virtual machine with a data object and a « writing stream » which is either the HTTP request stream or a JSON serializer stream, depending on whether the request is normal HTTP or AJAX. This is an extremely fast operation where no parsing or checks are performed.
+
+On the application side, loading a template involves three things:
+<ul>
+	<li>Declaring the type of the data object expected by the template.</li>
+	<li>Declaring the source file from the template (as a function of the language).</li>
+	<li>Declaring the hole-to-value mapping  to be used.</li>
+</ul>
+Here's that loading code for the above template file:
+<pre style="padding-left: 30px;"><span style="color: #003366;">module </span>User = Loader.Html(<span style="color: #003366;">struct</span>
+  <span style="color: #003366;">type </span>t = &lt;
+    id   : Id.t ;
+    url  : string ;
+    img  : string option ;
+    name : string
+  &gt; ;;
+  <span style="color: #003366;">let </span>source  _ = <span style="color: #ff0000;">"users/list"</span>
+  <span style="color: #003366;">let </span>mapping _ = [
+    <span style="color: #ff0000;">"id"</span>,   Mk.esc (<span style="color: #003366;">fun </span>x -&gt; Id.to_string (x # id)) ;
+    <span style="color: #ff0000;">"url"</span>,  Mk.esc (<span style="color: #003366;">fun </span>x -&gt; x # url) ;
+    <span style="color: #ff0000;">"img"</span>,  Mk.esc (<span style="color: #003366;">fun </span>x -&gt; BatOption.default img404 (x # img)) ;
+    <span style="color: #ff0000;">"name"</span>, Mk.esc (<span style="color: #003366;">fun </span>x -&gt; x # name)
+  ]
+<span style="color: #003366;">end</span>)
+
+<span style="color: #003366;">module </span>UserList = Loader.Html(struct
+  <span style="color: #003366;">type </span>t = &lt;
+    users : User.t list
+  &gt; ;;
+  <span style="color: #003366;">let </span>source  _ = <span style="color: #ff0000;">"users"</span>
+  <span style="color: #003366;">let </span>mapping lang = [
+    <span style="color: #ff0000;">"list"</span>, Mk.list (<span style="color: #003366;">fun </span>x -&gt; x # users) (User.template lang)
+  ]
+<span style="color: #003366;">end</span>)</pre>
+One <em>view </em>is defined and loaded for every independent piece of HTML in the template. Here, there is an User view which represents the list item for a single user, repeated zero, one or more times ; and there is the UserList view representing the wrapper in which those list items will be placed.
+
+The <code>{v:foobar}</code> syntax defines a variable hole. The corresponding view MUST define a mapping for that variable, or an error will occur at deployment time.
+
+The <code>{{foobar: }}</code> syntax is a variant: in addition to declaring a variable hole, it also defines such a sub-view, which can be loaded using <code>template/foobar</code> as the path.
+
+The <code>{t:foobar}</code> syntax defines a translation hole. The template engine will automatically load the corresponding term from the internationalization dictionary used to render the template.
+
+The <code>Mk.esc</code> and <code>Mk.list</code> are binding instructions which are used to compile the template to a virtual machine. The common binding instructions are:
+<ul>
+	<li><code>Mk.esc f</code> applies <code>f</code> to the data object, which returns a string. That string is then HTML-escaped and output.</li>
+	<li><code>Mk.str f</code> is the same as above, but the string is not HTML-escaped.</li>
+	<li><code>Mk.i18n f</code> is the same as above, but the string is translated as an internationalization term.</li>
+	<li><code>Mk.list f t</code> applies <code>f</code> to the data object, which returns a list of data objects compatible with template <code>t</code>. That template is then used to render those data objects in order.</li>
+	<li><code>Mk.list_or f t e</code> is the same as above, but if the returned list is empty, it instead uses template <code>e</code> to draw a « list is empty » message.</li>
+	<li><code>Mk.sub f t</code> applies <code>f</code> to the data object, which returns a single object compatible with template <code>t</code>. That template is then used to render the object.</li>
+	<li><code>Mk.sub_or f t e</code> is the same as above, but <code>f</code> returns an optional type. If it is missing, then template <code>e</code> is used to render an « object is missing » message.</li>
+	<li><code>Mk.text f</code> provides <code>f</code> with the current writing stream and internationalization object, so that it may directly write HTML to the output. This is how most rendering helpers such as « render a currency amount » are used.</li>
+	<li><code>Mk.box f</code> is the same as above, but the writing stream supports the addition of arbitrary javascript code to be executed by the client as part of rendering the template. This is how javascript-dependent rendering helpers such as « render a datepicker » are used.</li>
+</ul>
+The data type is defined in the view itself, either explicitly (as I did above for the sake of clarity) or by using an existing type from your application — if the application already had an user module with the appropriate data type, I could have used that type instead.
+
+By specifying views in this way, the data required to render a template is made available to the compiler for type-checking, and missing bindings are detected during deployment (usually to a local test server). This has made template-related errors exceedingly rare — once the HTML is done, it becomes extremely hard to use it wrong.
+
+Although this feature is not currently in use, the virtual machine semantics also allow compiling it down to JavaScript. This would allow us to send the rendering code to the client as a one-time cost, and send a much smaller data package through AJAX whenever something new needs to be rendered.
+<h4>The CoffeeScript Layer</h4>
+We use CoffeeScript because it's more elegant, shorter, and includes a compiling-to-javascript step that lets us detect syntax errors at deployment time. Yes, compile- and deployment-time are my favorite buzzwords, because I enjoy the feeling of safety that they bring.
+
+As mentioned above, the actual CoffeeScript is removed from the template in a pre-processing step, and replaced with a hole that says « call JavaScript function #33 now » that happens to define a list of parameters matching the params attribute of the original script element.
+
+So, starting with the script element from the example above:
+<pre style="padding-left: 30px;"><code>&lt;<span style="color: #003366;">script</span> <span style="color: #008000;">type</span>=<span style="color: #ff0000;">"text/coffeescript"</span> <span style="color: #008000;">params</span>=<span style="color: #ff0000;">"<span style="color: #ff6600;"><strong>save_url</strong></span>"</span>&gt;
+list = @$.find <span style="color: #ff0000;">'ul'</span>
+
+save = =&gt;
+  ids = [];
+  list.children(<span style="color: #ff0000;">'li'</span>).each -&gt;
+    ids.push $(@).attr 'id'
+  @ajax save_url, ids
+
+list.children(<span style="color: #ff0000;">'li'</span>).sortable
+  change: save
+&lt;/<span style="color: #003366;">script</span>&gt;</code></pre>
+If this is the 33rd script tag encountered by the preprocessor, then it would append the following to the complete CoffeeScript file:
+<pre style="padding-left: 30px;">@j33 = (save_url) -&gt;
+  list = @$.find <span style="color: #ff0000;">'ul'</span>
+
+  save = =&gt;
+    ids = [];
+    list.children(<span style="color: #ff0000;">'li'</span>).each -&gt;
+      ids.push $(@).attr 'id'
+    @ajax save_url, ids
+
+  list.children(<span style="color: #ff0000;">'li'</span>).sortable
+    change: save</pre>
+And it would be replaced in the template file with this:
+<pre style="padding-left: 30px;">{j:j33:save_url}</pre>
+This syntax (which can be used manually, although it should be avoided) is a javascript hole, it runs the specified function and provides by-name values for the arguments. The parser would notice that we are declaring an HTML view instead of a JS/HTML view and complain about it, so we would have to go back and re-define it:
+<pre><span style="color: #003366;">module </span>UserList = Loader.JsHtml(struct
+  <span style="color: #003366;">type </span>t = &lt;
+    users : User.t list ;
+    save_url : string
+  &gt; ;;
+  <span style="color: #003366;">let </span>source  _ = <span style="color: #ff0000;">"users"</span>
+  <span style="color: #003366;">let </span>mapping lang = [
+    <span style="color: #ff0000;">"list"</span>, Mk.list (<span style="color: #003366;">fun </span>x -&gt; x # users) (User.template lang)
+  ]
+  <span style="color: #003366;">let </span>script  _ = [
+    <span style="color: #ff0000;">"save_url"</span>, (<span style="color: #003366;">fun </span>x -&gt; Json_type.String (x # save_url))
+  ]
+<span style="color: #003366;">end</span>)</pre>
+I have used <code>Loader.JsHtml</code> instead of <code>Loader.Html</code>, and defined a secondary mapping that is specific to JavaScript parameters, and which uses the data object to return JSON values.
+
+How is the JavaScript called? Well, it really depends on how your JavaScript library handles it. On non-AJAX HTTP, Ozone will try to inject all JavaScript calls in a script element at the end of the HTML body. In AJAX mode, Ozone allows you render a template to a JSON object representing both the HTML and the JavaScript together, and it is the responsibility of the code that made the AJAX request to receive that object, place the HTML wherever applicable, and then "run the JavaScript".
+
+By convention, the JavaScript is called using a <em>client context</em> as its<code>this</code> value. The client context is an object which may contain whatever the caller finds interesting to place there, along with a variable named <code>$</code> which should be a jQuery selection containing the root element of the previously rendered HTML. Hence, <code>@$.find 'ul'</code> would select the list in the rendered HTML, instead of all the lists on the page.
+<h4>The LESS CSS Layer</h4>
+This is the least interesting of all three layers. The LESS CSS code is extracted, appended to a single file, and compiled to CSS (which, again, is an useful deployment-time syntax check). The point of this feature is simply to let the designer place element-specific CSS next to the element, instead of having it exist in an external file and cause trouble with asset garbage collection (can I remove this rule or is it still used anywhere?) External files still exist, though, for CSS rules that are not limited to a single template.
+<h4>Bonus : the triple hash</h4>
+How do I define some code that should be called when a button is clicked? Defining it directly in the onclick method is ugly, hard to read and does not let the application provide parameters, so what else can I do?
+
+The solution is to use an intermediary global object that happens to be the same for the entire file — a pattern that stores any template-related JS in a global variable named after <code>__FILE__</code> !
+
+Yes, it is a hack, but it's a simple and useful one.
+
+The only difference is that <code>__FILE__</code> is spelled <code>###</code>.
+<pre style="padding-left: 30px;"><code>&lt;<span style="color: #003366;">button </span><span style="color: #008000;">type</span>=<span style="color: #ff0000;">"button"</span> <span style="color: #008000;">onclick</span>=<span style="color: #ff0000;">"###.frobnicate()"</span>&gt;<span style="color: #ff6600;"><strong>{t:frobnicate}</strong></span>&lt;/<span style="color: #003366;">button</span>&gt;
+
+&lt;<span style="color: #003366;">script </span><span style="color: #008000;">type</span>=<span style="color: #ff0000;">"text/coffeescript"</span> <span style="color: #008000;">params</span>=<span style="color: #ff0000;">"<span style="color: #ff6600;"><strong>message</strong></span>"</span>&gt;
+###.frobnicate = -&gt; 
+  alert message
+&lt;/<span style="color: #003366;">script</span>&gt; </code></pre>
+
+<small>Article Image &copy; gdbg12 &mdash; <a href="http://www.flickr.com/photos/78168499@N00/408879493/">Flickr</a></small>

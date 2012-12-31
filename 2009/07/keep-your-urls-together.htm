@@ -1,0 +1,48 @@
+@title Keep Your URLs together
+@draft
+
+I have worked with many novice Agile developers, and many of them tend to make the same mistake we all did while developing web sites. They are writing some kind of functionality, and they need to display some information or post back some data to the server, so they have to make up a new URL on the spot.
+
+Being Agile, they don't have an existing detailed specification to tell them what the URL should be. And they're in the middle of writing something that's quite complex, so thay can't dedicate too much brain power to perform a proper choice. The end result is a hardcoded URL that they <em>will</em> need to change later on.
+
+The problem here is that when an URL changes, everyone has to check their own files for uses of that URL, and correct it. Yes, it would be possible to add a permanent redirect (and it often is a good idea on a live website so that the <span style="text-decoration: line-through;">search engine</span> google references can be kept) but these do not play nice with POST requests, and what would be the point if the site has not gone live yet? So, people forget incorrect URLs in the middle of their files, and it takes a reasonable amount of examining crawler logs to find and replace them.
+
+My usual practice is to have a central list of all URLs. Since I tend to work with an __autoload strategy, I just create an Url class and use members of that class to return properly HTML-formatted URLs : <code>&lt;?=htmlspecialchars(URLROOT.'/account/confirm/'.urlencode($id))?&gt;</code> becomes the cleaner <code>&lt;?=Url::ConfirmAccount($id)?&gt;</code>, and the actual account is hardcoded within the Url class as:
+<pre style="padding-left: 30px;">class Url
+{
+  const ROOT = 'http://mydomain.com';
+
+  static function ConfirmAccount($id)
+  {
+    assert(is_int($id));
+    return self::Local('account','confirm',$id);
+  }
+
+  private static function Local()
+  {
+    $url = self::ROOT;
+    $get = '';
+
+    foreach (func_get_args() as $segment)
+      if (is_array($segment))
+        foreach ($segment as $getkey =&gt; $getval)
+          $get .= ($get === '' ? '?' : '&amp;') 
+               .  urlencode($getkey) 
+               . '=' . urlencode($getval);
+      else
+        $url .= '/' . urlencode($segment);
+
+    return htmlspecialchars($url.$get);
+  }
+}</pre>
+So that the url-encoding of the segments, and the final cleanup of any HTML special chars that could have remained within the URL, are performed by the function automatically. Any associative arrays found in the argument list are converted to GET arguments that are also properly formatted and appended to the URL. Using the URL in a non-HTML environment, such as a text document or a <em>Location:</em> header, requires reversing the entity encoding beforehand, but this situation should be rare enough.
+
+It would of course be proper to construct the ROOT constant from the requested domain name rather than hard-coding it. I have not done it here in order to keep the example short.
+
+The benefits of this approach are many:
+<ul>
+	<li>Specifying the URL of the account confirmation page is not done by a random page anymore, it's done by the Url class. The random page merely has to state that it wants to link to the account confirmation page. In case of a change of the account confirmation URL (such as /account-confirm instead of /account/confirm) all modifications will occur in a single place.</li>
+	<li>The programmer that uses the URL does not need to remember the format used to provide the data: if an URL can be built from several arguments, those arguments can be named, documented and checked by the PHP code.</li>
+	<li>Everything within the URL is properly escaped before it is returned : the output of an URL function is always a properly formatted URL with all special characters encoded as HTML entities. This way, no invalid URLs will ever appear within the code.</li>
+</ul>
+Of course, in order to work, functions of the Url class should never be called with constant arguments: that would be akin to hardcoding those addresses. While the other benefits remain, changing the meaning of these arguments would have the same rippling effects over code. So, whenever you need to call a function with constant arguments, create a new function that explains what the url-with-constant-arguments is. For instance, "ConfirmAccount(0)" might be described as "ConfirmRootAccount()", thereby shielding you from a change in the meaning of what a root account is.

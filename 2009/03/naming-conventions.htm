@@ -1,0 +1,30 @@
+@title Naming Conventions
+@draft
+
+Here's a quick review of the naming conventions I'm using right now. I am not going to dive into silly cosmetic issues such as making some letters uppercase or using some underscores or prepending warts, because usually every project has their own writing conventions: if you use the Zend framework, you probably want to use the ZF conventions, if you use the C++ with boost, you probably want to use the SC++L/boost naming conventions, if you use C# and .NET you probably want to use the .NET naming scheme, and if you use Objective Caml you will be shoehorned into writing conventions as well.
+
+But these conventions usually tell you how to place uppercase letters and underscores inside variable, function, class, label and module names. They do not tell you what words those variables should be made of. This is what my personal naming conventions bring to the table: a choice of words that's reasonably standard. Here are some examples you can find in my code:
+<h2>Basic Names</h2>
+If the domain provides a simple and clear name for my variables and functions, I will use it. This happens very often in straight down-to-earth code that just does what is expected without any performance improvement attempts. It will be using names such as "<em>username</em>", "<em>page</em>", "<em>reply</em>", "<em>target</em>" or "<em>missile</em>".
+
+And if your choice of type names is equally sane, you will end up with variables looking like "<em>Missile missile</em>". There's nothing inherently wrong with this—as long as the context gives enough information about why this missile is important.
+
+The technical names that match required knowledge are also fair game. For instance, if your code uses a MySQL database, then it's acceptable to assume that the reader will have to know about MySQL-related concepts and thus the corresponding names can be used. This makes "<em>row</em>", "<em>field</em>" and "<em>query</em>" acceptable names in that context.
+
+Be aware of collisions! If your program manipulates both domain-level queries (such as a query from a user) and implementation-level queries (such as a query for the database), the default interpretation whenever both contexts are possible is the domain-level one, because this is the one that readers will have in mind most of the time.
+<h2>Context</h2>
+Depending on where the name is used, its meaning can be different.
+
+Class members usually have an implicit "<em>of</em>" meaning: "<em>user.Name</em>" is the user's name without a shadow of a doubt. This is why, for instance, I would never hesitate to use a variable with the same name as its type as a member variable: the fact that it's a member variable adds some information about it. Plus, in languages without type annotations (OCaml and PHP, for instance), it gives the reader some information about the type.
+
+The same happens with function parameters, which have an implicit "<em>to be processed</em>" meaning. A function which computes the balance of an account can certainly have a self-explanatory parameter of type "<em>Account</em>" named "<em>account</em>".
+
+And, of course, loop variables in for-each loops also have an implicit "<em>in the collection</em>" meaning.
+<h2>Modifiers</h2>
+<ul>
+	<li><strong><em>foo</em>Count</strong> : the number of "<em>foo</em>" elements within the context where the name appears. This is always an unsigned integer (or as close to an unsigned integer the language allows). For example, <em>article # visitor_count</em> would return the number of visitors of an article, and <em>$errorCount</em> would be the number of errors encountered by a function so far.</li>
+	<li><strong><em>fooBar</em>Ratio</strong> : the proportion of "<em>bar</em>" objects within the context that have the "<em>foo</em>" property. This is always a floating-point number, and is usually equivalent to dividing <em>fooBarCount</em> by <em>barCount</em>. For example, <em>TaskManager::FailedTaskRatio()</em> returns the proportion of failed tasks among the tasks handled by the task manager.</li>
+	<li><strong><em>foo</em>s</strong> : a sequence of "<em>foo</em>" elements. This is usually the language's simplest representation of a sequence, such as an array or list. For example, <em>article # authors</em> is a sequence of authors.</li>
+	<li><strong><em>foo</em>Is</strong><em><strong>Bar</strong> </em>: a boolean indicating whether the "<em>foo</em>" has the property "<em>bar</em>". The "<em>foo</em>" may be implicit. For example, <em>errorIsFatal</em> indicates whether an error is fatal, and <em>article # is_visible </em>indicates whether an article is visible. I do not use "has", because if an object may optionally have a certain something, that something should be an optional property using language support for optional values.</li>
+	<li><strong><em>foo</em>By<em>Bar</em></strong> : an associative container which allows retrieving a "<em>foo</em>" value associated to a "<em>bar</em>" valule, or a function which performs as an associative container retrieval. The "<em>foo</em>" may be implicit in exceptional situations. There's no guarantee, of course, that a key has an associated value. For example, <em>User::ByName</em> finds and returns a user by its name.</li>
+</ul>

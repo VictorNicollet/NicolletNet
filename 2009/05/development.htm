@@ -1,0 +1,18 @@
+@title Development...
+@draft
+
+I tend to write code mostly for my own projects (at work, my job consists mostly of understanding third party code, suggesting implementation tactics and gathering requirements), so I get a reasonably free choice of operating systems and development environments.
+
+My basic work environment looks like this (click to enlarge):
+
+<a href="http://www.nicollet.net/wp-content/uploads/2009/05/editor.png"><img class="aligncenter size-medium wp-image-984" title="editor" src="http://www.nicollet.net/wp-content/uploads/2009/05/editor-300x200.png" alt="editor" width="300" height="200" /></a>
+
+This is an <em>xterm</em> running <em>emacs</em> through an SSH connection, showing JavaScript and PHP code for JITBrain in two buffers, with js2-mode, php-mode and global-font-lock-mode enabled. What is shown here is what my laptop screen is able to display—my actual workstation fills two 22" screens with four buffers of code and a smaller font, and the transparent dark terminal background lets me look at a browser window behind the editor for quick reference.
+<h3>Why?</h3>
+The main reason is that I'm used to it. I'm so used to the <em>emacs</em> way of working with code that I actually do counter-productive things when I use other editors: I expect the tab key to move the code to its natural indentation, but most editors just insert a tab, and I routinely save my work with Ctrl-X Ctrl-S, which usually just cuts the text. I can of course get by these limitations (I used to work with Visual C++ a lot when I was younger) but I still don't have the same training as other developers with other IDEs—except, for some reason, the Visual Studio debugger.
+
+The second reason is that xterm-friendly editors are the only editors I can use on both windows and linux with the exact same configuration. When I'm on my laptop, I can just SSH to the appropriate server and start hacking away code. I guess I could use a Windows-based VPN and use a graphical IDE remotely, but the performance of that has been quite low.
+
+The third reason is that emacs is designed to be used with only a keyboard. By contrast, it's certainly possible to use Visual Studio or another graphical IDE with keyboard shortcuts alone, but doing so is an order of magnitude more annoying than the emacs equivalent. The most fundamental things I tend to do is open source files: this is fairly optimized for mouse users in graphical IDEs (open solution panel, double-click file) but navigating a file tree with only the keyboard is quite harder. The basic issue with the mouse is that I don't have one—my laptop only has a touchpad and I don't have the room to carry or use an additional mouse with me.
+
+And before you point out that this is ultimately a known troll and religious war topic, this is more about my own habits than about whether these habits are better than others. Feel free to discuss your own inferior development environments below ;)

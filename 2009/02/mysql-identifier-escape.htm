@@ -1,0 +1,24 @@
+@title Quick MySQL Identifier Escaping
+@draft
+
+A quick code snippet, in Objective Caml, that illustrates escaping an identifier in MySQL. Identifiers are quoted between backticks (`) and backticks within identifiers are escaped by writing two adjacent backticks (``). Escaping identifiers mean turning <em>"Hello`World"</em> into <em>"`Hello``World`"</em>.
+
+This function turns an identifier into a quoted identifier, with a single memory allocation. It uses stack space that is linear in the number of backticks to escape within the identifier (which is at most 256, given traditional MySQL limits).
+
+The code is in the public domain.
+<pre style="background: #ffffff none repeat scroll 0% 0%; color: #000000; padding-left: 30px;"><span style="color:#800000; font-weight:bold; ">let</span> string_of_name name <span style="color:#808030; ">=</span>
+  <span style="color:#800000; font-weight:bold; ">let</span> <span style="color:#800000; font-weight:bold; ">rec</span> escape c b i <span style="color:#808030; ">=</span>
+    <span style="color:#800000; font-weight:bold; ">try</span>
+      <span style="color:#800000; font-weight:bold; ">let</span> next <span style="color:#808030; ">=</span> String<span style="color:#008c00; ">.</span>index_from name i <span style="color:#0000e6; ">'`'</span> <span style="color:#800000; font-weight:bold; ">in</span>
+      <span style="color:#800000; font-weight:bold; ">let</span> str <span style="color:#808030; ">=</span> escape <span style="color:#808030; ">(</span>c<span style="color:#808030; ">+</span><span style="color:#008c00; ">1</span><span style="color:#808030; ">)</span> next <span style="color:#808030; ">(</span>next<span style="color:#808030; ">+</span><span style="color:#008c00; ">1</span><span style="color:#808030; ">)</span> <span style="color:#800000; font-weight:bold; ">in</span>
+        String<span style="color:#008c00; ">.</span>blit name b str <span style="color:#808030; ">(</span>b<span style="color:#808030; ">+</span>c<span style="color:#808030; ">+</span><span style="color:#008c00; ">1</span><span style="color:#808030; ">)</span> <span style="color:#808030; ">(</span>next<span style="color:#808030; ">-</span>b<span style="color:#808030; ">+</span><span style="color:#008c00; ">1</span><span style="color:#808030; ">)</span> <span style="color:#808030; ">;</span>
+        str
+    <span style="color:#800000; font-weight:bold; ">with</span> Not_found <span style="color:#808030; ">-&gt;</span>
+      <span style="color:#800000; font-weight:bold; ">let</span> size <span style="color:#808030; ">=</span> String<span style="color:#008c00; ">.</span>length name <span style="color:#808030; ">+</span> c <span style="color:#808030; ">+</span> <span style="color:#008c00; ">2</span> <span style="color:#800000; font-weight:bold; ">in</span>
+      <span style="color:#800000; font-weight:bold; ">let</span> str <span style="color:#808030; ">=</span> String<span style="color:#008c00; ">.</span>create size <span style="color:#800000; font-weight:bold; ">in</span>
+        str.<span style="color:#808030; ">[</span><span style="color:#008c00; ">0</span><span style="color:#808030; ">]</span> <span style="color:#808030; ">&lt;</span><span style="color:#808030; ">-</span> <span style="color:#0000e6; ">'`'</span> <span style="color:#808030; ">;</span>
+        str.<span style="color:#808030; ">[</span>size<span style="color:#008c00; ">-1</span><span style="color:#808030; ">]</span> <span style="color:#808030; ">&lt;</span><span style="color:#808030; ">-</span> <span style="color:#0000e6; ">'`'</span> <span style="color:#808030; ">;</span>
+        String<span style="color:#008c00; ">.</span>blit name b str <span style="color:#808030; ">(</span>b<span style="color:#808030; ">+</span>c<span style="color:#808030; ">+</span><span style="color:#008c00; ">1</span><span style="color:#808030; ">)</span> <span style="color:#808030; ">(</span>String<span style="color:#008c00; ">.</span>length name <span style="color:#808030; ">-</span> b<span style="color:#808030; ">)</span> <span style="color:#808030; ">;</span>
+        str
+  <span style="color:#800000; font-weight:bold; ">in</span> escape <span style="color:#008c00; ">0</span> <span style="color:#008c00; ">0</span> <span style="color:#008c00; ">0</span>
+<span style="color:#808030; ">;</span><span style="color:#808030; ">;</span></pre>

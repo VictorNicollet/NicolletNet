@@ -1,0 +1,18 @@
+@title HTTP-friendliness
+@draft
+
+When I use a website, I expect it to support the basic ideas of the HTTP protocol. Otherwise, I will not be able to use my browser to the full extend of its "back", "forward", "refresh" and "bookmark" capabilities. This means:
+<ul>
+	<li>GET requests return data without any important side-effects, so that I can refresh or bookmark that page and still get the same results without any risk of repeating an operation or getting some entirely different piece of data.</li>
+</ul>
+A GET request is named GET for a reason. If it was meant to post data to a website, it would have been called POST. No, wait, there's also a POST method for that. Once you see a GET request as a read-only access to a named resource (with the URI being the identifier) you get the full power of HTTP support from browsers. When I visit a certain URL as GET, I expect it to show me the resource corresponding to that URL <em>or</em> a newer version of that resource <em>or</em> a redirection to a page explaining why I cannot access it and how I can (if I can) get to access it.
+<ul>
+	<li>POST requests return a page that's a summary of what they did, and should make it clear that refreshing the page will repeat that operation.</li>
+</ul>
+No displaying of a GET-like page that gives the illusion of being a read-only request. In fact, don't even give your users the impression that a POST request is somehow intended for reading data from your server. A POST should be dedicated entirely to posting data, with the courtesy response intended to provide concise information about how it went and what to do next. If you don't have anything interesting to display that is directly related to the operation you just did, redirect to a GET.
+<ul>
+	<li>HTTP has no status. Sure, you can get some status by using cookies (client-side) combined with sessions (server-side). But keep in mind that an user may have several windows opened on your website, and there may be long durations (or even computer changes) in-between visits.</li>
+</ul>
+A very common (and annoying) thing to do is use sessions to add status where status should not be present. Especially if you have AJAX to take care of most persistence needs you could come up with in a client-side fashion. What I usually accept as status is authentication information (because this is the elementary point of having a session in the first place) and information about what the user has recently done (such as displaying back error messages on a form, or a success message, on the GET page you end up on after visiting a POST). The good news is that most develpers have been bitten often enough to avoid placing important information in the session, precisely because they've been hit hard when the session went away.
+
+My ideal website provides me with a list of resources I can read, and each resource is identified by an URL that I can send a GET to. A session mechanism may alter what I see when I visit a resource, for instance if I'm not authenticated or if I don't have the necessary permissions. Then, if I am expected to interact with the contents of the website, I am provided with POST URLs that redirect me to a GET URL that makes sense. A login form would be a nice place for a POST (since it registers a session) while a search form would be a nice place for a GET (since a search page is a read-only resource that needs no server-side modifications). If I need some smart state-based behavior to occur, it should be provided to me as AJAX, with the implication that it won't persist if I leave the page (the "you cannot save web pages" principle has been fairly well assimilated by users). Informational state, such as error messages, can be provided to pages by my session data.

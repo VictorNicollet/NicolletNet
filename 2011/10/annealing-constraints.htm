@@ -1,0 +1,38 @@
+@title Annealing Constraints
+@draft
+
+<img class="aligncenter size-full wp-image-2599" title="annealing" src="http://www.nicollet.net/wp-content/uploads/2011/10/annealing.png" alt="" width="675" height="100" />Of all the existing constraint-solving algorithms out there, my favourite is simulated annealing. To use it, you need a mutation function that randomly and slightly alters a solution, and a fitness function that lets you compare two solutions. Based on these, the algorithm is simple :
+<ol>
+	<li>Start with an arbitrary solution.</li>
+	<li>Mutate the solution : if the mutated solution is better than the current one in terms of fitness, keep it and repeat this step.</li>
+	<li>If you discard too many mutated solutions in step 2, remember the current solution and mutate it.</li>
+	<li>When time runs out, return the best solution found so far.</li>
+</ol>
+Step 2 is a fairly standard ascent towards a local maximum : try a random similar solution and keep it if it improves fitness. Step 3 detects that the algorithm is stuck in a local maximum, so it shakes the solution out of there and starts again from that new position.
+
+What is interesting about this solution is that it is exceedingly easy to implement, easy to adapt to a problem (as long as mutation and fitness are possible), and is reasonably efficient for most small problems.
+
+I used it today to solve an original problem on RunOrg. We have a history of recently connected users, and we wanted to display a simple metric along the lines of « 10 users connected in the last hour » or « 11 users connected this week » as a short summary on the administrators' dashboard. The problem, of course, is to pick a reasonable duration based on the current data ! If one user connected seven days ago, and ten users connected a few minutes ago, then both « 10 users connected in the last hour » and « 11 users connected this week » are correct descriptions of the situation, but the former is intuitively better than the latter. <em>Intuitively</em>, we should use the shortest duration with the largest amount of users.
+
+And intuition is a bad thing, because it is hard to turn into an algorithm.
+
+In the end, I settled for a handful of periods of time : the last 5 minutes, the last 1 to 6 hours, today, the last 2 or 3 days, and this week. Each of these periods of time contains a certain number of user connections (which is fairly easy to determine based on the connection history) and receives a score computed by multiplying the number of user connections with a magic constant that is tied to that period. So, if the magic constant for « the last hour » is 0.76 and that for « this week » is 0.03, then 10 × 0.76 = 7.6 and 11 × 0.03 = 0.33 meaning that the « 10 users connected in the last hour » version will be preferred.
+
+Then, I came up with several examples of connection histories, and manually picked the <em>intuitive</em> duration that should be chosen to display them. This turned into the <strong>fitness</strong> function : any set of magic numbers would have to agree with as many of those examples as possible, the more the better. <strong>Mutation</strong>, on the other hand, consisted in changing one of the magic constants at random.
+
+Within 2000 iterations and a few seconds, the annealing algorithm came up with a solution that satisfied 94% of my constraints — and I am not even certain whether 100% could be satisfied, since I might have left a few contradictory intuitions in there. The final output is:
+<pre style="padding-left: 30px;">== Fitness: 94.44%
+5min : 1
+1h : 0.761091036722064
+2h : 0.42295812451487896
+3h : 0.26899204507851066
+4h : 0.20923702855563558
+5h : 0.14858146007043194
+6h : 0.14846461447836096
+today : 0.1477566411417444
+2days : 0.07381054881381345
+3days : 0.04202811963812667
+week : 0.033268828300871064</pre>
+And so, these are the magic numbers that our algorithm uses. If it makes wrong decisions, we can always run the annealing again with new constraints, and feed the magic numbers back in.
+
+<small>Article image © Detlef Schobert — <a href="http://www.flickr.com/photos/detlefschobert/2505032252/">Flickr</a> </small>

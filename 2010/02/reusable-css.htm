@@ -1,0 +1,156 @@
+@title Reusable CSS
+@draft
+
+Woe unto CSS, for it provides no refactoring-friendly tools! The CSS beast has neither functions nor variables, and its definition of inheritance is perverted beyond words. Pain and suffering await those who hope to keep their CSS from one project to the next, or even share the CSS between pages on a single website!
+
+Consider two simple pages: the home page has a small navigation bar (selected by <code>#navig</code>) at the top of the screen, while the catalog page as a larger navigation (still selected by <code>#navig</code>). Each page includes a different <code>layout.css</code> stylesheet, so everything's fine. Except that now, anything defined in a layout has to be copied over by hand to the other layouts if you want to reuse them. Ouch.
+
+Does that example sound extreme? It certainly is! But the danger of page-specific stylesheets remains: if you won't be stepping on your own toes with something as trivial as <code>#navig</code>, perhaps <code>.book</code> will mean two different things on two different pages?
+<h4>Rule Zero : Keep all your CSS Together</h4>
+This might seem a bit harsh, especially if you have truckloads of CSS floating around and don't want to slow down the initial loading time of your page, or the time spent resolving collisions. However,
+<ul>
+	<li>This rule will make it easier to factor out common bits of CSS, leading to an overall smaller set of stylesheets.</li>
+	<li>The number of HTTP requests matters as much as the bandwidth, so delivering all your CSS as a single, minified, gzipped blob is often a <a href="http://developer.yahoo.com/performance/rules.html#num_http">good performance idea</a>.</li>
+	<li>The entire point is to make it harder to create page-specific rules, so that you don't make a rule page-specific by mistake, and strive to make most of your rules page-independent.</li>
+</ul>
+I usually place all of my CSS in correctly named files in a directory on my server, then have the server generate a single, <code>all.css</code> master file that <code>@import</code>s the other stylesheets by path. <em>This means Firebug's CSS browser will correctly identify the source file for any given rule.</em> When the code moves to a production server, the auto-generated master file becomes a pre-generated/minified/gzipped resource, and can even be moved to a CDN for improved performance.
+
+On the other hand, keeping all your code in one place will only help you see collisions, it will not actually help you solve them.
+
+Fortunately, we can look to other languages for tips and trick on how to make code easier to reuse. The fundamental observation is that you cannot use something if you don't give it a name. One would expect CSS identifiers and classes to serve the same function, and indeed it does work in simple cases:
+<pre style="padding-left: 30px;"><code>a.important { font-weight: bold }</code></pre>
+Now, you have the <code>important</code> «function», that you «call» on an anchor element to make it appear important. Bam! Instant reusability. Using an identifier instead of a class still allows reuse on distinct pages, but restricts reuse within a single page.
+<h4>Rule One : Document your «Functions»</h4>
+You cannot reuse code if you cannot find it, and even if you don't forget about it someone else on the team might be completely unaware that it even exists. So you should somehow document that the <code>important</code> class exists. My personal, PHP-friendly preference, is to have a "Css" class with all those nice classes available:
+<pre style="padding-left: 30px;"><code>class Css
+{
+  <span style="color: #008000;">/* a.important : make a link important */</span>
+  const IMPORTANT = "important";
+}</code></pre>
+Then, you can reuse them when you see fit to do so:
+<pre style="padding-left: 30px;"><code>Click &lt;a href="&lt;?=$url?&gt;" class="&lt;?=Css::IMPORTANT?&gt;"&gt;here&lt;/a&gt;</code></pre>
+That's just personal preference—any way of documenting your CSS classes is fine as long as it's somewhere everyone can see it. In fact, I have a nice set of PHP helpers lying around to bind jQuery UI CSS effects to my code, thereby documenting what jQuery UI can do without having to dive into the stylesheets every single time.
+
+The real problem appears when you have more than one «argument». A typical example is the list of links with a "selected" link: the graphical effect applies to the list, to the elements of that list, and to the content of those elements, which leads to several rules selecting different elements.
+<pre style="padding-left: 30px;"><code>ul#navig { margin: 0 ; padding: 0}
+ul#navig li { list-style-type: none }
+ul#navig li.selected a { font-weight: bold ; color: black }</code></pre>
+This kind of structure cannot be documented simply by stating that the <code>ul#navig</code> element is going to become a pretty list, because without the <code>li.selected</code> in there there will be no «pretty» worth mentioning.
+
+I document this as follows:
+<pre style="padding-left: 30px;"><code><span style="color: #008000;">/*
+  &lt;ul id="navig"&gt;
+    &lt;li&gt;&lt;a&gt;Item&lt;/a&gt;&lt;li&gt;
+    &lt;li class="selected"&gt;&lt;a&gt;Item&lt;/a&gt;&lt;li&gt;
+    &lt;li&gt;&lt;a&gt;Item&lt;/a&gt;&lt;li&gt;
+  &lt;/ul&gt;
+*/</span>
+ul#navig { margin: 0 ; padding: 0}
+ul#navig li { list-style-type: none }
+ul#navig li.selected a { font-weight: bold ; color: black }</code></pre>
+Why not document it in the PHP code, then? IMO, a CSS designer to write a quick <code>const FOO = "bar";</code> line in PHP, but not an HTML helper that turns an array of links into pretty list HTML. CSS designers write the CSS (with documented HTML) and PHP developers turn that into HTML helpers.
+<p style="text-align: center;">&lt;/acronym soup&gt;</p>
+
+Another important element of code reuse is the notion of encapsulation, and in particular the existence of "private data" that is part of the program, but can only be accessed by some parts.
+
+There is no such thing with CSS. There are two reasons for this. The main reason is that being sloppy with selectors is commonplace:
+<pre style="padding-left: 30px;"><span style="color: #008000;">/*
+  &lt;div id="userList"&gt;
+    &lt;ul class="users"&gt;
+      ...
+    &lt;/ul&gt;
+    &lt;a&gt;New&lt;/a&gt; |
+    &lt;a&gt;Edit&lt;/a&gt; |
+    &lt;a&gt;Delete&lt;/a&gt;
+  &lt;/div&gt;
+*/</span>
+#userList a { color: #FF9900 ; text-decoration: none }
+#userList a:hover { text-decoration: underline }</pre>
+The three links in the user list component («new», «edit» and «delete») will appear in orange without underlining, as expected and documented. The unexpected and non-documented consequence of this code is that all links within the list of users will be orange without underlining as well.
+<h4>Rule Two : Only Select what you Need to Select</h4>
+The typical consequence of sloppy selectors is that «insert component A into component B» operations utterly destroy the formatting of component A. The typical designer reaction to such <em>graphicalypse</em> is «Darn, component B destroyed some property of component A, so let's add some rules to component A to reverse the damage!»
+
+Bad idea. It makes the code longer, and only hides the actual problem (along with any symptoms that only appear in specific cases). The real solution is to make sure selectors only select what they need to select.
+
+One way of doing so is to use the «<code>&gt;</code>» selector, as it restricts the selection to only children of the initially selected element. This would work:
+<pre style="padding-left: 30px;"><code>#userList &gt; a { color: #FF9900 ; text-decoration: none }
+#userList &gt; a:hover { text-decoration: underline }</code></pre>
+Of course, it wouldn't work in IE6, but <a href="http://idroppedie6.com/">who cares about IE6 anymore</a>?
+
+The general approach is to use specific classes for those elements that must be affected:
+<pre style="padding-left: 30px;"><code><span style="color: #008000;">/*
+  &lt;div id="userList"&gt;
+    &lt;ul&gt;
+      ...
+    &lt;/ul&gt;
+    &lt;a class="userList-link"&gt;New&lt;/a&gt; |
+    &lt;a class="userList-link"&gt;Edit&lt;/a&gt; |
+    &lt;a class="userList-link&gt;Delete&lt;/a&gt;
+  &lt;/div&gt;
+*/</span>
+a.userList-link { color: #FF9900 ; text-decoration: none }
+a.userList-link:hover { text-decoration: underline }</code></pre>
+If anyone uses that <code>userList-link</code> class in their code (and your naming conventions were clean enough), they had it coming.
+<h4>Rule Three : Choose Proper Naming Conventions</h4>
+It is quite important to remain consistent in your naming practices, especially since you now need to identify, for any given identifier and/or class:
+<ul>
+	<li>If it represents a «function» (<code>#userList</code>), or if it helps select a specific «argument» (<code>.userList-link</code>).</li>
+	<li>In the latter situation, what function the argument corresponds to (so that you can look for its definition).</li>
+</ul>
+My preference is to use <code>camelCase</code> names (classes or identifiers) for functions, and <code>camelCase-camelCase</code> names for arguments, where the first half is the name of the function. The CSS would then be gathered in a <code>camelCase.css</code> stylesheet named after the function, with a documentation of the expected HTML at the top, hence making it much easier to find and reuse.
+
+Now that you have access to functions, you will probably want to use them to implement reusable «components» — standalone pieces of HTML and CSS that represent atoms of information.
+
+At some point, you will have to make components interact (if only to respect each other on the page layout). All of this will be hell if component A uses normal block layout rules, component B is floating to the left and component C is positioned absolutely.
+<h4>Rule Four : a Component Should only Care about its Inner Layout</h4>
+As soon as a component starts to care about outer layout concepts such as margin, position, floating or clearing, you will be in a world of pain. This is because such concepts depend on where the component appears, and as such are not easy to reuse.
+
+I split my CSS code into components and bones:
+<ul>
+	<li>
+<p style="font-size:1em"><strong>Components</strong>. These are reusable atoms. They do not care about their outer layout at all, so they never specify anything like margin, position, floating, clearing, display mode or anything that might cause them to interact differently with their surroundings on the page.</p>
+<p style="font-size:1em">They may specify a width and height if they wish, but it is discouraged (a component that can adapt to any geometry is easier to use). They can specify anything they want in terms of border, padding, font, color, background, font, and any inner properties they need.</p>
+</li>
+	<li>
+<p style="font-size:1em"><strong>Bones</strong>. These are elements found inside the components that handle the layout of the component contents themselves. They can and should make appropriate assumptions about what bones can be found within a component and how they should interact to result in the layout you need to see.</p>
+</li>
+</ul>
+A nice finishing touch is to make the component <code>overflow : hidden</code>, because the last thing you need is a component's skeleton sticking out from its skin and interacting with other elements.
+
+I repeat: <strong>never allow the contents of a component to stick out of that component</strong>!
+
+In particular, if you have a component with floating elements inside, make sure you add a clearer element at the bottom of the component to have it resize with its contents.
+
+In practice, I assume every function argument to be a bone, and every function to be a component. The situations where a function acts as a bone are so rare, and the results so difficult to reuse (so you've added a <code>float:left</code> to an element, where are you going to put it?), that I don't really take them into account. The Component-Bone approach tends to solve almost everything elegantly, as long as you're clever about where a component begins and a bone ends.
+
+For instance, if you're laying out a list of comments for a blog, you are probably going to have a «comment list» component with «comment» bones that are laid out on top of one another with appropriate margins, borders and paddings. The contents of every «comment» bone will be a «comment» component, with bones representing the picture, name, date and comment body, laid out cleanly without that component.
+
+Whether the <code>.commentList-comment</code> is placed on the same element as <code>.comment</code> is something you can decide for yourself. What is essential is that, in order for the comment style to be reusable independently of the comment list style, all outer layout information should be in <code>.commentList-comment</code>, not in <code>.comment</code>.
+
+Good.
+
+Now, before I finish, do you remember when I said earlier that component B could be mangled by component A for two different reasons? The second reason happens to be inheritance. Everyone knows inheritance is bad for reuse. Right?
+
+What happens is that, if you define a font size, color or family in a given element, then all descendants of that element will get the same font size, color and family (unless some CSS rule changes them). That's inheritance: the value of the property in the child element is inherited from the parent element.
+<h4>Rule Five: Only Change Inheritable Properties on your own Content</h4>
+It's impossible to define the entire list of inheritable properties at the root of every single component in your web side, however convenient it may be. Keeping everything in sync is very difficult, if not impossible. It is far easier, by comparison, to restrict such changes to only those areas of a component where the content is closely controlled and guaranteed not to contain any other components.
+
+I believe there are basically three kinds of areas in any given page that are actually worth being paid attention to. These are:
+<ul>
+	<li><strong>Layout</strong> areas. These are those component-in-component-in-component places where touching an inheritable property can get you <span style="text-decoration: line-through;">killed</span> annoyed.</li>
+	<li><strong>Text</strong> areas. Those contain no components, but they might still contain paragraphs, links, headings, images in a typical «rich text editor» fashion. If you change one property (such as the color of text), be ready to change all the related properties (the color of links) to keep a consistent appearance.</li>
+	<li><strong>Line</strong> areas. These contain a short bit of text without any other tags. You don't have to worry about changing properties here.</li>
+</ul>
+Every component should document, for every piece of content that should be filled from outside the component, whether it is a layout, text or line area. For instance:
+<pre style="padding-left: 30px;"><span style="color: #008000;">/*
+  &lt;div class="comment"&gt;
+    &lt;span class="comment-author"&gt;...&lt;/span&gt;
+    &lt;div class="comment-contents"&gt;&lt;p&gt;...&lt;/p&gt;&lt;/div&gt;
+    &lt;div class="comment-reply"&gt;
+      ...
+    &lt;/div&gt;
+  &lt;/div&gt;
+*/</span></pre>
+Here, a span (can only contain inline elements or text) represents a line area, a div-with-paragraph represents a text area (may contain several paragraphs, of course) and a normal div represents a layout area. This tells me, for instance, «don't even think about putting a component in the comment contents, or I'll clobber their stylesheet beyond recognition.»
+
+Depending on the kind of web site you are building, other kinds of areas may be useful to you, such as forms.

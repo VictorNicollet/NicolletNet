@@ -1,0 +1,26 @@
+@title Easier Unit Tests
+@draft
+
+Automated unit testing has three main advantages:
+<ol>
+	<li>It forces you to express in detail what you want the unit to do (so that a computer may then test it by checking the results).</li>
+	<li>For an unit to be testable, its results should be checked as "correct" or "incorrect" on their own or with minimal context. This makes code easier to reuse.</li>
+	<li>Since it's automatic, you do not need to test manually every time you make a change: the tests will run hourly or nightly (or for every build) and tell you what went wrong.</li>
+</ol>
+The cost, however, is that unit testing code must be written for every unit. That code needs to create an object, manipulate it, then check its return values for validity. And test-driven-development advocates insist that such code should be written before the actual unit (make it compile, make it fail, make it pass).
+
+I do understand their position: if you're thinking of very specific corner cases that you might forget about while writing the unit, you might as well write tests for these corner cases <em>first</em>. But what about the <em>simple</em>, core functionality of the units? If a programmer sets their minds to testing an unit, they can usually look at the value and decide "it's correct" or "it's wrong", and that process is orders of magnitude faster than writing an assertion that checks whether the value is correct. We're not talking about complex ten-argument dozen-property function on a deep-inherited object here, it's more of a "this string goes in, that string goes out" concept.
+
+An example would be a "slugify" function : plug an arbitrary string into it, and a cleaned up lowercase hyphen-separated string comes out. As long as you are mindful of corner cases (weird characters, encodings, empty strings and so on) testing this function manually is quite simple. You certainly lose the benefit of point 1 (no more expressing the details of what the function should do in advance of writing it) but you can keep the benefits of 2 (whether automatic or manual, tests make code reusable) and you can even get the benefits of 3 by saving your code as an unit test.
+
+This is what happens in the console-like scaffold I have been working on (you can click to enlarge):
+
+<a href="http://www.nicollet.net/wp-content/uploads/2009/08/autotest.png"><img class="aligncenter size-medium wp-image-1100" title="autotest" src="http://www.nicollet.net/wp-content/uploads/2009/08/autotest-300x255.png" alt="autotest" width="300" height="255" /></a>
+
+You type in code in the text box. Clicking "Run" (or pressing TAB RET) sends the code through AJAX to the server and retrieves the <code>var_dump</code>ed result (as well as a highlighted version of the code). The mindful programmer can use this console to preemptively test and debug code. The excellent programmer will even adapt their code to make such testing easier, and being able to use any kind of code in the barren context of this console means that code can be used anywhere.
+
+The real hit there is that little <strong>Add Cog</strong> icon from the FamFamFam Silk icon set. It's truly beautiful and adds a touch of antialiased pixel art to an otherwise bland rounded-edges Web 2.0 console. And what it does is even better: when clicking that icon, the corresponding piece of PHP is automatically added to the database of unit tests, as a test that runs the code on the green background and asserts that the output of the code is identical to the text on the grey background.
+
+This makes the "for every bug you find, write an unit test that finds that bug" insanely easy to do: find the bug using the console, correct the code, check with the console that the bug is dealt with, and then add the final "bug corrected" console run to the unit test database. The work spent debugging a program from this console is never lost, it all ends up being an automated test with one single click.
+
+This also makes writing unit tests much more developer-friendly: the console lets you test your code as you write it, without having to write controllers or views or whatever other contraption you need to display the results. An excellent choice for testing-averse developers.

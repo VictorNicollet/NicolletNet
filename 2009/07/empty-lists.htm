@@ -1,0 +1,26 @@
+@title Empty Lists
+@draft
+
+We have all written this code before :
+<pre style="padding-left: 30px;">&lt;ul&gt;
+  &lt;?php foreach ($list as $element):?&gt;
+    &lt;li&gt;&lt;?=htmlspecialchars($element)?&gt;&lt;/li&gt;
+  &lt;?php endforeach; ?&gt;
+&lt;/ul&gt;</pre>
+What happens when the list is empty? What is generated is an empty <em>UL</em> element :
+<pre style="padding-left: 30px;">&lt;ul&gt;&lt;/ul&gt;</pre>
+This would be perfectly fine, if it wasn't completely wrong. Quoth the XHTML DTDs (any of them) :
+<pre style="padding-left: 30px;">&lt;!ELEMENT ul (li)+&gt;</pre>
+There must always be at least one list item in a list (what kind of insanity would have led to preventing empty lists from existing is beyond me, although I'm certain they must have had a good reason), which means a document will not validate if it contains the aforementioned empty <em>UL</em> element. This is also the case for HTML 4, though HTML 5 does currently allow empty lists.
+
+So, to circumvent the empty list case, the code becomes:
+<pre style="padding-left: 30px;">&lt;?php if (count($list) &gt; 0): ?&gt;
+  &lt;ul&gt;
+    &lt;?php foreach ($list as $element): ?&gt;
+      &lt;li&gt;&lt;?=htmlspecialchars($element)?&gt;&lt;/li&gt;
+    &lt;?php endforeach; ?&gt;
+  &lt;/ul&gt;
+&lt;?php endif; ?&gt;</pre>
+While it might be possible to abstract these details away behind a function that prints a list of elements, the ultimate point of such an abstraction would be to free the developer's mind of the issue of empty lists not being allowed in XHTML. And such a thing would be ill advised : since the correct behavior is to remove the empty list from the document, the developer <em>should</em> be aware that no <em>UL</em> element will be generated for an empty list, especially since this has implications on the CSS side (which has to accomodate the absence of the list) and the Javascript side (which has to create the element if it doesn't exist before adding elements to it).
+
+<strong>An important quality of any developer is their ability to identify and handle any corner cases of their domain. An important quality of any domain is to have as few corner cases as possible.</strong>

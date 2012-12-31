@@ -1,0 +1,54 @@
+@title Configuration Files
+@draft
+
+Configuration files are omnipresent in modern computer architecture. They usually appear as editable text files that are loaded (more or less dynamically) by a process while it's running. There are many design choices that separate good configuration files from bad configuration files.
+<h2>Location</h2>
+A very important part of configuration is where the configuration files can be found. Good configuration setups store their files in locations as conventional as possible:
+<ul>
+	<li>The root directory of the program, with an explicit name (usually containing "<em>config</em>"). This is usually a Linux convention, but a lot of PHP projects tend to follow it.</li>
+	<li>An "<em>etc</em>" directory within the root directory of the program. Alternatively, you may store the system-wide configuration elements in the absolute "<em>/etc/program</em>" path, as long as an alternate target is provided.</li>
+	<li>If the program is aimed at Linux users, per-user configuration is usually expected within the home directory, prefixed by a dot (either a directory, such as "<em>.emacs.d</em>", or as a single file, such as "<em>.muttrc</em>").</li>
+	<li>On windows, the registry is advisable for user programs (store global configuration as global keys if allwed to, and store per-user configuration as per-user keys).</li>
+	<li>In Java, "<em>foobar.properties</em>" is usually expected to be in the same path as the class "<em>foobar</em>" for which it was defined.</li>
+</ul>
+Hiding configuration files in other locations is possible, but I would advise against it—it forces administrators, developers and installers to hunt for the files (either on their file system, or through documentation).
+
+It is also possible to store configuration information in the database—this raises the question of where configuration stops and runtime data starts, especially in modern systems like <a href="http://wordpress.org/" target="_self">Wordpress</a> or <a href="http://www.magentocommerce.com/" target="_blank">Magento</a> that allow heavy-duty reconfiguration of the system through a back-office HTTP interface. This can also be quite annoying at times: for instance, if your development model calls for many developers writing and testing code on their own machines <em>with a shared database for all developers</em>, a system like Magento won't do because it stores local information (such as the access URL) in the database.
+<h2>Timing</h2>
+Another important element is the time when the configuration file is taken into account by the system. There are, mostly, three ways of dealing with configuration files:
+<ul>
+	<li>Load at initialization time. When the system or program boots, it reads and parses the configuration file. The advantage of this system is that if the configuration file is broken, the system won't start, so it's quite probable that the system administrator will be on hand to correct things as required. Besides, it's also quite easy to implement. The downside is that you have to restart the system to take changes into account.</li>
+	<li>Load on demand. The file is loaded at initialization time, but can be reloaded on demand (the classic way on a Debian box is to "<em>/etc/init.d/program reload</em>", for instance). Should an error appear in the file, the reloading fails with an error but the old configuration is kept so that the program keeps running while an administrator corrects the error. This way is harder to get right, especially since it requires a communication channel to signal the change in configuration to the program.</li>
+	<li>Load on every request. This is the case for configuration files that affect the behavior of a frequently occurring action (such as receiving an HTTP request for an Apache server). Whenever the action is performed, the configuration file is reloaded. The advantage of this solution is that there is no manual reloading to be done. The downside is that the configuration will not be tested until the action is performed, which might happen a while after the administrator left (of course, in a perfect world people would test any modifications they make on a live system before leaving).</li>
+</ul>
+Let's not forget the issue of synchronization: does a configuration file reflect the current configuration of a running program? In the first two cases, it doesn't: an administrator could forget to restart or reload the system, leading to a system that uses the old configuration and a configuration file that contains untested modifications, and rebooting such a system is <a href="http://thedailywtf.com/Articles/Designed-For-Reliability.aspx" target="_blank">certain death</a>. Some administrators go as far as rebooting a system once per night—the ability to come back online quickly and correctly is taken as a sign of good health of the system.
+
+My personal advice on this is to use <em>load on demand</em>. This improves performance over <em>load on request</em> (as there is no need to reload configuration every run) as well as safety (you immediately know if something went wrong) and to compensate for the synchronization issue by periodically checking whether the currently-enabled configuration is older than the configuration file itself, and issuing warnings if it is. Keep a backup of the current configuration somewhere in case you need to reboot.
+
+Another solution for the synchronization issue is to combine editing and reloading. This is what <em>crontab</em> does: it edits the file containing the jobs, checks for validity, and then signals the crond daemon to trigger a reload. The approach is also found in online administration tools (that only commit a modification once it's been validated, and do not save uncommited modifications at all). Requiring to go through an editor, however, reduces interoperability as it prevents non-human users (such as IDEs, installers, administration consoles or other third party programs) from modifying the configuration.
+<h2>Syntax</h2>
+There are usually three main ways to design a configuration file itself.
+<ul>
+	<li>Creating your own language. This one is extremely frequent in the UNIX world. It has the benefit of allowing maximum expressiveness, as the developer can tailor a configuration language to stick as closely to the problem domain as possible. The downside is that it requires administrators to learn yet another scripting language. As a Linux sysadmin, I routinely have to deal with a lot of languages, such as:
+<ul>
+	<li>the general-purpose awk and sed</li>
+	<li>makefiles</li>
+	<li>crontabs</li>
+	<li>shell configuration files (.zshrc, .bashrc)</li>
+	<li>php.ini</li>
+	<li>apache host definitions, .htaccess and httpd.conf</li>
+	<li>the sudoers file</li>
+	<li>.qmail</li>
+	<li>.emacs.d</li>
+	<li>.muttrc</li>
+	<li>.flrnrc</li>
+	<li>/etc/fstab</li>
+	<li>/etc/passwd (arguably, I can read it faster than I query it with the appropriate programs)</li>
+</ul>
+Besides, don't really expect your IDE or text editor to provide verification and syntax highlighting for your more obscure scripts.</li>
+	<li>Using XML, with an appropriate schema or DTD. While fairly verbose and often ill suited to configuration tasks, XML is a standard. This means that it's easy to find validation tools (including, of course, editing it with your IDE and knowing ahead of time if errors are present), parsing tools (so that you don't have to write a loading module yourself) and transform tools in the form of XSL. Of course, not everything can be validated, and not every configuration file has a corresponding DTD—sometimes, developers use XML for the "easy to parse" benefit and don't really care about who will be writing the configuration.</li>
+	<li> Using a programming language. This works fine with dynamic languages that can interpret themselves on the fly, and is most often encountered in PHP (the <a href="http://www.mantisbt.org/" target="_blank">Mantis bug tracker</a> uses this approach, and the configuration file, written in PHP, is merely a set of assignments to global variables). This is extremely efficient: no parser is required at all, there's already full support for the IDE, the format is much more flexible if you call APIs that are allowed to you, and you don't have to learn another language either. The downside is that there's a lot of freedom allowed, meaning that a meddling user could break the system if they were allowed to provide a configuration file—so, no userland configuration can use this approach on pain of death without heavy sandboxing.</li>
+</ul>
+This choice is yours, as I have no advice to give here: XML can be nice, but overly verbose, custom formats always need you to learn them, and using the programming language itself can be dangerous because it's Turing-complete.
+
+Can one imagine a replacement for XML? A language with turing-complete verification rules, a nicer syntax, and even easier parsing? Or even an improvement on XML schemas that could perform more in-depth checks? I think this deserves some more thought.

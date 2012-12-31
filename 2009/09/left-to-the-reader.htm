@@ -1,0 +1,24 @@
+@title Left to the reader
+@draft
+
+PHP best practices have been moving steadily towards putting all functions inside classes, if only to provide namespacing. The good news is that you have no more namespace collision issues (well, unless you join together two projects with different conventions), and the bad news is that your function names are starting to get quite long.
+<pre style="text-align: center;">&lt;?php echo Framework_Html::Escape($username); ?&gt;</pre>
+Escaping strings to be output in HTML documents is a quite common behavior in PHP websites. Is the risk of a name collision worth giving up on a shorter approach, like:
+<pre style="text-align: center;">&lt;?=esc($username)?&gt;</pre>
+I am a proponent of turning very common operations into short functions with appropriate "smart" behavior. For instance:
+<ul>
+	<li><code>esc(string $string)</code> returns a <code>Framework_Html</code> instance representing the string escaped with <code>htmlspecialchars</code>.</li>
+	<li><code>esc(Framework_Html $html)</code> returns its argument as-is, so you don't have to care about whether a given string has already been escaped or not.</li>
+	<li><code>esc($format, $a, $b, $c...)</code> returns a <code>Framework_Html</code> instance representing the unescaped string <code>sprintf($format, esc($a), esc($b), esc($c))</code>, useful to avoid repeated escaping in, say, <code>&lt;a href="%s"&gt;%s&lt;a/&gt;</code> .</li>
+</ul>
+In a similar vein:
+<ul>
+	<li><code>func(callback $call)</code> returns its argument (after checking that <code>is_callable($call)</code> is true). This serves as a piece of documentation to tell that something is a function.</li>
+	<li><code>func(object $obj, string $func)</code> returns a callback representing the member function <code>$func</code> of object <code>$obj</code>.</li>
+	<li><code>func(string $class, string $func)</code> returns a callback representing the static member function <code>$func</code> of class <code>$class</code>.</li>
+	<li><code>func(string $args, string $body)</code> acts as a shorter alias for <code>create_function</code>.</li>
+	<li><code>func(string $body)</code> acts as an alias for <code>create_function('$_',"return $body;")</code>, in those cases you need a very short lambda expression.</li>
+</ul>
+And of course, there's the <code>jslog()</code> and <code>is()</code> functions discussed earlier on the blog.
+
+I think there would be a small handful of functions, maybe 8 or 10, that would be used so often on a given project that everyone would have to know about them anyway—so, you might as well keep them out of any class.

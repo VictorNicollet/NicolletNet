@@ -1,0 +1,30 @@
+@title Inline Help
+@draft
+
+Your average user does not know what a trackback is. Yet, Wordpress must let experienced users ping trackbacks. How to include trackback information without scaring away the inexperienced users (and possibly even educating them along the way)?
+
+The solution chosen by Wordpress is to use slightly more verbosity to describe what trackbacks are:
+
+<a href="http://www.nicollet.net/wp-content/uploads/2009/05/wordpress-back.png"><img class="aligncenter size-medium wp-image-959" title="wordpress-back" src="http://www.nicollet.net/wp-content/uploads/2009/05/wordpress-back-300x173.png" alt="wordpress-back" width="300" height="173" /></a>
+
+By contrast, Magento involves a lot more knowledge than just publishing a blog. While it's possible to assume that Magento users earn their wages by knowing how to use it, most of the time they only manipulate the system as a side-effect of handling sales in their brick-and-mortar company, or they are new to sales altogether. So, the result is a complex product with outright terse field descriptions that have very complex effects:
+
+<a href="http://www.nicollet.net/wp-content/uploads/2009/05/magento-back.png"><img class="aligncenter size-medium wp-image-960" title="magento-back" src="http://www.nicollet.net/wp-content/uploads/2009/05/magento-back-300x293.png" alt="magento-back" width="300" height="293" /></a>Who, among normal Magento users, knows what a meta keyword or meta description is? Or whether <a href="http://www.highrankings.com/metakeyword" target="_blank">meta keywords are as useful now</a> as they were in the good old days? But that's not very important, since you could just ignore those fields.
+
+What's an URL key? Now, even an experienced web developer might have trouble with this one (it's the equivalent of a Wordpress slug, except Wordpress displays that "URL key" field as a more easily understood "<strong>Permalink:</strong> <span id="sample-permalink">http://www.nicollet.net/2009/05/<span id="editable-post-name" title="Click to edit this part of the permalink">inline-help</span>/" with the last URL segment editable).</span>
+
+<span>What about the Page Title? What's the difference between the category name and the page title? Which is displayed where? </span>
+
+<span>Things get even more complex with other areas of Magento. For instance, in a lot of places a given field is disabled and a "Use Config Defaults" checkbox next to it is checked. The problem is that there is no indication about <em>where </em>those configuration defaults can be changed.</span>
+
+Last but not least, there are several classic questions to be asked, such as "Why does this product appear as out-of-stock?" or "Why doesn't this product appear in this category?" or "How do I set a table rate?" which require careful analysis of the dozen options that might affect the actual state of the item (enabled? present in website? present in category? stock greater that zero? set as in-stock? children items enabled, present in website and set as in-stock? ...)
+<h3>Inline help items</h3>
+Modern Javascript libraries allow altering an existing page in a non-intrusive manner by decorating the page elements once they are loaded (or when the user asks for help). This means it's possible to add novice-specific inline help as:
+<ul>
+	<li>Short text snippets under complex or technical items to explain what they are, possibly with a link to the complete explanation.</li>
+	<li>Explanatory tooltips on hovering.</li>
+	<li>See-also links (where do I change this configuration default? where do I set table rates?) placed exactly where the user might be wondering something.</li>
+	<li>Move-along tutorials that detect whether data was entered in certain fields and guide the user to create items, add them to categories, and so on...</li>
+	<li>Troubleshooting checklists (with links) to determine why a product does not appear, or why it appears out of stock.</li>
+</ul>
+In fact, it would even be possible for IT companies to provide their customers with customized help messages that match their specific internal processes.

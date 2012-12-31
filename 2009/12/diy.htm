@@ -1,0 +1,57 @@
+@title Do It Yourself
+@draft
+
+Unless you're working in an esoteric field on the bleeding edge of technology, the vast majority of programming problems you face have already been solved many times by many other people, and several of these solutions are readily available on the web or in legacy code libraries you might have access to.
+
+To solve a problem, you can
+<ul>
+	<li>reinvent a particular wheel : the <strong>non-factored</strong> approach, since you create your own instance of that wheel,  <em>or</em></li>
+</ul>
+<ul>
+	<li>reuse one of its existing implementations : the <strong>factored</strong> approach, where several projects benefit from the same piece, including your own.</li>
+</ul>
+Both alternatives have costs and benefits that the experienced software engineer is aware of, and these will depend on your exact problem somewhere along the lines of :
+
+<a href="http://www.nicollet.net/wp-content/uploads/2009/12/1.png"><img class="aligncenter size-full wp-image-1200" title="1" src="http://www.nicollet.net/wp-content/uploads/2009/12/1.png" alt="1" width="481" height="289" /></a>
+
+The time spent solving a problem steadily increases with the size or difficulty of that problem, and is further subject to two important rules.
+<h3>Non-factored is cheaper for small problems</h3>
+A factored solution carries some overhead because it is used by several projects with different scopes. The "<em>one click, 200 words</em>" bias happens when non-technical managers hear "leverage an existing solution", and see a picture of a one-click installer and a 200-word tutorial telling them their particular problem can be solved with two lines of C# code.
+<pre style="font-family: courier new; font-size: 12px; background: #ffffff none repeat scroll 0% 0%; color: #000000; padding-left: 30px;"><span style="color:#008484">HolyGrail</span> grail = <span style="color:#000084; font-weight:bold; ">new</span> <span style="color:#008484">HolyGrail</span>();
+grail.doWhatIMean(<span style="color:#808080; ">/* No options here! ^_^ */</span>);</pre>
+Yeah. Riiiight.
+
+Every one of us has spent days reading up on third party libraries just to decide if they are worth the effort, slaying compatibility dragons to make it talk with the rest of the project, filling hundreds of configuration options that have no relevance whatsoever to the tiny problem at hand, teaching co-workers about the nooks and crannies of that code, and painstakingly wading through less-than-civilized error reporting to solve the obtuse problems that come up on the day before you release.
+
+Even writing your own reusable code is orders of magnitude harder than just jotting down a quick one-shot solution to whatever problem you have. An excessive tendency to build generic code from the very beginning makes your development process look like Dragon Ball Z : you have to power up for fifteen episodes before you can show a splash screen.
+
+This rule is the reason why the red curve stays above the blue curve for small problems.
+<h3>Factored scales better for large problems</h3>
+Solving a larger problem involves a larger solution. In a do-it-yourself situation, you have to make the solution larger yourself. When using a factored approach, you already injected an existing large solution into your project, and it only feels small because you're using a small part of it. With the programming equivalent of flipping a switches, you get to use a larger part.
+
+The solution that involves the most code (the non-factored one, in case you wondered) also involves the most maintenance, documentation and development work. Whether this comes from a thousand-line reinvented wheel or obscene copy-pasting, having a large code base is something you will have to pay for in the long run. You don't <em>buy</em> code, you <em>rent</em> it.
+
+This rule is the reason why the red curve ends up above the blue curve for sufficiently large problems.
+<p style="text-align: center;">—</p>
+
+<span> </span>
+
+Keeping these two rules in mind, the key to making the right decision is determining where the red and blue curves intersect, and where your project stands. Easier said than done. For instance, what does "problem size" mean, precisely?
+
+Problem size can be, literally, the size of the problem for an obvious metric. A content distribution network like <a href="http://aws.amazon.com/s3/" target="_blank">Amazon S3</a> is a bad choice for 1000 downloads per <em>week</em>, but an obvious solution for 1000 downloads per <em>second</em>.
+
+Could be the things in the application that are similar to the one you're implementing. Sending usage statistics back to your server is a small problem solved with a vanilla HTTP request. If you communicate with the server a lot, you might want to keep the URL and error handling logic together in one place.
+
+Or it could be the number of features. Displaying data in table format takes two nested loops and some HTML. Sorting, filtering, asynchronous sending or editing involves some rather smart Javascript development, or integrating a tool like <a href="http://trirand.com/jqgrid/jqgrid.html" target="_blank">jqGrid</a> or <a href="http://www.extjs.com/playpen/ext-2.0/examples/grid/grid3.html" target="_blank">ExtJS</a>.
+<h3>Once, Twice, Refactor</h3>
+The special case of writing your own reusable code has been "solved" by Agile folks who suggest writing a non-reusable version of the code on the first try, and refactoring it to a reusable version the second time it's needed. This is your third choice : go with the non-factored solution if you are unsure whether the problem is large enough to warrant the factored solution, and change your mind as soon as you gather enough data.
+
+<a href="http://www.nicollet.net/wp-content/uploads/2009/12/2.png"><img class="aligncenter size-full wp-image-1213" title="2" src="http://www.nicollet.net/wp-content/uploads/2009/12/2.png" alt="2" width="481" height="289" /></a>
+
+This is a solution that costs less than the factored approach if the problem is small, and costs less than the non-factored solution if the problem is large, while keeping an acceptable overhead when the problem is somewhere in-between.
+
+Of course, writing your own reusable code means that the cost of switching from the non-factored to the factored version is significantly lower than starting with the non-factored version from scratch, because you refactor the original solution <em>into</em> a reusable one.
+
+The advantages are not so obvious when moving from one approach to the other involves throwing away all code and installing a third party application. You do get some benefits—at the very least, you know more about the problem that you did at first, and perhaps your first approach served as a useful prototype to further refine your needs—but doing this can hurt a lot.
+
+So, you end up getting hurt if you don't know what you're doing. What a surprise.

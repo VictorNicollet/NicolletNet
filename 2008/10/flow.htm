@@ -1,0 +1,150 @@
+@title Flow
+@draft
+
+Flow is a lightweight C++ inter-thread flow library, built on top of the boost::thread library. It allows dispatch of parts of a complex computation process to one or more additional threads, in a transparent and idiomatic way. It has been written in early 2008 by me (Victor Nicollet), and it is available under the terms of the new BSD license.
+
+The flow library implements thread-safe FIFO queues (<em>flows</em>), and provides facilities for manipulating them that are compatible with the Standard C++ Library.
+<h2>Downloads</h2>
+Using this library requires Boost.Threads and Boost.Optional to be installed and available to the program. To use the elements defined in the flow library, one only has to include the header file flow.hpp: since all code is templated, there is no need for separate compiling and linking.
+<ul>
+	<li><a href="http://nicollet.net/files/articles/flow/flow.hpp">flow.hpp</a> : include this file to use any entity in the library.</li>
+	<li><a href="http://nicollet.net/files/articles/flow/prime.cpp">prime.cpp</a> : a naive prime number test using several cores.</li>
+	<li><a href="http://nicollet.net/files/articles/flow/sort.cpp">sort.cpp</a> : a constant-time sort using an auxiliary thread.</li>
+</ul>
+<h2>Concepts</h2>
+A <strong>flow</strong> is a FIFO queue where enqueueing and dequeueing are atomic. The type<span style="font-family: courier new,courier;"> flows::flow&lt;T&gt;</span> represents a flow of elements of type T.
+
+Flows are manipulated through <strong>readers</strong> and <strong>writers,</strong> which are objects used to read from and write to the flow. Reading will remove the oldest element from the flow, while writing will append a new element to the flow, in a FIFO fashion. Attempting to read from an empty flow will block until another thread writes to the flow. Readers are represented by class <span style="font-family: courier new,courier;">flows::reader&lt;T&gt;</span>, and writers are represented by class <span style="font-family: courier new,courier;">flows::writer&lt;T&gt;</span>.
+
+When all writers of a flow disappear, the flow is <strong>closed</strong>: all the readers are notified that no more data will be appended to the flow, triggering an end-of-flow state once all the remaining elements have been removed from the flow.
+
+When all readers of a flow disappear, the flow is <strong>silent</strong>: all the writers are notified that nobody will ever read the data written to the flow, providing opportunities for optimization.
+
+When all readers and writers of a flow disappear, that flow is automatically garbage-collected and is destroyed by the thread that destroyed the last reader or writer (along with all the elements it still contained).
+<h2>Documentation</h2>
+<h3>class flows::reader&lt;T&gt;</h3>
+This class represents a reader, which may be associated to a flow (<strong>valid reader</strong>), or not be associated to any flow (<strong>invalid reader</strong>). The class itself can be summarized as:
+<blockquote>
+<pre style="background: #ffffff none repeat scroll 0% 50%; color: #000000;"><span style="color: #000084; font-weight: bold;">template</span> &lt;<span style="color: #000084; font-weight: bold;">typename</span> T&gt; 
+<span style="color: #000084; font-weight: bold;">class</span> reader  
+{ 
+<span style="color: #000084; font-weight: bold;">public</span>: 
+  <span style="color: #000084; font-weight: bold;">typedef</span> T                  value_type; 
+  <span style="color: #000084; font-weight: bold;">typedef</span> boost::optional&lt;T&gt; option_type; 
+  <span style="color: #000084; font-weight: bold;">typedef</span> <span style="color: #808080;">/* unspecified */</span>  <span style="color: #000084; font-weight: bold;">iterator</span>; 
+
+  <span style="color: #000084; font-weight: bold;">iterator</span>    begin(); 
+  <span style="color: #000084; font-weight: bold;">iterator</span>    end(); 
+              reader(); 
+              reader(<span style="color: #000084; font-weight: bold;">const</span> reader&amp;); 
+  reader&amp;     <span style="color: #000084; font-weight: bold;">operator</span> =(<span style="color: #000084; font-weight: bold;">const</span> reader&amp;); 
+  <span style="color: #000084; font-weight: bold;">void</span>        close(); 
+  option_type get(); 
+};</pre>
+</blockquote>
+The default constructor creates an invalid reader. A valid reader can only be obtained from <span style="font-family: courier new,courier;">flows::flow&lt;T&gt;</span>. Assigning to a reader dissociates that reader from its flow (if any), which may lead to that flow being silenced or even destroyed if this was the last reader for that flow. Note that <span style="font-family: courier new,courier;">flows::reader&lt;T&gt;::close()</span> is equivalent to assigning a default-constructed reader: the reader becomes invalid and detached from its associated flow (if any).
+
+The<span style="font-family: courier new,courier;"> flows::reader&lt;T&gt;::get()</span> function behaves as follows:
+<ul>
+	<li>If the reader is invalid, returns no value.</li>
+	<li>If the reader is valid, but the associated flow is closed and empty, returns no value.</li>
+	<li>If the reader is valid, but the associated flow is empty, blocks until a value becomes available or the flow is closed, and tries again.</li>
+	<li>If the reader is valid and the associated flow is not empty, atomically removes the oldest value and returns it.</li>
+</ul>
+As a consequence, if two or more readers are associated to the same flow, every element in the flow will be read by at most one reader (and all elements will be either read by a reader or destroyed along with the flow).
+
+<span style="font-family: courier new,courier;">flows::reader&lt;T&gt;::begin()</span> and<span style="font-family: courier new,courier;"> flows::reader&lt;T&gt;::end()</span> are the first and past-the-end iterators of the read sequence of elements. They are input iterators (in the sense defined by the Standard C++Library) which represent the sequence of elements read by a particular reader:
+<ul>
+	<li>Creating an iterator using <span style="font-family: courier new,courier;">begin()</span> or incrementing an iterator reads the next value from the flow by calling the <span style="font-family: courier new,courier;">flows::reader&lt;T&gt;::get()</span> function on the associated reader. This function call may block until the flow is written to. If it returns a value, then the iterator is bound to that value. Otherwise, the iterator becomes equal to the past-the-end iterator.</li>
+	<li>Dereferencing an iterator returns the value bound to the iterator. This is guaranteed to occur in constant time.</li>
+</ul>
+Iterators are invalidated on every assignment to the reader.
+
+An analogy for read iterators is the <span style="font-family: courier new,courier;">std::istream_iterator</span>, but the data is read from a flow using <span style="font-family: courier new,courier;">flows::reader&lt;T&gt;::get()</span>, instead of being read from a stream using <span style="font-family: courier new,courier;">operator&gt;&gt;()</span>.
+<h3>class flows::writer&lt;T&gt;</h3>
+This class represents a writer, which may be associated to a flow (<strong>valid writer</strong>), or not be associated to any flow (<strong>invalid writer</strong>). The class can be summarized as:
+<blockquote>
+<pre style="background: #ffffff none repeat scroll 0% 50%; color: #000000;"><span style="color: #000084; font-weight: bold;">template</span> &lt;<span style="color: #000084; font-weight: bold;">typename</span> T&gt; 
+<span style="color: #000084; font-weight: bold;">class</span> writer 
+{ 
+  <span style="color: #000084; font-weight: bold;">typedef</span> T                 value_type; 
+  <span style="color: #000084; font-weight: bold;">typedef</span> <span style="color: #808080;">/* unspecified */</span> <span style="color: #000084; font-weight: bold;">iterator</span>; 
+
+  <span style="color: #000084; font-weight: bold;">iterator</span> begin(); 
+           writer(); 
+           writer(<span style="color: #000084; font-weight: bold;">const</span> writer&amp;); 
+  writer&amp;  <span style="color: #000084; font-weight: bold;">operator</span> =(<span style="color: #000084; font-weight: bold;">const</span> writer&amp;); 
+  <span style="color: #000084; font-weight: bold;">void</span>     close(); 
+  <span style="color: #000084; font-weight: bold;">bool</span>     silent(); 
+  <span style="color: #000084; font-weight: bold;">void</span>     put(<span style="color: #000084; font-weight: bold;">const</span> T&amp;); 
+};</pre>
+</blockquote>
+The default constructor creates an invalid writer. The only way to create a valid writer is to use<span style="font-family: courier new,courier;"> flows::flow&lt;T&gt;</span>. Assigning to a writer dissociates that writer from its flow (if any), and then binds it to the flow of the writer that was assigned to it (if any). This may lead to the flow becoming closed or even garbage-collected. <span style="font-family: courier new,courier;">flows::writer&lt;T&gt;::close()</span> is equivalent to (but more idiomatic than) assigning a default-constructed writer.
+
+The <span style="font-family: courier new,courier;">flows::writer&lt;T&gt;::put()</span> function atomically writes a copy of its argument to the flow associated to the writer. If there is no associated flow, the behavior of this function is undefined.
+
+The <span style="font-family: courier new,courier;">flows::writer&lt;T&gt;::silent()</span> function returns whether the associated flow is silent or not. If there is no associated flow, the behavior of this function is undefined. This is provided as optimization hints to avoid computing values only to place them in a silent flow. It can be used to notify search threads that the one of them has found what was searched. See the above example on prime numbers for an illustration.
+
+The <span style="font-family: courier new,courier;">flows::writer&lt;T&gt;::begin()</span> function returns the output iterator for this writer. This iterator behaves as an <span style="font-family: courier new,courier;">std::back_insert_iterator</span>, but calls <span style="font-family: courier new,courier;">flows::writer&lt;T&gt;::put()</span> on its associated writer instead of calling <span style="font-family: courier new,courier;">insert()</span>. This iterator is invalidated by assignment to the writer.
+<h3>class flows::flow&lt;T&gt;</h3>
+This class represents an active flow, and allows creating fresh readers and writers associated to that flow. For that reason, for as long as this instance exists, the underlying flow can be neither closed nor silenced (because a new reader or writer could be obtained from it at any time). <em>Therefore, this instance should be used to prepare a computation, and destroyed before the computation starts.</em>
+
+When the instance is destroyed, the flow itself remains in memory for as long as readers or writers are associated to it. Once all readers and writers are gone, the flow is destroyed immediately, destroying any unread data left.
+
+Note that the library provides several functions that dispatch computations to other threads without requiring the explicit creation of a flow from user code. Ideally, <span style="font-family: courier new,courier;">flows::flow&lt;T&gt;</span> should only be used in situations where these functions do not meet the needs of the program, and even then it should only be used with care.
+
+The class can be summarized as:
+<blockquote>
+<pre style="background: #ffffff none repeat scroll 0% 50%; color: #000000;"><span style="color: #000084; font-weight: bold;">template</span> &lt;<span style="color: #000084; font-weight: bold;">typename</span> T&gt; <span style="color: #000084; font-weight: bold;">
+class</span> flow 
+{ 
+  flow(); 
+
+  <span style="color: #000084; font-weight: bold;">const</span> writer&lt;T&gt;&amp; input() <span style="color: #000084; font-weight: bold;">const</span>; 
+  <span style="color: #000084; font-weight: bold;">const</span> reader&lt;T&gt;&amp; output() <span style="color: #000084; font-weight: bold;">const</span>; 
+};</pre>
+</blockquote>
+As expected, <span style="font-family: courier new,courier;">flows::flow&lt;T&gt;::input()</span> returns a writer associated to the flow, and <span style="font-family: courier new,courier;">flows::flow&lt;T&gt;::output()</span> returns a reader associated to the flow. Unlike the naming approach of the C++ Standard Library, where an input stream is a reader and an output stream is a writer, the input of a flow is the writer (where the flow gets its input) and the output of a flow is the reader (where the flow sends its input).
+<h3>Generators</h3>
+A generator is a separate thread that computes values and outputs them to a flow. The original thread keeps a reader associated to that flow, and may read values from the flow as they become available.
+
+Two functions allow the creation of generators:
+<blockquote>
+<pre style="background: #ffffff none repeat scroll 0% 50%; color: #000000;"><span style="color: #000084; font-weight: bold;">template</span> &lt;<span style="color: #000084; font-weight: bold;">typename</span> T, <span style="color: #000084; font-weight: bold;">typename</span> F&gt; 
+reader&lt;T&gt; <span style="color: #000084; font-weight: bold;">generate</span>(F f); 
+
+<span style="color: #000084; font-weight: bold;">template</span> &lt;<span style="color: #000084; font-weight: bold;">typename</span> T, <span style="color: #000084; font-weight: bold;">typename</span> F, <span style="color: #000084; font-weight: bold;">typename</span> I&gt; 
+reader&lt;T&gt; <span style="color: #000084; font-weight: bold;">generate</span>(F f, I b, I e);</pre>
+</blockquote>
+The first function creates a new flow and a new thread. Then, in that new thread, it calls <span style="font-family: courier new,courier;">f(w)</span> where <span style="font-family: courier new,courier;">f</span> is the argument to the generate function, and <span style="font-family: courier new,courier;">w</span> is a writer associated to that flow. Simultaneously, it returns a reader associated to the flow in the original thread. The created thread ends when the argument function returns.
+
+The second function creates one new flow, and creates a thread for each iterator <span style="font-family: courier new,courier;">i</span> between <span style="font-family: courier new,courier;">b</span> and <span style="font-family: courier new,courier;">e</span>.  Each thread calls <span style="font-family: courier new,courier;">f(w,*i)</span>, and the function simultaneously returns a reader for the flow. Each created thread ends when its function call returns.
+
+That is, the first function creates a generator, and the second function creates one generator for each iterator in the passed sequence.
+<h3>Processing</h3>
+A processor is a thread which reads from a flow, does some computations, and writes to another flow. The most generic way of doing this (by specifying the exact function that reads and writes) is with the <span style="font-family: courier new,courier;">flows::process&lt;T&gt;()</span> function:
+<blockquote>
+<pre style="background: #ffffff none repeat scroll 0% 50%; color: #000000;"><span style="color: #000084; font-weight: bold;">template</span>&lt;<span style="color: #000084; font-weight: bold;">typename</span> T, <span style="color: #000084; font-weight: bold;">typename</span> U, <span style="color: #000084; font-weight: bold;">typename</span> F&gt; 
+reader&lt;T&gt; process(<span style="color: #000084; font-weight: bold;">const</span> reader&lt;U&gt; &amp;source, F f);</pre>
+</blockquote>
+This function creates a new flow and a new thread which runs <span style="font-family: courier new,courier;">f(source,dest)</span>, where <span style="font-family: courier new,courier;">dest </span>is a writer associated to the new flow. It immediately returns a reader associated to the new flow.
+
+A special case of processing is mapping an function to a flow: the processor reads a value, applies a function to it, and writes the result to another flow. Mapping is done using the <span style="font-family: courier new,courier;">flows::transform&lt;T&gt;() </span>function:
+<blockquote>
+<pre style="background: #ffffff none repeat scroll 0% 50%; color: #000000;"><span style="color: #000084; font-weight: bold;">template</span> &lt;<span style="color: #000084; font-weight: bold;">typename</span> T, <span style="color: #000084; font-weight: bold;">typename</span> U, <span style="color: #000084; font-weight: bold;">typename</span> F&gt; 
+reader&lt;T&gt; <span style="color: #000084; font-weight: bold;">transform</span>(<span style="color: #000084; font-weight: bold;">const</span> reader&lt;U&gt; &amp;source, F f, <span style="color: #000084; font-weight: bold;">unsigned</span> n = 1);</pre>
+</blockquote>
+This function creates <span style="font-family: courier new,courier;">n</span> new threads and a single flow, and returns a reader associated to that flow. Every thread reads a value <span style="font-family: courier new,courier;">x</span> from the source reader, and writes <span style="font-family: courier new,courier;">f(x)</span> to the new flow. Note that if <span style="font-family: courier new,courier;">n = 1</span>, the order is preserved, but not if <span style="font-family: courier new,courier;">n &gt; 1</span>. The new flow is closed when all the data from the original flow has been processed.
+<h3>Accumulating</h3>
+An accumulator is a thread which reads from a flow and applies a binary operation to collapse all the values into a single one, using an initial value for the first application. Once all the data is processed, it writes the final value to an output flow.
+
+Accumulation is performed using the function <span style="font-family: courier new,courier;">flows::accumulate&lt;T&gt;()</span> function:
+<blockquote>
+<pre style="background: #ffffff none repeat scroll 0% 50%; color: #000000;"><span style="color: #000084; font-weight: bold;">template</span> &lt;<span style="color: #000084; font-weight: bold;">typename</span> T, <span style="color: #000084; font-weight: bold;">typename</span> U, <span style="color: #000084; font-weight: bold;">typename</span> F&gt; 
+reader&lt;T&gt; accumulate(<span style="color: #000084; font-weight: bold;">const</span> reader&lt;U&gt; &amp;source, T initial, F f);</pre>
+</blockquote>
+This function creates a flow and thread. The thread performs the operation <span style="font-family: courier new,courier;">f(initial,*it)</span> for <span style="font-family: courier new,courier;">it</span> between <span style="font-family: courier new,courier;">source.begin()</span> and <span style="font-family: courier new,courier;">source.end()</span>, then writes initial to the flow. The function returns the reader associated to the flow immediately.
+<h2>Further work</h2>
+The implementation could be improved. First, it could be adapted to work with lock-free structures. Second, it could also be adapted to use worker threads instead of spawning new threads for every operation.
+
+The interface could also use some improvement. For instance, it's still too easy to create deadlocks by forgetting to close a writer in the wrong place. And the code does not interact with the standard library as well as it should.

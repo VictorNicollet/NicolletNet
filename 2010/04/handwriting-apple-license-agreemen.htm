@@ -1,0 +1,26 @@
+@title Handwriting - Apple's new License Agreement
+@draft
+
+The latest development in the fight against 1984 is the latest License Agreement for Apple's iPhone developer platform, which <a href="http://daringfireball.net/2010/04/iphone_agreement_bans_flash_compiler" target="_blank">includes a new constraint</a> on allowed applications:
+<blockquote>3.3.1 — Applications may only use Documented APIs in the manner prescribed by Apple and must not use or call any private APIs. <strong>Applications must be originally written in Objective-C, C, C++, or JavaScript as executed by the iPhone OS WebKit engine</strong>, and only code written in C, C++, and Objective-C may compile and directly link against the Documented APIs (e.g., Applications that link to Documented APIs through an intermediary translation or compatibility layer or tool are prohibited).</blockquote>
+There should be no problem if you play by the rules and write your software in the specified languages. Conversely, you can expect to have problems if you write your application in a different language (say, ActionScript 3) and use a program to compile and link that against the iPhone API.
+
+There's a grey area in-between. Suppose for a moment that you originally wrote your software in a different language (say, a Java application on Android).
+
+Can you rewrite that software in Objective C?
+
+Can you outsource the project to a software sweatshop in India to have it rewritten it in Objective C?
+
+Can you have that sweatshop define an API that your Java application has to use, to help them translate instructions in the iPhone API setting?
+
+Can that sweatshop use automatic translation routines that work on 5% of the code (such as changing source file extensions, turning "private" into "@private"...), and finish the remaining 95% by hand?
+
+What if the tools translate 95% of the original Java into clean and readable Objective C, and there's only 5% left to do by hand?
+
+What if the tools handle 99,99% of the translation work, and the remaining 0,01% is mostly typing in the project's name and a few configuration elements such as indentation style or source and destination folders?
+
+And, if you manage to find automatic translation routines that work so well and efficiently 99,99% of the work is done by the click of a button, is it really important if the resulting code isn't easy to read or modify?
+
+Where is the line drawn? And is Apple going to require the application source code, in order to check?
+
+Can Apple require that all your source code listings be handwritten?

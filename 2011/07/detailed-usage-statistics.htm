@@ -1,0 +1,20 @@
+@title Detailed Usage Statistics
+@draft
+
+<img class="aligncenter size-full wp-image-2448" title="stats-header" src="http://www.nicollet.net/wp-content/uploads/2011/07/stats-header.png" alt="" width="675" height="100" />
+
+Use experience is heavily influenced by how fast the application or web site reacts. It makes sense to set up tools that help the development team detect performance issues and correct them. I've shamelessly pilfered the <a href="http://www.codinghorror.com/blog/2011/06/performance-is-a-feature.html" target="_blank">basic ideas illustrated by Jeff Atwood last month</a> :
+<blockquote>That's why, as a developer, you need to put performance right in front  of your face on every single page, all the time. That's exactly what we  did with our <a href="http://code.google.com/p/mvc-mini-profiler/">MVC Mini Profiler</a>, which we are contributing back to the world as open source. The simple act of <strong>putting a render time in the upper right hand corner of every page we serve</strong> forced us to fix all our performance regressions and omissions.</blockquote>
+When logged in as a member of the team, every request sent to the server, including all AJAX requests, display a small summary of what happened during that request:
+
+<img class="aligncenter size-full wp-image-2446" title="after-optim" src="http://www.nicollet.net/wp-content/uploads/2011/07/after-optim.png" alt="" width="650" height="197" />
+
+In addition to these real-time stats, the server also saves this profiling data to the database (at a cost of an additional millisecond or two). That database is then sliced up into atomic operations like "Get Picture"or "Get Item", averaged, and consolidated into charts:
+
+<img class="aligncenter size-full wp-image-2447" title="graphs" src="http://www.nicollet.net/wp-content/uploads/2011/07/graphs.png" alt="" width="544" height="782" />
+
+The operations are sorted by Impact = Duration × Frequency, which happens to be an accurate approximation of how much performance could be gained by optimizing a given operation. The database load is not a duration, it's a summary of how many requests were performed and how many bytes were sent or received, but it does not reflect how long it took the database to actually process the request.
+
+This chart tells me that, among all atomic operations, accessing a picture is the most important one — which is quite expected, because every page contains several user pictures: even though the operation is very fast, it's executed extremely often. So, it would be possible to slash request times across the board by either de-normalizing the picture URL into the user profile (so that both the name and picture URL are loaded from the database in one read) or by storing the picture-identifier-to-URL mapping in a distributed cache such as memcache.
+
+The second most important operation would be user identification: determining the relationship between an user and the workspace they are trying to access, which happens on every single HTTP request. Whereas grabbing a picture is a simple fetch-by-identifier from CouchDB, user identification involves accessing a view with <code>include_docs=true</code>, which is slower. The optimization I am considering is to provide the user with a cookie that contains the identifier of their relationship to a given workspace, which is easy because every workspace has its own sub-domain, and run a fetch-by-identifier from CouchDB instead of a view access (of course, if the cookie is incorrect or missing, the server will fall back on a view access). From my experience with similar situations, this would cut the execution time in half.

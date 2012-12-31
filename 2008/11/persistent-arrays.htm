@@ -1,0 +1,96 @@
+@title Persistent Arrays
+@draft
+
+Imperative style programming has a performance advantage over pure functional programming. This is related to the problem of aliasing, which is a type of functionality that imperative programming supports but pure functional programming does not.
+
+Consider a button: it can be pressed or not. Consider two data structures within the program which both reference the button, which is initially not pressed. Assuming that someone presses the button, how do the changes propagate?
+
+In the imperative version, the button is mutable. Thus, it's possible to change its state from "not pressed" to "pressed", and both data structures will be aware of the changes. In the pure functional version, the button is not pressed, and will stay so forever. The only solution is to replace it with a copy that is pressed. However, the two data structures themselves are also immutable, and will still reference the old version (that is not pressed), which then requires the code to replace them in turn with copies that reference the new version. This propagation goes up the entire data structure up to the context of the current function.
+<h2>Arrays</h2>
+The most common example of imperative construct that is has no functional equivalent is the array. An array is a mutable container which supports read and write access to elements identified by consecutive integers. All access happens in constant time.
+
+Is it possible to create an immutable version of an array? Mostly no, with small sprinkles of yes. The main difficulty comes from the fact that once a modification is applied to an immutable array, a new array is created and exists independently of the old one. The obvious and naive implementation, which consists in creating a real in-memory copy, is of course suboptimal because it operates in linear time (in the number of elements) for write-access in order to achieve constant time read-access and also wastes a lot of memory. The other naive implementation, which consists in storing the modifications applied to the array as a linked list, achieves linear time (in the number of modifications) for read-access and constant time write-access.
+
+Even when looking into trickier algorithms, attempting to implement an array using only the classic immutable data types (such as tuples, lists and trees) results in non-constant access time for either read or write operations (sometimes both). The typical implementation has logarithmic read-write access, which is good, but still not good enough.
+<h2>Persistent Arrays</h2>
+It's possible, however, to come quite close to constant-time by giving up on implementing the array using pure functional methods. An example of optimisation is <a href="http://portal.acm.org/citation.cfm?doid=359545.359566">Baker's algorithm</a>. The Objective Caml version of the algorithm (seen below) is inspired by the implementation of <a href="http://www.lri.fr/%7Efilliatr/ftp/publis/puf-wml07.ps">Conchon and Fillitre</a>.
+
+The underlying idea is that it is enough for the array to <em>appear</em> immutable, so that its actual implementation may use mutable concepts including the original mutable arrays. The original implementation starts by representing the immutable array as a mutable array plus a list of modifications. This results in write-access that takes constant time and read-access which takes linear time in the number of modifications. Then, Baker optimizes the read process by using rerooting : instead of representing the current array as the original array plus a list of modifications applied to it, the rerooting algorithm represents the original array as the current array plus a list of modifications applied to it. The rerooting process consists in reversing the list of modifications while applying them in order to the array (which takes linear time in the number of modifications) but once it has been done, it does not have to be repeated until a new change happens, so that if the array is used as a normal mutable array (no backtracking) then the reading happens in amortized constant time.
+
+The data structure in itself follows a basic pattern. Every immutable array is either an array node (contains a mutable array) or a diff node (contains a modification as a value-index pair, and a reference to the original immutable array). The nodes are mutable (so that a diff node may become an array node and vice versa). Altering the array creates a diff node referencing the original. Reading from the array reroots the array (so that the manipulated node becomes an array node) and reads from the mutable array thus obtained. Rerooting is a recursive process which, on a diff node, reroots the referenced array, then swaps the current node and the older node (applying the modification represented by the diff, and then replacing that modification with its inverse).
+
+The actual application also supports extracting sub-arrays and representing swaps as a single operation instead of two diffs:
+<blockquote>
+<pre style="background: #ffffff none repeat scroll 0% 50%; color: #000000;"><span style="color: #000084; font-weight: bold;">type</span> 'a t = 
+    { length : <span style="color: #000084; font-weight: bold;">int</span> 
+    ; offset : <span style="color: #000084; font-weight: bold;">int</span> 
+    ; <span style="color: #000084; font-weight: bold;">mutable</span> data : 'a node } 
+
+<span style="color: #000084; font-weight: bold;">and</span> 'a node = 
+  | Array <span style="color: #000084; font-weight: bold;">of</span> 'a <span style="color: #000084; font-weight: bold;">array</span> 
+  | Diff <span style="color: #000084; font-weight: bold;">of</span> <span style="color: #000084; font-weight: bold;">int</span> * 'a * 'a t 
+  | Swap <span style="color: #000084; font-weight: bold;">of</span> <span style="color: #000084; font-weight: bold;">int</span> * <span style="color: #000084; font-weight: bold;">int</span> * 'a t 
+  | Same <span style="color: #000084; font-weight: bold;">of</span> 'a t 
+
+<span style="color: #000084; font-weight: bold;">let</span> <span style="color: #000084; font-weight: bold;">rec</span> cache a = 
+  <span style="color: #000084; font-weight: bold;">match</span> a.data <span style="color: #000084; font-weight: bold;">with</span> 
+    | Array _       -&gt; () 
+    | Same b -&gt; 
+        cache b ; 
+        <span style="color: #000084; font-weight: bold;">begin</span> <span style="color: #000084; font-weight: bold;">match</span> b.data <span style="color: #000084; font-weight: bold;">with</span> 
+          | Array arr -&gt; 
+              b.data &lt;- Same a ; 
+              a.data &lt;- Array arr 
+          | _ -&gt; <span style="color: #000084; font-weight: bold;">assert</span> <span style="color: #000084; font-weight: bold;">false</span> 
+        <span style="color: #000084; font-weight: bold;">end</span> 
+    | Swap (i,j,b) -&gt; 
+        cache b ; 
+        <span style="color: #000084; font-weight: bold;">begin</span> <span style="color: #000084; font-weight: bold;">match</span> b.data <span style="color: #000084; font-weight: bold;">with</span> 
+          | Array arr -&gt; 
+              <span style="color: #000084; font-weight: bold;">let</span> x = arr.(i) <span style="color: #000084; font-weight: bold;">in</span> arr.(i) &lt;- arr.(j) ; arr.(j) &lt;- x ; 
+              b.data &lt;- Swap (i,j,a) ; 
+              a.data &lt;- Array arr 
+          | _ -&gt; <span style="color: #000084; font-weight: bold;">assert</span> <span style="color: #000084; font-weight: bold;">false</span> 
+        <span style="color: #000084; font-weight: bold;">end</span> 
+    | Diff (i,x,b) -&gt; 
+        cache b ; 
+        <span style="color: #000084; font-weight: bold;">begin</span> <span style="color: #000084; font-weight: bold;">match</span> b.data <span style="color: #000084; font-weight: bold;">with</span> 
+          | Array arr    -&gt; 
+              <span style="color: #000084; font-weight: bold;">let</span> x' = arr.(i) <span style="color: #000084; font-weight: bold;">in</span> arr.(i) &lt;- x ; 
+              b.data &lt;- Diff (i,x',b) ; 
+              a.data &lt;- Array arr 
+          | _ -&gt; <span style="color: #000084; font-weight: bold;">assert</span> <span style="color: #000084; font-weight: bold;">false</span> 
+        <span style="color: #000084; font-weight: bold;">end</span> 
+
+<span style="color: #000084; font-weight: bold;">let</span> impl a = 
+  <span style="color: #000084; font-weight: bold;">match</span> a.data <span style="color: #000084; font-weight: bold;">with</span> 
+    | Array arr -&gt; arr 
+    | _         -&gt; 
+        cache a; 
+        <span style="color: #000084; font-weight: bold;">match</span> a.data <span style="color: #000084; font-weight: bold;">with</span> 
+          | Array arr -&gt; arr 
+          | _         -&gt; <span style="color: #000084; font-weight: bold;">assert</span> <span style="color: #000084; font-weight: bold;">false</span> 
+
+<span style="color: #000084; font-weight: bold;">let</span> array a = 
+  { length = length a 
+  ; offset = 0 
+  ; data   = Array a } 
+
+<span style="color: #000084; font-weight: bold;">let</span> set a i x = 
+  { length = a.length 
+  ; offset = a.offset 
+  ; data   = Diff (i+a.offset,x,a) } 
+
+<span style="color: #000084; font-weight: bold;">let</span> sub a o l = 
+  { length = l 
+  ; offset = a.offset + o 
+  ; data   = Same a } 
+
+<span style="color: #000084; font-weight: bold;">let</span> swap a i j = 
+  { length = a.length 
+  ; offset = a.offset 
+  ; data   = Swap (i+a.offset,j+a.offset,a) } 
+
+<span style="color: #000084; font-weight: bold;">let</span> get a i   = (impl a).(i + a.offset)</pre>
+</blockquote>
+Download the implementation here: <a href="http://www.nicollet.net/files/articles/persist/persistArray.ml">persistArray.ml</a>, <a href="http://www.nicollet.net/files/articles/persist/persistArray.mli">persistArray.mli</a>.These files are available in the public domain (without any guarantee) and provide a reimplementation of the Array module using persistent arrays.

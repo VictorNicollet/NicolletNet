@@ -1,0 +1,36 @@
+@title OCaml Web Sites
+@draft
+
+Objective Caml's use as a web programming language is <a href="http://cocan.org/web_sites_using_ocaml" target="_blank">very limited</a>. It's orders of magnitudes smaller than the mastodons that are PHP, Java and ASP.NET, and also considerably smaller than Perl, Ruby and classic CGI solutions.
+
+Why?
+<h2>Hosting Availability</h2>
+I'm discussing here only the cheap hosting options provided to the <em>vulgum pecus</em>. Since people at hosting companies don't see Objective Caml as a credible web language, they are not going to spend precious time providing support for it on anything but user-maintained dedicated servers. Arguably, this one affects other languages as well. Looking at my host's  prices:
+<ul>
+	<li>PHP is available around €2/month</li>
+	<li>Perl/CGI/Python start around €4/month</li>
+	<li>Anything else needs at least €12/month</li>
+</ul>
+Sure, I can look for .NET hosting elsewhere (starts at €4/month) or a Java-Tomcat combination. But there are as of now no "Objective Caml is installed and you can just upload your software" services. The only one that's commonly available is CGI, but it requires compiling the program natively (since there's no runtime), which requires a lot of knowledge that's just not needed for PHP.
+
+This means your average web beginner who wants a website will not have access to much beyond PHP.
+<h2>Beginner-Friendliness</h2>
+In this regard, PHP is the easiest by far (along with Perl or Python, but these two have fewer highly targeted tutorials available online). You don't have to launch an IDE to manipulate your code, you don't have to run a compiler, you just open a file in your text editor, upload it to the server, and visit the URL again.
+
+This method has massive downsides. First, it's not practical for any kind of industrial development (you would have to move to an IDE, use source control, and set up a deployment strategy beyond just uploading the files). Second, the absence of compiling means a lot of errors can filter through and only manifest when a certain set of conditions appear, even though it's a stupid error that a classic type system could have caught.
+
+But it's <em>practical</em>. The cost necessary for starting to work with PHP, or to hack through a small bit of existing PHP code, is orders of magnitude smaller than that of other languages including Objective Caml.
+<h2>Web Frameworks</h2>
+Ruby has Rails, PHP has the Zend Framework and CakePHP, C# comes with ASP.NET, and Java has (among others) JSP and JSF. What does Objective Caml come with?
+<ul>
+	<li>There's no universal mapping system that would map Objective Caml values to a database. You have to work with specific tools: <a href="http://developer.berlios.de/projects/pgocaml/" target="_blank">POCaml</a> (postgreSQL), <a href="http://caml.inria.fr/cgi-bin/hump.en.cgi?contrib=361" target="_blank">OCaml-Mysql</a>, and so on. Arguably, that's not so bad.</li>
+	<li>There's no universal HTTP handling. On the one hand, there's <a href="http://upsilon.cc/~zack/hacking/software/ocaml-http/">OCaml HTTP</a>, which runs a daemon (can be nasty on non-dedicated hosting) and is GPL software. On the other hand, there's <a href="http://merjis.com/developers/mod_caml" target="_blank">mod_caml</a> for Apache, which benefits from existing Apache installs but runs every program as a CGI script with no persistence outside of the database. And then, there's <a href="http://docs.camlcity.org/docs/godipkg/3.10/godi-ocaml-http" target="_blank">godi-ocaml-http</a>.</li>
+	<li>A lot of the additional functionality provided by typical web frameworks is missing. Take a look at the Zend Framework or Rails to see the amount of web-oriented functionality some web frameworks manage to cram.</li>
+</ul>
+In short, there's not a lot to see here.
+<h2>What If?</h2>
+What would happen if a compact web framework were proposed? One that, in addition to borrowing existing useful concepts from other languages, also added some OCaml-specific features to the mix. Functional modules would be an interesting addition, so would be the type system and pure functional programming applied to transactions, and monadic optimization at initialization time would also be quite interesting.
+
+The problem of convincing young web beginners to use the language would still exist, but at least professionals could look upon it with a little bit more seriousness. Especially if some standalone high-quality pieces of web software written in Objective Caml hit the market.
+
+So, where do we begin?

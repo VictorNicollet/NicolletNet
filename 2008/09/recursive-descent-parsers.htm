@@ -1,0 +1,232 @@
+@title Recursive Descent Parsers
+@draft
+
+<h2>Parsing and grammars</h2>
+A grammar describes how to generate a sequence of tokens that satisfies certain rules. For instance, the grammar for a basic calculator would be:
+<blockquote>
+<pre>e = 'integer' [Value]
+  | e '+' e   [Add]
+  | e '*' e   [Mul]
+  | '(' e ')'</pre>
+</blockquote>
+Parsing is the process of obtaining a <strong>derivation </strong>that generates a sequence of tokens from a grammar. For instance, a token sequence such as:
+<blockquote>
+<pre>2 + 3 * 4</pre>
+</blockquote>
+Can be created from the above grammar using one of the derivations:
+<blockquote>
+<pre>Mul (Add (Value 2, Value 3), Value 4) 
+Add(Value 2, Mul(Value 3, Value 4))</pre>
+</blockquote>
+Of course, the grammar used as an example is ambiguous (there are several possible derivations), and in the real world one prefers non-ambigous grammars (so that the result of the parsing is always unique). An example of non-ambiguous grammar for the above is a grammar that takes into account the differences in priority for addition and substraction. So:
+<blockquote>
+<pre>base = 'integer' [Value]
+     | '(' expr ')' 
+
+add = mul 
+    | mul '+' add [Add]
+
+mul = base
+    | base '*' mul [Mul]
+
+expr = add</pre>
+</blockquote>
+Where the first derivation (which was incorrect as far as priorities are concerned) is now impossible, because an <span style="font-family: courier new,courier; color: #999999;">Add </span>can only appear inside a <span style="font-family: courier new,courier; color: #999999;">Mul </span>if it's inside brackets.
+<h2>Recursive Descent Parsers</h2>
+The simplest way to construct a parser from a grammar is to use a recursive descent parser. Assuming that the input is tokenized (every integer and operator appears as a single string within a list of strings), then a parser that effectively recognizes the expressions above is:
+<blockquote>
+<pre style="background: #ffffff none repeat scroll 0% 50%; color: #000000;"><span style="color: #000084; font-weight: bold;">exception</span> Syntax 
+
+<span style="color: #000084; font-weight: bold;">type</span> r = 
+  | Value <span style="color: #000084; font-weight: bold;">of</span> <span style="color: #000084; font-weight: bold;">int</span> 
+  | Add <span style="color: #000084; font-weight: bold;">of</span> r * r | Mul <span style="color: #000084; font-weight: bold;">of</span> r * r
+
+<span style="color: #000084; font-weight: bold;">let</span> <span style="color: #000084; font-weight: bold;">rec</span> rule_base = <span style="color: #000084; font-weight: bold;">function</span> 
+  | [] -&gt; <span style="color: #000084; font-weight: bold;">raise</span> Syntax 
+  | <span style="color: #0000ff;">"("</span> :: t -&gt; <span style="color: #000084; font-weight: bold;">let</span> e, t = rule_expr t <span style="color: #000084; font-weight: bold;">in</span> 
+                ( <span style="color: #000084; font-weight: bold;">match</span> t <span style="color: #000084; font-weight: bold;">with</span> <span style="color: #0000ff;">")"</span> :: t -&gt; <span style="color: #000084; font-weight: bold;">raise</span> Syntax | l -&gt; e, l )
+  | i :: t -&gt; <span style="color: #000084; font-weight: bold;">try</span> Value (int_of_string i), t <span style="color: #000084; font-weight: bold;">with</span> _ -&gt; <span style="color: #000084; font-weight: bold;">raise</span> Syntax 
+<span style="color: #000084; font-weight: bold;">and</span> rule_mul t = 
+  <span style="color: #000084; font-weight: bold;">let</span> a, t = rule_base t <span style="color: #000084; font-weight: bold;">in</span> 
+  <span style="color: #000084; font-weight: bold;">match</span> t <span style="color: #000084; font-weight: bold;">with</span> 
+    | <span style="color: #0000ff;">"*"</span> :: t -&gt; <span style="color: #000084; font-weight: bold;">let</span> b, t = rule_mul t <span style="color: #000084; font-weight: bold;">in</span> Mul (a,b), t 
+    | _ -&gt; a, t  
+<span style="color: #000084; font-weight: bold;">and</span> rule_add t = 
+  <span style="color: #000084; font-weight: bold;">let</span> a, t = rule_mul t <span style="color: #000084; font-weight: bold;">in</span> 
+  <span style="color: #000084; font-weight: bold;">match</span> t <span style="color: #000084; font-weight: bold;">with</span> 
+    | <span style="color: #0000ff;">"+"</span> :: t -&gt; <span style="color: #000084; font-weight: bold;">let</span> b, t = rule_add t <span style="color: #000084; font-weight: bold;">in</span> Add (a,b), t
+    | _ -&gt; a, t  
+<span style="color: #000084; font-weight: bold;">and</span> rule_expr t = rule_add t 
+
+<span style="color: #000084; font-weight: bold;">let</span> _ = rule_expr [<span style="color: #0000ff;">"2"</span>;<span style="color: #0000ff;">"+"</span>;<span style="color: #0000ff;">"3"</span>;<span style="color: #0000ff;">"*"</span>;<span style="color: #0000ff;">"4"</span>]</pre>
+</blockquote>
+The parser correctly answers <span style="font-family: courier new,courier; color: #999999;">Add (Value 2, Mul (Value 3, Value 4))</span>.
+<h2>Handling Errors</h2>
+A syntax error appears when the provided sequence does not follow the grammar, and there is therefore no possible derivation for that sequence. Syntax errors have three possible causes : a necessary token was forgotten (consider the sequence <span style="font-family: courier new,courier; color: #999999;">(2 + 3 * 4</span> where a closing brace is missing), a token was inserted where it doesn't belong (consider the sequence <span style="font-family: courier new,courier; color: #999999;">2 ++ 3 * 4</span> where a surnumerary plus was added) or a correct token was replacedwth an incorrect token (consider <span style="font-family: courier new,courier; color: #999999;">@ + 3 * 4</span> where the <span style="font-family: courier new,courier; color: #999999;">2</span> was mistyped into an <span style="font-family: courier new,courier; color: #999999;">@</span>). Most of the time, when a token that doesn't fit is encountered, it's difficult to determine whether that token is the error, or whether a token was forgotten before it (should <span style="font-family: courier new,courier; color: #999999;">2 ++ 3</span> be <span style="font-family: courier new,courier; color: #999999;">2 + 3</span> or <span style="font-family: courier new,courier; color: #999999;">2 + 1 + 3</span>?).
+
+Because of this, most parsers merely indicate the problematic token where a syntax error has happened (this is what Objective Caml does) while others also add the list of tokens that could have been accepted (see for instance PHP's infamous <a href="http://en.wikipedia.org/wiki/Paamayim_Nekudotayim">Paamayim Nekudotayim</a> error message).
+
+The problem is that naive Recursive Descent Parsers are quite bad at handling or detecting syntax errors as soon as alternatives are involved. Consider the grammar built on top of the previous one:
+<blockquote>
+<pre>def = 'let' 'n' '=' def 'in' def [Def1]
+    | expr                       [Def2]
+
+prog = 'eof'                   [Prog1]
+    | 'let' 'n' '=' def prog [Prog2]
+    | def ';;' pro           [Prog3]</pre>
+</blockquote>
+Consider now the sequence of tokens<span style="font-family: courier new,courier; color: #999999;"> let n = 10 %</span>, where the final token is obviously an error. The parser will explore the possible derivations in this order:
+<ul>
+	<li>Prog1 fails ('let' is not 'eof').</li>
+	<li>Prog2 runs and reaches 'prog':
+<ul>
+	<li>Prog1 fails ('%' is not 'eof')</li>
+	<li>Prog2 fails ('%' is not 'let')</li>
+	<li>Prog3 reaches 'def':
+<ul>
+	<li>Def1 fails ('%' is not 'let')</li>
+	<li>Def2 fails ('%' does not exist in 'expr')</li>
+</ul>
+</li>
+	<li>... so 'prog' fails.</li>
+</ul>
+</li>
+	<li>... so Prog2 fails.</li>
+	<li>Prog3 reaches 'def':
+<ul>
+	<li>Def1 fails ('%' is not 'in')</li>
+	<li>Def2 fails ('let' does not exist in 'expr')</li>
+</ul>
+</li>
+	<li>... so Prog3 fails.</li>
+</ul>
+The last failure encountered was that 'let' is not a valid initial token, since it cannot generate 'expr'. Displaying this error is of course nonsensical : the actual error is the final token, not the first one.
+
+The solution is to store the furthest token that generated an error (in terms of distance from the first token in the token stream) along with the list of tokens that it was expected to be. In this case, the token errors would be:
+<ul>
+	<li>Token 0 ('let') : expected 'eof', '(' or 'value'</li>
+	<li>Token 3 ('10') : expected 'let' or '('</li>
+	<li>Token 4 ('%') : expected 'eof', 'let', '(', 'value' or 'in'</li>
+</ul>
+And so the error provided would be along the line of <em>"Syntax error on token '%' after token '10', expected 'let', '(', 'in', a value or the end of file"</em>.
+
+Another key idea to keep in mind is the fact that one can remember opening braces, and when a closing brace is expected, signal the position of the opening brace.This would help for a missing '=' after a 'let', for instance.
+<h2>A sample implementation</h2>
+The implementation can be found <a href="http://nicollet.net/files/articles/recursive-descent-parser.ml">here</a>.
+
+Its interface header would look like this:
+<blockquote>
+<pre style="background: #ffffff none repeat scroll 0% 50%; color: #000000;"><span style="color: #808080;">(** The description of a set of tokens. *)</span> 
+<span style="color: #000084; font-weight: bold;">module</span> <span style="color: #000084; font-weight: bold;">type</span> TOKENS = 
+  <span style="color: #000084; font-weight: bold;">sig</span> 
+    <span style="color: #808080;">(** The available tokens. *)</span> 
+    <span style="color: #000084; font-weight: bold;">type</span> token 
+
+    <span style="color: #808080;">(** Errors generated when tokens are expected but</span> 
+<span style="color: #808080;">        not found. *)</span> 
+    <span style="color: #000084; font-weight: bold;">type</span> error 
+
+    <span style="color: #808080;">(** Printing an error *)</span> 
+    <span style="color: #000084; font-weight: bold;">val</span> string_of_error : error -&gt; <span style="color: #000084; font-weight: bold;">string</span> 
+
+    <span style="color: #808080;">(** The end-of-file token. *)</span> 
+    <span style="color: #000084; font-weight: bold;">val</span> eof : token 
+  <span style="color: #000084; font-weight: bold;">end</span> 
+
+<span style="color: #808080;">(** A recursive descent parser over a set of tokens. *)</span> 
+<span style="color: #000084; font-weight: bold;">module</span> RecursiveDescentParser : 
+  <span style="color: #000084; font-weight: bold;">functor</span> (Tokens : TOKENS) -&gt; 
+    <span style="color: #000084; font-weight: bold;">sig</span> 
+
+<span style="color: #808080;">(* ------------------------------------------------------ *)</span> 
+
+      <span style="color: #808080;">(** Description of a failure *)</span> 
+      <span style="color: #000084; font-weight: bold;">type</span> failure 
+
+      <span style="color: #808080;">(** Show a failure. Internally uses </span> 
+<span style="color: #808080;">          Tokens.string_of_error on involved errors. *)</span> 
+      <span style="color: #000084; font-weight: bold;">val</span> pretty_print : failure -&gt; <span style="color: #000084; font-weight: bold;">string</span> 
+
+      <span style="color: #808080;">(** The exception thrown when a failure occurs. *)</span> 
+      <span style="color: #000084; font-weight: bold;">exception</span> ParseError <span style="color: #000084; font-weight: bold;">of</span> failure 
+
+<span style="color: #808080;">(* ------------------------------------------------------ *)</span>       
+
+      <span style="color: #808080;">(** An expectation function. Returns true if the token</span> 
+<span style="color: #808080;">          was expected *)</span> 
+      <span style="color: #000084; font-weight: bold;">type</span> expect = Tokens.token -&gt; <span style="color: #000084; font-weight: bold;">bool</span> 
+
+<span style="color: #808080;">(* ------------------------------------------------------ *)</span> 
+
+      <span style="color: #808080;">(** A parsing context. This is what your parsing rules</span> 
+<span style="color: #808080;">          will be passing around. *)</span> 
+      <span style="color: #000084; font-weight: bold;">type</span> ctx 
+
+      <span style="color: #808080;">(** A rule : receives a context, returns whatever was</span> 
+<span style="color: #808080;">          extracted from the context along with the new </span> 
+<span style="color: #808080;">          context (includes any possible failures or removed</span> 
+<span style="color: #808080;">          tokens. *)</span> 
+      <span style="color: #000084; font-weight: bold;">type</span> 'a rule = ctx -&gt; 'a * ctx 
+
+<span style="color: #808080;">(* ------------------------------------------------------ *)</span> 
+
+      <span style="color: #808080;">(** Get the next token in a context. Does not alter</span> 
+<span style="color: #808080;">          the context. Return Tokens.eof if no more tokens</span> 
+<span style="color: #808080;">          are available. *)</span> 
+      <span style="color: #000084; font-weight: bold;">val</span> next : ctx -&gt; Tokens.token 
+
+      <span style="color: #808080;">(** Get a context minus its first token. An empty </span> 
+<span style="color: #808080;">          context remains an empty context. The original </span> 
+<span style="color: #808080;">          context is not altered. *)</span> 
+      <span style="color: #000084; font-weight: bold;">val</span> shift : ctx -&gt; ctx 
+
+      <span style="color: #808080;">(** Create a new context from a list of tokens *)</span> 
+      <span style="color: #000084; font-weight: bold;">val</span> stream_of_list : Tokens.token <span style="color: #000084; font-weight: bold;">list</span> -&gt; ctx 
+
+<span style="color: #808080;">(* ------------------------------------------------------ *)</span> 
+
+      <span style="color: #808080;">(** Have the context remember a certain failure </span> 
+<span style="color: #808080;">          (to improve reporting) before trying again to </span> 
+<span style="color: #808080;">          parse something else. *)</span> 
+      <span style="color: #000084; font-weight: bold;">val</span> add_failure : failure -&gt; ctx -&gt; ctx 
+
+      <span style="color: #808080;">(** Raises a [ParseError] exception bound to the</span> 
+<span style="color: #808080;">          provided context and error. *)</span> 
+      <span style="color: #000084; font-weight: bold;">val</span> fail : Tokens.error -&gt; ctx -&gt; 'a 
+
+      <span style="color: #808080;">(** Raises a [ParseError] exception.</span> 
+<span style="color: #808080;">          [fail_close err old ctx] works like </span> 
+<span style="color: #808080;">          [fail err ctx], but the error is also bound </span> 
+<span style="color: #808080;">          to a former context [old]. This serves to reference</span> 
+<span style="color: #808080;">          the opening brace tied to a missing closing brace,</span> 
+<span style="color: #808080;">          or similar constructs. *)</span> 
+      <span style="color: #000084; font-weight: bold;">val</span> fail_close : Tokens.error -&gt; ctx -&gt; ctx -&gt; 'a 
+
+      <span style="color: #808080;">(** Either the expectation is satisfied by the next</span> 
+<span style="color: #808080;">          token, or call [fail]. *)</span> 
+      <span style="color: #000084; font-weight: bold;">val</span> expect : expect * Tokens.error -&gt; ctx -&gt; ctx 
+
+      <span style="color: #808080;">(** As [expect], but uses [fail_close]. *)</span> 
+      <span style="color: #000084; font-weight: bold;">val</span> expect_close : expect * Tokens.error -&gt; ctx -&gt; ctx -&gt; ctx 
+
+<span style="color: #808080;">(* ------------------------------------------------------ *)</span> 
+
+      <span style="color: #808080;">(** Given a rule, creates a parenthesized version which</span> 
+<span style="color: #808080;">          [expect]s a first token, then reads the rule, then </span> 
+<span style="color: #808080;">          [expect_close]s a second token, then returns the data</span> 
+<span style="color: #808080;">          returned by the rule. *)</span> 
+      <span style="color: #000084; font-weight: bold;">val</span> between : 
+        expect * Tokens.error -&gt; 'a rule -&gt; expect * Tokens.error -&gt; 'a rule 
+
+      <span style="color: #808080;">(** Given a list of rules, tries every one of them in</span> 
+<span style="color: #808080;">          order and returns the data of the first that did </span> 
+<span style="color: #808080;">          not throw an exception. If all fail, also fails. *)</span> 
+      <span style="color: #000084; font-weight: bold;">val</span> one_of : 'a rule <span style="color: #000084; font-weight: bold;">list</span> -&gt; 'a rule 
+
+      <span style="color: #808080;">(** Reads as many instances of the rule from the input, until</span> 
+<span style="color: #808080;">          it fails, and returns the list in order. *)</span>  
+      <span style="color: #000084; font-weight: bold;">val</span> many : 'a rule -&gt; 'a <span style="color: #000084; font-weight: bold;">list</span> rule 
+
+    <span style="color: #000084; font-weight: bold;">end</span></pre>
+</blockquote>
+The interface could certainly be improved (for instance, monadic manipulation of rules, or access to the internal representation) and so could the implementation (the manyfunction is not tail-recursive yet). Also, another of the classic issues of recursive descent parser (which is left-associative operators) is not solved.

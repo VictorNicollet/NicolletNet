@@ -1,0 +1,38 @@
+@title Let-In
+@draft
+
+ML family languages provide the let-in construct:
+<blockquote>
+<pre>let a = 1 + 2 in a * a;;</pre>
+</blockquote>
+This construct evaluates a value, then binds it to a name that is available within the expression that follows. Aside from a little type system requirement (let-in binding is required in order to achieve universal polymorphism safely) this construct can be completely simulated using an anonymous function:
+<blockquote>
+<pre>(fun a -&gt; a * a) (1 + 2);;</pre>
+</blockquote>
+In some cases, reverting to the original definition can have advantages. One such advantage is the ability to control the lifetime of the binding: a let-in construct defines a name that is evaluated right before the expression is evaluated, but nothing happens, or can be set up to happen automatically, after the expression has been evaluated. For instance, if the program opens a file, an explicit closing operation must be present:
+<blockquote>
+<pre>let out = open_out "foo.txt" in output_string out "hello" ; close_out out</pre>
+</blockquote>
+When using a function, the caller can be another function which takes care of the removal. For instance:
+<blockquote>
+<pre>let on_file filename f = 
+  let out = open_out filename in 
+  f out ; 
+  close_out out 
+
+on_file "foo.txt" (fun out -&gt; output_string out "hello")</pre>
+</blockquote>
+Also, when designing a meta-language (that is, a library which helps construct a program in another language) it's impossible to achieve the level of reflection required to notice that two expressions in the program are identical just by looking at the meta-program:
+<blockquote>
+<pre>let result = Lang.call func arg in Lang.multiply result result</pre>
+</blockquote>
+This code cannot notice that "result" is being used twice. By contrast, one can use an approach such as:
+<blockquote>
+<pre>Lang.let_in (Lang.call func arg) (fun var -&gt; Lang.multiply var var)</pre>
+</blockquote>
+Here, the let_in function can create an expression which pushes the expression on a stack or otherwise binds it to a variable, and then generate a pop instruction or read-variable instruction on which the user-provided function is called.  For instance:
+<blockquote>
+<pre>let let_in a b =
+  let uid = get_uid () in
+  LetIn(uid, a, b (GetValue uid))</pre>
+</blockquote>

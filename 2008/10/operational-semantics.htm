@@ -1,0 +1,263 @@
+@title Operational Semantics
+@draft
+
+Formal language semantics describe how a language should behave. Most of the time, semantics define the values manipulated by the program, as well as the state of the program, and describe how the various expressions and statements change the state and create values. When designing a virtual machine for a language, translating the formal language semantics into code is usually the easiest way to implement the language. Elementary semantics are quite easy to grasp, so let's start with an example:
+<blockquote>
+<pre><strong><span style="color: #008000;">[|literal|]</span></strong> ? literal <span style="color: #008000;">
+<strong>[|X + Y|]</strong>   </span>? <span style="color: #ff6600;">plus</span>  (<strong><span style="color: #008000;">[|X|]</span></strong>,<strong><span style="color: #008000;">[|Y|]</span></strong>) 
+<strong><span style="color: #008000;">[|X - Y|]</span></strong>   ? <span style="color: #ff6600;">minus</span> (<span style="color: #008000;"><strong>[|X|]</strong></span>,<span style="color: #008000;"><strong>[|Y|]</strong></span>)</pre>
+</blockquote>
+These are operational semantics for an elementary language that computes sums and differences of numbers. The color code I am using is <strong><span style="color: #008000;">bold green</span></strong> for expressions being evaluated, <span style="color: #ff6600;">orange</span> for virtual machine operations and black for values. Operational semantics exmplain how to evaluate an expression by evaluating its sub-expressions and then applying an operation to their values. Applying the semantics above to the expression 1 + 2 - 3 yields:
+<blockquote>
+<pre><strong><span style="color: #008000;">[|1 + 2 - 3|] </span></strong>
+? <span style="color: #ff6600;">minus</span> (<span style="color: #008000;"><strong>[|1 + 2|]</strong></span>,<span style="color: #008000;"><strong>[|3|]</strong></span>)
+? <span style="color: #ff6600;">minus</span> (<span style="color: #ff6600;">plus</span> (<span style="color: #008000;"><strong>[|1|]</strong></span>,<span style="color: #008000;"><strong>[|2|]</strong></span>), 3 )
+? <span style="color: #ff6600;">minus</span> (<span style="color: #ff6600;">plus</span> ( 1 , 2 ), 3 )
+? <span style="color: #ff6600;">minus</span> ( 3 , 3 ) ? 0</pre>
+</blockquote>
+For Objective Caml readers, some example code equivalent to the above would be:
+<blockquote>
+<pre style="background: #ffffff none repeat scroll 0% 50%; color: #000000;"><span style="color: #000084; font-weight: bold;">let</span> <span style="color: #000084; font-weight: bold;">rec</span> eval = <span style="color: #000084; font-weight: bold;">function</span> 
+  | `literal x -&gt; x 
+  | `add(x,y)  -&gt; eval x + eval y 
+  | `sub(x,y)  -&gt; eval x - eval y 
+
+eval (`sub(`add(`literal 1,`literal 2), `literal 3)</pre>
+</blockquote>
+The main point of using operational semantics to describe the formal semantics of a program language is that they are very concise, allowing definitions to take a streamlined form. The main difficulty appears when one attempts to introduce more complex behavior into the language, but this difficulty is solved by a multitude of techniques. I tend to give Objective Caml examples for several reasons. The main reason is that they are concise when expression tree traversal is involved, because of pattern-matching.
+<h2>Context</h2>
+Usually, the evaluation of a part of a program is not independent of the rest of the program. While simple computations (such as the above one) are standalone, any expression that involves a name will require context in order to resolve that name. For instance, if a program reads the value of user-defined variable <span style="font-family: courier new,courier;">FROBNICATE</span>, it needs to know what that variable represents, and that information is extracted from the context. A basic example of context-based evaluation would be:
+<blockquote>
+<pre><strong><span style="color: #008000;">[|literal|]</span></strong><sub><span style="color: #ff0000;">K</span></sub>  ? literal <span style="color: #008000;">
+<strong><span style="color: #008000;">[|variable|]</span></strong><sub><span style="color: #ff0000;">K</span></sub> </span>? <span style="color: #ff0000;">K</span>[variable]
+<span style="color: #008000;"><strong>[|X + Y|]</strong></span><sub><span><span style="color: #ff0000;">K</span></span></sub>    ? <span style="color: #ff6600;">plus</span>  (<strong><span style="color: #008000;">[|X|]</span></strong><sub><span><span style="color: #ff0000;">K</span></span></sub>,<strong><span style="color: #008000;">[|Y|]</span></strong><sub><span><span style="color: #ff0000;">K</span></span></sub>) 
+<strong><span style="color: #008000;">[|X - Y|]</span></strong><sub><span><span style="color: #ff0000;">K</span></span></sub>    ? <span style="color: #ff6600;">minus</span> (<span style="color: #008000;"><strong>[|X|]</strong></span><sub><span><span style="color: #ff0000;">K</span></span></sub>,<span style="color: #008000;"><strong>[|Y|]</strong></span><sub><span><span style="color: #ff0000;">K</span></span></sub>)</pre>
+</blockquote>
+I'm using <span style="color: #ff0000;">red</span> font to represent the context. The new expression is the variable, which when evaluated is replaced with whatever value is associated to its name in the evaluation context. So, evaluating TWO + 1 in the context <span style="font-family: courier new,courier; color: #ff0000;">K={TWO:2}</span> yields:
+<blockquote>
+<pre><strong><span style="color: #008000;">[|TWO + 1|]</span></strong><sub><span style="color: #ff0000;">{TWO:2}</span></sub>
+? <span style="color: #ff6600;">plus</span> (<span style="color: #008000;"><strong>[|TWO|]</strong></span><sub><span style="color: #ff0000;">{TWO:2}</span></sub>,<span style="color: #008000;"><strong>[|1|]</strong></span><sub><span style="color: #ff0000;">{TWO:2}</span></sub>)
+? <span style="color: #ff6600;">plus</span> (<span style="color: #ff0000;">{TWO:2}</span>[TWO],1)
+? <span style="color: #ff6600;">plus</span> (2,1)
+? 3</pre>
+</blockquote>
+Example Objective Caml code:
+<blockquote>
+<pre style="background: #ffffff none repeat scroll 0% 50%; color: #000000;"><span style="color: #000084; font-weight: bold;">let</span> <span style="color: #000084; font-weight: bold;">rec</span> eval k = <span style="color: #000084; font-weight: bold;">function</span> 
+  | `lit x     -&gt; x 
+  | `var s    -&gt; List.assoc s k 
+  | `add(x,y) -&gt; eval k x + eval k y 
+  | `sub(x,y) -&gt; eval k x - eval k y 
+
+eval [<span style="color: #0000ff;">"TWO"</span>,2] (`add(`var <span style="color: #0000ff;">"TWO"</span>,`lit 1))</pre>
+</blockquote>
+In short, a context is usually a set of bindings between names and values that every variable expression can draw from in order to resolve itself into a value. Of course, an evaluation problem happens whenever a variable does not exist in the context in which it is evaluated. Among the possibilities for resolving that situation is using static analysis to make sure that every variable is defined before being used (this is what compiled languages do), deciding that if a variable is not bound in a context, then its value is null (this is what most scripting languages do), or reporting an error (this is what LaTeX and some other shell scripting languages do).
+
+Once context-reading semantics are in place, it can be interesting to create context-writing semantics. One such example is the let-in binding expression of ML family languages, which adds the following rule to the previous four:
+<blockquote>
+<pre><span style="color: #008000;"><strong>[|let name = X in Y|]</strong></span><sub><span style="color: #ff0000;">K</span></sub> ? <span style="color: #008000;"><strong>[|Y]]</strong></span><span style="color: #ff0000;"><sub>K'</sub></span> where <span style="color: #ff0000;">K'</span> = <span style="color: #ff0000;">K</span> + {name:<span style="color: #008000;"><strong>[|X|]</strong></span><sub><span style="color: #ff0000;">K</span></sub>}</pre>
+</blockquote>
+This expression evaluates its first operand in the current context, then creates a new context by binding the name to that value (and keeping all the bindings of the current context), then evaluates its second operand in that new context and returns its value. Note that the original context is not modified, so other expressions don't have access to the new binding. For instance:
+<blockquote>
+<pre><strong><span style="color: #008000;">[|let x = 1 in let y = x + 2 in x + y|]</span></strong><span style="color: #ff0000;"><sub>{}</sub></span>
+? <span style="color: #008000;"><strong>[|let y = x+2 in x + y]]</strong></span><span style="color: #ff0000;"><sub>K</sub></span> where <span style="color: #ff0000;">K</span> = <span style="color: #ff0000;">{}</span> + {x:<span style="color: #008000;"><strong>[|1|]</strong><sub><span style="color: #ff0000;">{}</span></sub></span>}
+? <span style="color: #008000;"><strong>[|let y = x+2 in x + y]]</strong></span><span style="color: #ff0000;"><sub>{x:1}</sub></span>
+? <span style="color: #008000;"><strong>[|x + y|]</strong></span><span><sub><span style="color: #ff0000;">K</span></sub></span> where <span style="color: #ff0000;">K</span> = <span style="color: #ff0000;">{x:1}</span> + {y:<span style="color: #008000;"><strong>[|x+2|]</strong><sub><span style="color: #ff0000;">{x:1}</span></sub></span>}
+? <span style="color: #008000;"><strong>[|x + y|]</strong></span><span><sub><span style="color: #ff0000;">K</span></sub></span> where <span style="color: #ff0000;">K</span> = <span style="color: #ff0000;">{x:1}</span> + {y:<span style="color: #ff6600;">plus </span>(<span style="color: #008000;"><strong>[|x|]</strong></span><span><span style="color: #008000;"><sub><span style="color: #ff0000;">{x:1}</span></sub></span></span>,<span style="color: #008000;"><strong> </strong></span><span style="color: #008000;"><strong>[|2|]</strong><sub><span style="color: #ff0000;">{x:1}</span></sub></span>)}
+? <span style="color: #008000;"><strong>[|x + y|]</strong></span><span><sub><span style="color: #ff0000;">K</span></sub></span> where <span style="color: #ff0000;">K</span> = <span style="color: #ff0000;">{x:1}</span> + {y:<span style="color: #ff6600;">plus </span>(<span style="color: #ff0000;">{x:1}</span>[x],<span style="color: #008000;"><strong> </strong></span>2)}
+? <span style="color: #008000;"><strong>[|x + y|]</strong></span><span><sub><span style="color: #ff0000;">K</span></sub></span> where <span style="color: #ff0000;">K</span> = <span style="color: #ff0000;">{x:1}</span> + {y:<span style="color: #ff6600;">plus </span>(1,<span style="color: #008000;"><strong> </strong></span>2)}
+? <span style="color: #008000;"><strong>[|x + y|]</strong></span><span><sub><span style="color: #ff0000;">{x:1,y:3}</span></sub></span>
+? <span style="color: #ff6600;">plus </span>(<span style="color: #008000;"><strong>[|x|]</strong></span><span><sub><span style="color: #ff0000;">{x:1,y:3}</span></sub></span>,<span style="color: #008000;"><strong> </strong></span><span style="color: #008000;"><strong>[|y|]</strong></span><span><sub><span style="color: #ff0000;">{x:1,y:3}</span></sub></span>)
+? <span style="color: #ff6600;">plus </span>(<span><span style="color: #ff0000;">{x:1,y:3}</span></span>[x],<span style="color: #008000;"><strong> </strong></span><span><span style="color: #ff0000;">{x:1,y:3}</span></span>[y])
+? <span style="color: #ff6600;">plus </span>(1,3)
+? 4</pre>
+</blockquote>
+Example Objective Caml code for that evaluator:
+<blockquote>
+<pre style="background: #ffffff none repeat scroll 0% 50%; color: #000000;"><span style="color: #000084; font-weight: bold;">let</span> <span style="color: #000084; font-weight: bold;">rec</span> eval k = <span style="color: #000084; font-weight: bold;">function</span> 
+  | `lit x      -&gt; x 
+  | `var s      -&gt; List.assoc s k 
+  | `add(x,y)   -&gt; eval k x + eval k y 
+  | `sub(x,y)   -&gt; eval k x - eval k y 
+  | `def(s,x,y) -&gt; eval ( (s, eval k x) :: k ) y</pre>
+</blockquote>
+<h2>Stacks and de Bruijn Indices</h2>
+Comparing strings to extract a variable from a context is often a bad idea, performance-wise. This is sometimes necessary, for instance when semantics allow runtime creation of variable names (such as <span style="font-family: courier new,courier;">$$name</span> in PHP). In practice, when compile-time nested variable scopes exist (as outlined above) using de Bruijn indices and a stack instead of an associative container allow an increase in performance.
+
+Whenever a variable is defined, it is pushed onto a stack. When the scope of that variable ends, it is popped off the stack. The de Bruijn index of a variable is the depth of that variable on the stack, which allows retrieving it. The de Bruijn index of any variable can be computed at compile-time through a very simple static analysis which stores a stack of variable names and replaces every name it encounters with the current depth of that name. Since the parser respects the same scoping rules as the interpreter, the correct association is made between variable names and stack depth.
+
+An example of Objective Caml evaluator that uses de Bruijn indices, with implicit popping (but a performance penalty due to non-random access):
+<blockquote>
+<pre style="background: #ffffff none repeat scroll 0% 50%; color: #000000;"><span style="color: #000084; font-weight: bold;">let</span> eval k = <span style="color: #000084; font-weight: bold;">function</span> 
+  | `lit x    -&gt; x 
+  | `var i    -&gt; List.nth k i  
+  | `add(x,y) -&gt; eval k x + eval k y 
+  | `sub(x,y) -&gt; eval k x - eval k y 
+  | `def(x,y) -&gt; eval ( eval k x :: k ) y</pre>
+</blockquote>
+An alternative is to use a random-access container for the stack to access values in constant time instead of proportional to their depth. In general, de Bruijn indices are interesting both for writing interpreters and for performing static analysis in code. Ideally, one of the first steps performed by a parser is to transform variable names to de Bruijn indices. An interesting side-effect is that this also provides a clean algorithm to determine whether all variables are defined:
+<blockquote>
+<pre style="background: #ffffff none repeat scroll 0% 50%; color: #000000;"><span style="color: #000084; font-weight: bold;">let</span> <span style="color: #000084; font-weight: bold;">rec</span> pos x = <span style="color: #000084; font-weight: bold;">function</span> 
+  | [] -&gt; <span style="color: #000084; font-weight: bold;">raise</span> Not_found 
+  | h::t -&gt; 
+      <span style="color: #000084; font-weight: bold;">if</span> x = h <span style="color: #000084; font-weight: bold;">then</span> 0 
+      <span style="color: #000084; font-weight: bold;">else</span> 1 + pos x t 
+
+<span style="color: #000084; font-weight: bold;">let</span> <span style="color: #000084; font-weight: bold;">rec</span> db s = <span style="color: #000084; font-weight: bold;">function</span> 
+  | `lit x      -&gt; `lit x 
+  | `var n      -&gt; `var(pos n s) 
+  | `def(n,x,y) -&gt; `def(db s x,db (n::s) y) 
+  | `add(a,b)   -&gt; `add(db s a,db s b) 
+  | `sub(a,b)   -&gt; `sub(db s a,db s b)</pre>
+</blockquote>
+<h2>Functions</h2>
+Another core functionality of many languages is functions. The behavior of functions is usually classified in three ways. First, the macros are a syntactic shorthand which is expanded at compile-time instead of runtime. So, the macro which adds a number with itself would work as follows:
+<blockquote>
+<pre><span style="color: #008000;"><strong>[|TWICE(X)|]</strong></span><span style="color: #ff0000;"><sub>K</sub></span> ? <span style="color: #008000;"><strong>[|X+X|]</strong></span><span style="color: #ff0000;"><sub>K</sub></span></pre>
+</blockquote>
+The problem, of course, is that the expression is repeated twice, and as such it will be evaluated twice. So, for instance:
+<blockquote>
+<pre><span style="color: #008000;"><strong>[|TWICE(1+2)|]</strong></span><sub><span style="color: #ff0000;">{}</span></sub> 
+? <span style="color: #008000;"><strong>[|(1+2)+(1+2)|]</strong></span><sub><span style="color: #ff0000;">{}
+</span></sub>? <span style="color: #ff6600;">plus</span>(<span style="color: #008000;"><strong>[|1+2|]</strong></span><sub><span style="color: #ff0000;">{}</span></sub>,<span style="color: #008000;"><strong>[|1+2|]</strong></span><sub><span style="color: #ff0000;">{}</span></sub>)
+? <span style="color: #ff6600;">plus</span>(<span style="color: #ff6600;">plus</span>(<span style="color: #008000;"><strong>[|1|]</strong></span><sub><span style="color: #ff0000;">{}</span></sub>,<span style="color: #008000;"><strong>[|2|]</strong></span><sub><span style="color: #ff0000;">{}</span></sub>,<span style="color: #ff6600;">plus</span>(<span style="color: #008000;"><strong>[|1|]</strong></span><sub><span style="color: #ff0000;">{}</span></sub>,<span style="color: #008000;"><strong>[|2|]</strong></span><sub><span style="color: #ff0000;">{}</span></sub>)
+? <span style="color: #ff6600;">plus</span>(<span style="color: #ff6600;">plus</span>(1,2),<span style="color: #ff6600;">plus</span>(1,2))
+? <span style="color: #ff6600;">plus</span>(3,3)
+? 6</pre>
+</blockquote>
+Here, the macro duplicated the subexpression, then the subexpression itself was evaluated once for each member. This happens, for instance, with C preprocessor macros which merely duplicate the code, instead of working with the value of the code. As a result, macros are powerful in terms of expressiveness (because they can rewrite code arbitrarily, even outside of expressions) but not in terms of performance (or, in fact, in terms of semantics when side-effects exist that only have to be executed once). Besides, it's impossible to have recursive macros, since the expansion would be infinite.
+
+The improved alternative to macros is functions. Unlike macros, which are syntactic, functions perform a similar substitution at runtime. To make things simpler, we'll consider here a function with a single parameter. The semantic rule for a function call is:
+<blockquote>
+<pre><span style="color: #008000;"><strong>[|F(X)|]</strong></span><span style="color: #ff0000;"><sub>K</sub></span> ? <span style="color: #008000;"><strong>[|B|]</strong></span><span style="color: #ff0000;"><sub>K'</sub></span> where <span style="color: #ff0000;">K'</span> = {a:<span style="color: #008000;"><strong>[|X|]</strong></span><sub><span style="color: #ff0000;">K</span></sub>} and ?a.B = <span style="color: #008000;"><strong>[|F|]</strong></span><sub><span style="color: #ff0000;">K</span></sub></pre>
+</blockquote>
+Now, let's understand this. To evaluate a function-call expression, one first evaluates the function expression (F), which should result in a function object (?a.B). A function object, here, is a combination of a name (a) called the parameter and an expression (B) called the body.
+
+Once these are known, the argument expression is evaluated (x), and its result is bound to the name of the parameter in a brand new context (K'). The body is then evaluated in that context. So, if we consider a function such as:
+<blockquote>
+<pre><span style="color: #008000;"><strong>[|TWICE|]</strong></span><span style="color: #ff0000;"><sub>K</sub></span> ? ?x.<span style="color: #008000;"><strong>x+x</strong></span></pre>
+</blockquote>
+Then the previous example would now evaluate as follows (for conciseness, I now skip the evaluation of simple arithmetic expressions):
+<blockquote>
+<pre><span style="color: #008000;"><strong>[|TWICE(1+2)|]</strong></span><sub><span style="color: #ff0000;">{}</span></sub> 
+? <span style="color: #008000;"><strong>[|B|]</strong></span><span style="color: #ff0000;"><sub>K</sub></span> where <span style="color: #ff0000;">K</span> = {a:<span style="color: #008000;"><strong>[|1+2|]</strong></span><sub><span style="color: #ff0000;">{}</span></sub>} and ?a.B = <span style="color: #008000;"><strong>[|TWICE|]</strong></span><sub><span style="color: #ff0000;">{}</span></sub>
+? <span style="color: #008000;"><strong>[|x+x|]</strong></span><span style="color: #ff0000;"><sub>{x:3}</sub></span>
+? 6</pre>
+</blockquote>
+Objective Caml example:
+<blockquote>
+<pre style="background: #ffffff none repeat scroll 0% 50%; color: #000000;"><span style="color: #000084; font-weight: bold;">let</span> add = <span style="color: #000084; font-weight: bold;">function</span> 
+  | `Int x, `Int y -&gt; `Int (x+y) 
+  | _              -&gt; <span style="color: #000084; font-weight: bold;">raise</span> TypeError 
+
+<span style="color: #000084; font-weight: bold;">let</span> sub = <span style="color: #000084; font-weight: bold;">function</span>  
+  | `Int x, `Int y -&gt; `Int (x-y) 
+  | _              -&gt; <span style="color: #000084; font-weight: bold;">raise</span> TypeError 
+
+<span style="color: #000084; font-weight: bold;">let</span> <span style="color: #000084; font-weight: bold;">rec</span> eval s =  
+  | `var i     -&gt; List.assoc i s 
+  | `lit i     -&gt; `Int i 
+  | `twice     -&gt; `Func (<span style="color: #0000ff;">"x"</span>, `add (`var <span style="color: #0000ff;">"x"</span>,`var <span style="color: #0000ff;">"x"</span>)) 
+  | `add(a,b)  -&gt; add (eval s a) (eval s b) 
+  | `sub(a,b)  -&gt; sub (eval s a) (eval s b) 
+  | `call(f,x) -&gt;  
+    <span style="color: #000084; font-weight: bold;">match</span> eval s f <span style="color: #000084; font-weight: bold;">with</span>  
+      | `Func (a,b) -&gt; eval [a,eval s x] b 
+      | _           -&gt; <span style="color: #000084; font-weight: bold;">raise</span> TypeError</pre>
+</blockquote>
+However, in this example, the function name was bound to a value as part of the language semantics. How is it possible to define functions as part of the program? Several possibilities exist.
+
+One approach, taken by many languages (including C and PHP) is to make functions a part of the context. When a function is called, its body is evaluated in a context which is composed of the global context (that is, the set of all the functions and variables that were defined at global scope) and the values of the parameters. The advantages to this are multiple:
+<ul>
+	<li>The function now has access to every function and variable in the global scope. Of course, for single-pass compilation reasons, C requires that the variables and functions are declared before they are used (so that the compiler doesn't have to backtrack once a definition is found) but both functions and variables can be defined anywhere.</li>
+</ul>
+<ul>
+	<li>Since a function only references its own local data, plus the data in the global scope, one does not have to care about the lifetime of normal values: either the value is global (it remains around for the entire duration of the program) or it is local (it disappears when the function returns).</li>
+</ul>
+So, the new rule in that situation is :
+<blockquote>
+<pre><span style="color: #008000;"><strong>[|F(X)|]</strong></span><span style="color: #ff0000;"><sub>K</sub></span> ? <span style="color: #008000;"><strong>[|B|]</strong></span><span style="color: #ff0000;"><sub>K'</sub></span> where <span style="color: #ff0000;">K'</span> = <span style="color: #ff0000;">GLOBALS </span>+ {a:<span style="color: #008000;"><strong>[|X|]</strong></span><sub><span style="color: #ff0000;">K</span></sub>} and ?a.B = <span style="color: #008000;"><strong>[|F|]</strong></span><sub><span style="color: #ff0000;">K</span></sub></pre>
+</blockquote>
+The problem that this introduces is that the global context has to be filled, and normal expressions cannot be used to fill it because they might contain non-global variables introduces with the let-in construct. Programming languages tend to define a syntax for non-local scope definitions that is different from the normal syntax at local scope. C, for instance, defines functions and globals at file scope, and allows statements and local definitions at function scope. C# and Java allow class definitions at namespace/package scope, method/variable definitions at class scope, and normal statements at method scope. Objective Caml allows global definitions at module scope and normal expressions everywhere else. Some dynamic languages, such as PHP, notoriously work around this issue by allowing runtime extension of the global context from anywhere (so functions can define other global functions).
+<h2>Closures</h2>
+Closures are an extension of the previous solution based on a global context. Instead of having all functions use the same global context as a starting point, closures allow each function to keep its own base context. As such, a closure associates a context with every function, something that will be expressed as ?a.B{K}. The classic way of creating a closure is to use the context that was available at the point where the closure is created. So, the evaluation rules would be:
+<blockquote>
+<pre><span style="color: #008000;"><strong>[|F(X)|]</strong></span><span style="color: #ff0000;"><sub>K</sub></span> ? <span style="color: #008000;"><strong>[|B|]</strong></span><span style="color: #ff0000;"><sub>K"</sub></span> where <span style="color: #ff0000;">K"</span> = <span style="color: #ff0000;">K' </span>+ {a:<span style="color: #008000;"><strong>[|X|]</strong></span><sub><span style="color: #ff0000;">K</span></sub>} and ?a.B{<span style="color: #ff0000;">K'</span>} = <span style="color: #008000;"><strong>[|F|]</strong></span><sub><span style="color: #ff0000;">K
+</span></sub><span><strong><span style="color: #008000;"><strong>[|{a -&gt; B}|]</strong></span></strong></span><span><sub><span style="color: #ff0000;">K</span></sub></span> ? ?a.B{<span style="color: #ff0000;">K</span>}</pre>
+</blockquote>
+The ability to carry any context is both an advantage and a disadvantage. The advantage is that this adds to the expressive power of the language by allowing the creation of arbitrary functions in arbitrary locations, instead of having to rely solely on parameters and global variables. The disadvantage is that this implies local values can be carried out of their scope by a closure, which implies a garbage collection scheme or restrictions on what closures can do.
+
+Consider a closure which squares a function:
+<blockquote>
+<pre>{f -&gt; {x -&gt; f(f(x))}}</pre>
+</blockquote>
+And consider the 'twice' function from above:
+<blockquote>
+<pre>{x -&gt; x + x}</pre>
+</blockquote>
+An example of application would be:
+<blockquote>
+<pre><span style="color: #008000;"><strong>[|{f -&gt; {x -&gt; f(f(x))}}({x -&gt; x + x})(3)|]</strong><sub><span style="color: #ff0000;">{}</span></sub></span>
+? <span style="color: #008000;"><strong>[|B|]</strong></span><span style="color: #ff0000;"><sub>K"</sub></span> where <span style="color: #ff0000;">K"</span> = <span style="color: #ff0000;">K' </span>+ {a:<span style="color: #008000;"><strong>[|3|]</strong></span><sub><span style="color: #ff0000;">{}</span></sub>} and ?a.B{<span style="color: #ff0000;">K'</span>} = <span style="color: #008000;"><strong>[|</strong></span><span><strong><span style="color: #008000;"><strong>{f -&gt; {x -&gt; f(f(x))}}({x -&gt; x + x})</strong></span></strong></span><span style="color: #008000;"><strong>|]</strong></span><sub><span style="color: #ff0000;">{}</span></sub>
+? <span style="color: #008000;"><strong>[|B|]</strong></span><span style="color: #ff0000;"><sub>K"</sub></span> where <span style="color: #ff0000;">K"</span> = <span style="color: #ff0000;">K' </span>+ {a:3} and ?a.B{<span style="color: #ff0000;">K'</span>} = <span style="color: #008000;"><strong>[|B'|]</strong></span><span style="color: #ff0000;"><sub>K""</sub></span> 
+          where <span style="color: #ff0000;">K""</span> = <span style="color: #ff0000;">K"' </span>+ {a':<span style="color: #008000;"><strong>[|</strong></span><span><strong><span><strong><span><strong><span style="color: #008000;"><strong>{x -&gt; x + x}</strong></span></strong></span></strong></span></strong></span><span style="color: #008000;"><strong>|]</strong></span><sub><span style="color: #ff0000;">{}</span></sub>} and ?a'.B'{<span style="color: #ff0000;">K"'</span>} = <span><strong><span style="color: #008000;"><strong>[|{f -&gt; {x -&gt; f(f(x))}}|]</strong></span></strong></span><sub><span style="color: #ff0000;">{}</span></sub>
+? <span style="color: #008000;"><strong>[|B|]</strong></span><span style="color: #ff0000;"><sub>K"</sub></span> where <span style="color: #ff0000;">K"</span> = <span style="color: #ff0000;">K' </span>+ {a:3} and ?a.B{<span style="color: #ff0000;">K'</span>} = <span style="color: #008000;"><strong>[|{x -&gt; f(f(x))}|]</strong></span><span style="color: #ff0000;"><sub>{f:?x.x+x{}}</sub></span>
+? <span style="color: #008000;"><strong>[|f(f(x))|]</strong></span><span style="color: #ff0000;"><sub>{</sub></span><span><sub><span style="color: #ff0000;">f:?x.x+x{} ; </span></sub></span><span style="color: #ff0000;"><sub>x:3}</sub></span>
+? <span style="color: #008000;"><strong>[|B|]</strong></span><span style="color: #ff0000;"><sub>K"</sub></span> where <span style="color: #ff0000;">K"</span> = <span style="color: #ff0000;">K' </span>+ {a:<span style="color: #008000;"><strong>[|f(x)|]</strong></span><span style="color: #ff0000;"><sub>{</sub></span><span><sub><span style="color: #ff0000;">f:?x.x+x{} ; </span></sub></span><span style="color: #ff0000;"><sub>x:3}</sub></span>} and ?a.B{<span style="color: #ff0000;">K'</span>} = <span style="color: #008000;"><strong>[|</strong></span><span><strong><span style="color: #008000;"><strong>f</strong></span></strong></span><span style="color: #008000;"><strong>|]</strong></span><span style="color: #ff0000;"><sub>{</sub></span><span><sub><span style="color: #ff0000;">f:?x.x+x{} ; </span></sub></span><span style="color: #ff0000;"><sub>x:3}</sub></span>
+? <span style="color: #008000;"><strong>[|x+x|]</strong></span><span style="color: #ff0000;"><sub>K'</sub></span> where <span style="color: #ff0000;">K'</span> = {x:<span style="color: #008000;"><strong>[|B|]</strong></span><sub><span style="color: #ff0000;">K</span></sub><span><sub><span style="color: #ff0000;">"'</span></sub></span>}     
+            where <span style="color: #ff0000;">K"'</span> = <span style="color: #ff0000;">K" </span>+ {a:<span style="color: #008000;"><strong>[|</strong></span><span><strong><span><strong><span><strong><span style="color: #008000;"><strong>x</strong></span></strong></span></strong></span></strong></span><span style="color: #008000;"><strong>|]</strong></span><span style="color: #ff0000;"><sub>{</sub></span><span><sub><span style="color: #ff0000;">f:?x.x+x{} ; </span></sub></span><span style="color: #ff0000;"><sub>x:3}</sub></span>} and ?a.B{<span style="color: #ff0000;">K"</span>} = <span><strong><span style="color: #008000;"><strong>[|f|]</strong></span></strong></span><span style="color: #ff0000;"><sub>{</sub></span><span><sub><span style="color: #ff0000;">f:?x.x+x{} ; </span></sub></span><span style="color: #ff0000;"><sub>x:3}</sub></span>
+? <span style="color: #008000;"><strong>[|x+x|]</strong></span><span style="color: #ff0000;"><sub>{x:6}</sub></span><span style="color: #ff0000;"><sub>
+</sub></span>? 12</pre>
+</blockquote>
+A bit complex? Consider this in more simple terms: <span style="font-family: courier new,courier;">{f -&gt; {x -&gt; f(f(x))}}(twice)</span> evaluates to <span style="font-family: courier new,courier;">{x -&gt; twice(twice(x))}</span>. Then, <span style="font-family: courier new,courier;">{x -&gt; twice(twice(x)}(3)}</span> evaluates to <span style="font-family: courier new,courier;">twice(twice(3))</span>, which is <span style="font-family: courier new,courier;">twice(6)</span>, which is <span style="font-family: courier new,courier;">12</span>. The context allows the closure to remember that in the expression <span style="font-family: courier new,courier;">f(f(x))</span>, <span style="font-family: courier new,courier;">f</span> is <span style="font-family: courier new,courier;">twice</span>.
+
+This is, in essence, the nature of lambda-calculus: a language built around functions "?a.B" and applications "f(x)" such that "(?a.B)(x)" replaces all occurences of "a" in "B" by "x". Here, we have written:
+<blockquote>
+<pre>?f.(?x.f(f(x)))(?y.y+y)(3)
+? ?x.(?y.y+y)((?y.y+y)(x))(3)
+? (?y.y+y)((?y.y+y)(3))
+? (?y.y+y)(3+3)
+? 6+6
+? 12</pre>
+</blockquote>
+For those who are familiar with it, our evaluation technique is equivalent to lambda-calculus with the rightmost redex being reduced first.
+
+Using this approach, it's possible to use De Bruijn indices with the exact same technique as before: a closure expression merely introduces a new variable (the formal parameter) in its body expression, thereby increasing the stack depth by one. All the variables in the carried context are available using the same depth as if the closure was in fact merely a let-in binding. In fact, De Bruijn index actually originate from De Bruijn's work on lambda-calculus.
+
+So, another interpretation of a closure is that it is a let-in binding, but which still needs to be provided with the actual expression to be bound. That is: <span style="font-family: courier new,courier;">{a -&gt; B}</span> is like <span style="font-family: courier new,courier;">let a = <em>(hole)</em> in B</span>, where the hole is filled by calling the resulting expression on an argument.
+<h2>Recursion</h2>
+Using the global context as an evaluation context for every function allowed recursive functions without any additional work: when the function wanted to call itself, it could find its own name in the global context (since the execution of the program only starts after all global functions have been defined).
+
+This is not the case for closures, however: a closure does not necessarily have a name (it's just an anonymous expression), and the only way to give it a name with the current tools is to use a let-in binding expression. This means, however, that the name of the closure is only available after the "in" keyword, whereas the definition itself (which must perform the recursive calls) is present before the "in" keyword.
+
+So, the problem is that in order to perform a recursive call, a closure must be bound as part of the context in which its body is evaluates. Since the solution used by global-evaluation schemes (which is to place the closure in the global context, and evaluate the body in that global context) is not available (the context is defined when the closure itself is defined, which happens before the closure actually exists in order to be given a name). Therefore, the only way to introduce the closure into the context without having to alter the evaluation system is by making the function its own argument, using the following semantics:
+<blockquote>
+<pre><span style="color: #008000;"><strong>[|let rec n = f in e|]</strong></span><span style="color: #ff0000;"><sub>K</sub></span> ? <span style="color: #008000;"><strong>[|e|]</strong></span><span style="color: #ff0000;"><sub>K'</sub></span> where <span style="color: #ff0000;">K'</span> = <span style="color: #ff0000;">K</span> + {a:?(n,a).B{<span style="color: #ff0000;">K"</span>}} and ?a.B{<span style="color: #ff0000;">K"</span>} = <span style="color: #008000;"><strong>[|f|]</strong></span><span style="color: #ff0000;"><sub>K</sub></span> 
+<span style="color: #008000;"><strong>[|f(x)|]</strong></span><sub><span style="color: #ff0000;">K</span></sub> ? <span style="color: #008000;"><strong>[|B|]</strong></span><sub><span style="color: #ff0000;">K"'</span></sub> where <span style="color: #ff0000;">K"'</span> = <span style="color: #ff0000;">K'</span> + {n:?(n,a).B{<span style="color: #ff0000;">K"</span>} ; a:<span style="color: #008000;"><strong>[|x|]</strong></span><sub><span style="color: #ff0000;">K</span></sub>} if ?(n,a).B{<span style="color: #ff0000;">K"</span>} = <span style="color: #008000;"><strong>[|f|]</strong></span><span style="color: #ff0000;"><sub>K</sub></span></pre>
+</blockquote>
+These semantics add a new type to the virtual machine: a recursive closure. When called on an argument, a recursive closure defines two values within its context: the argument value (as the parameter name) and itself (as the recursive name). Recursive closures are defined by means of the "let-rec-in" construct that turns a normal closure into a recursive closure. This expression requires special De Bruijn rules to be parsed, since it introduces a new variable (the name itself) to the left of the "in" variable, but only within closures.
+
+Multiple, mutual recursion is an extension of this principle, left as an exercise to the reader. Also, the astute reader familiar with fix-point operators might have recognized the relationship between the form of recursive calls (f f x) with the Y fixpoint operator of lambda-calculus.
+
+However, this approach involving an additional value are too complex to implement when a simpler solution is possible: the recursive definition is only required within the body of the closure itself. Therefore, passing the closure to itself should only happen within that body. And since the body is cleanly delimited at parse-time, adding those calls syntactically instead of semantically is very easy. As such, it is merely a question of replacing "<span style="font-family: courier new,courier;">let rec f = a in b</span>" with "<span style="font-family: courier new,courier;">let f = (let f = {f -&gt; a} in f(f)) in b</span>" where all occurences of the variable "f" in a have been replaced with "<span style="font-family: courier new,courier;">f(f)</span>". Once this syntactic replacement is performed, the previous virtual machine (with no recursive closures) can be used.
+<h2>State</h2>
+So far, there have been two ways of communicating data within the expressions. The value descends from the leaves to the roots, while context moves from the roots to the leaves, with possibilities for converting a value into a context element (let-in) or a context element into a value (variables).
+
+Side-effects have the annoying property of appearing in an expression and affecting the nature of another expression without being part of the value of the first expression. This is for instance the case where one closure increments a variable while another closure reads it: the return value of the first closure cannot (and <em>should not</em>, for purposes of encapsulation) be provided to the second closure.
+
+Since neither values (by definition) nor context (which only moves into expressions and never out) can represent side-effects, a new concept must be introduced. This concept is known as state. Unlike both values and context, which always move in a single direction, state moves in both. Every expression, when evaluated, is provided with a state (known as its initial state), and its evaluation yields another state (known as its final state). What the state really is depends on the application: it could merely represent the mutable variables of the program, or it could also represent input-output.
+
+For the purposes of this article, the state will consist here of only mutable variables. The exact representation used here is a dynamic array of values, indexed from zero to infinity. Two expressions are allowed to interact with the context using the following rules:
+<blockquote>
+<pre><span style="color: #008000;"><strong>[|ref x|]</strong></span><sub><span style="color: #ff0000;">K,S</span></sub> ? i,<span style="color: #ff0000;">S'</span> + {i:v} where i=length(<span style="color: #ff0000;">S'</span>) and v,<span style="color: #ff0000;">S'</span> = <span style="color: #008000;"><strong>[|x|]</strong></span><sub><span style="color: #ff0000;">K,S</span></sub>
+<span style="color: #008000;"><strong>[|!r|]</strong></span><sub><span style="color: #ff0000;">K,S</span></sub> ? <span style="color: #ff0000;">S'</span>[i],<span style="color: #ff0000;">S'</span> where i,<span style="color: #ff0000;">S'</span> = <span style="color: #008000;"><strong>[|r|]</strong></span><span style="color: #ff0000;"><sub>K,S</sub></span>
+<span style="color: #008000;"><strong>[|r:=x|]</strong></span><sub><span style="color: #ff0000;">K,S</span></sub> ? v,<span style="color: #ff0000;">S"</span> + {i:v} where i,<span style="color: #ff0000;">S'</span> = <span style="color: #008000;"><strong>[|r|]</strong></span><sub><span style="color: #ff0000;">K,S</span></sub> and v,<span style="color: #ff0000;">S"</span> = <span style="color: #008000;"><strong>[|x|]</strong></span><span style="color: #ff0000;"><sub>K,S'   </sub></span></pre>
+</blockquote>
+The "<span style="font-family: courier new,courier;">ref x</span>" expression adds a new value to the state, then returns a reference to that value (in practice, the index of that value within the state). The "<span style="font-family: courier new,courier;">!r</span>" expression extracts the current value of the reference "r" from the state. The "<span style="font-family: courier new,courier;">r:=x</span>" expression changes the value associated with the reference "r" in the state to the value of "x".
+
+A common pattern, once state is involved, is to keep in mind that every expression has to read and write the state, meaning that the state will be travelling as an argument and return value everywhere. In practice, it's possible to represent both values and context using the state (this is how virtual machines programmed in imperative languages work), but for clarity it will not be done here.
+
+The existence of state means that some expressions will be used solely for their impact on the state, and not for their value. This results in the creation of the sequence expression, represented in Objective Caml using a semicolon, and with the semantics:
+<blockquote>
+<pre><span style="color: #008000;"><strong>[|a ; b|]</strong></span><sub><span style="color: #ff0000;">K,S</span></sub> ? <span style="color: #008000;"><strong>[|b|]</strong></span><span style="color: #ff0000;"><sub>K,S'</sub></span> where _,<span style="color: #ff0000;">S'</span> = <span style="color: #008000;"><strong>[|a|]</strong></span><sub><span style="color: #ff0000;">K,S   </span></sub></pre>
+</blockquote>

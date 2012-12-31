@@ -1,0 +1,75 @@
+@title MySQL (Un)Maintenance Trick
+@draft
+
+Not so long ago, I discussed the <a href="http://www.nicollet.net/2010/02/javascript-unmaintenance-trick/">puzzling fact</a> that in JavaScript, <code>if(x)</code> is not equivalent to <code>if(x&nbsp;==&nbsp;true)</code>. Today, I stumbled upon a similar occurence in MySQL.
+<h4>The Problem</h4>
+Consider the following table, containing arbitrary text with an «alive» boolean flag:
+<pre style="padding-left: 30px;"><strong>CREATE TABLE</strong> tested (
+  txt <strong>CHAR</strong>(32) <strong>NOT NULL</strong>,
+  alive <strong>BOOLEAN NOT NULL</strong>,
+  <strong>PRIMARY KEY</strong>(txt),
+  <strong>KEY</strong>(alive)
+);
+
+<strong>INSERT INTO</strong> tested (txt,alive) <strong>VALUES</strong>
+( <strong>MD5</strong>(1), <strong>FALSE</strong> ),
+( <strong>MD5</strong>(2), <strong>FALSE</strong> ),
+( <strong>MD5</strong>(3), <strong>FALSE</strong> ),
+( <strong>MD5</strong>(4), <strong>TRUE</strong> ),
+( <strong>MD5</strong>(5), <strong>TRUE</strong> );</pre>
+I want to display all the lines that are marked as alive, sorted by their text field. What is the difference between these two requests?
+<pre style="padding-left: 30px;"><strong>SELECT</strong> txt <strong>FROM</strong> tested <strong>WHERE</strong> alive <strong>ORDER BY</strong> txt;</pre>
+<pre style="padding-left: 30px;"><strong>SELECT</strong> txt <strong>FROM</strong> tested <strong>WHERE</strong> alive = <strong>TRUE ORDER BY</strong> txt;</pre>
+And the answer is... <strong>both queries will return the same result set</strong>! But let's <a href="http://dev.mysql.com/doc/refman/5.1/en/explain.html"><code>EXPLAIN</code></a> them, just in case.
+<table style="margin:auto" border="0" cellspacing="3">
+<thead>
+<tr style="text-align: center;">
+<td></td>
+<td>type</td>
+<td>possible keys</td>
+<td style="text-align: center;">key</td>
+<td>rows</td>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>WHERE alive</code></td>
+<td style="text-align: center;">ALL</td>
+<td></td>
+<td></td>
+<td style="text-align: center;">5</td>
+</tr>
+<tr>
+<td><code>WHERE alive = TRUE</code></td>
+<td style="text-align: center;">ref</td>
+<td style="text-align: center;"><code>alive</code></td>
+<td><code>alive</code></td>
+<td style="text-align: center;">2</td>
+</tr>
+</tbody></table>
+The first query will scan through the entire table, whereas the second query will use the index to only run through lines that are still alive. If your table consists of 99% dead elements, the first query will be a hundred times slower than the second one!
+<h4>The Reason</h4>
+The fundamental reason for this behavior can be found in the <a href="http://dev.mysql.com/doc/refman/5.1/en/numeric-type-overview.html" target="_blank">MySQL documentation</a>:
+<blockquote>These types are synonyms for <code>TINYINT(1)</code>.             A value of zero is considered false. Nonzero values are             considered true:
+
+However, the values <code>TRUE</code> and             <code>FALSE</code> are merely aliases for             <code>1</code> and <code>0</code>, respectively,             as shown here:</blockquote>
+In short, that boolean column is not actually a boolean value, but actually an integer. This means it can contain values that are neither <code>TRUE</code> nor <code>FALSE</code>, such as 2. Such a value would be returned by the first query, but not the second, so the query optimizer is not allowed to turn the first one into the second one. And  «this column evaluates to true in a boolean context» is not easily expressed as a key constraint, whereas «this column equals one» is the textbook definition of a key constraint. This explains why the second query is faster.
+
+It also means that the second query might start behaving incorrectly if a non-<code>TRUE</code>, non-<code>FALSE</code> value finds its way into that column.
+<h4>The Solution</h4>
+The good news is that <code>NOT foo</code> is mathematically equivalent to <code>foo = FALSE</code>, so that the constraint can be easily rewritten by turning the «alive» property into a «dead» property. Both queries become equivalent, so the second query is a faster yet functionally identical alternative:
+<pre style="padding-left: 30px;"><strong>CREATE TABLE</strong> tested (
+  txt <strong>CHAR</strong>(32)<strong> NOT NULL</strong>,
+  dead <strong>BOOLEAN NOT NULL</strong>,
+  <strong>PRIMARY KEY</strong>(txt),
+  <strong>KEY</strong>(dead)
+);
+
+<strong>INSERT INTO</strong> tested (txt,dead) <strong>VALUES</strong>
+( <strong>MD5</strong>(1), <strong>TRUE</strong> ),
+( <strong>MD5</strong>(2), <strong>TRUE</strong> ),
+( <strong>MD5</strong>(3), <strong>TRUE</strong> ),
+( <strong>MD5</strong>(4), <strong>FALSE</strong> ),
+( <strong>MD5</strong>(5), <strong>FALSE</strong> );
+
+<strong>SELECT</strong> txt <strong>FROM</strong> tested <strong>WHERE</strong> dead = <strong>FALSE ORDER BY</strong> txt;</pre>

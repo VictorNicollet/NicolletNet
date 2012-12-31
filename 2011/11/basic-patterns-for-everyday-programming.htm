@@ -1,0 +1,142 @@
+@title Basic Patterns for Everyday Programming
+@draft
+
+<img class="aligncenter size-full wp-image-2635" title="pattern" src="http://www.nicollet.net/wp-content/uploads/2011/11/pattern.png" alt="" width="675" height="100" />
+
+<a href="http://laktek.com/2011/11/23/basic-patterns-for-everyday-programming/" target="_blank">Lakshen Perera</a> provides a list of basic patterns for everyday programming, illustrated in Javascript and Ruby. I thought it would be interesting to provide an OCaml illustration as well, and perhaps a handful of additional patterns as well.
+<h4>Verify object's availability before calling its methods or properties</h4>
+In many languages, there is a possibility for objects to be missing — whether this is represented as <code>NULL</code>, <code>null</code>, <code>nil</code> or <code>None</code>. Regardless of the language, it is important to keep in mind at all times whether a given value is optional or not. If it is not optional, then you may assert so using a type declaration if your language supports it :
+<pre style="padding-left: 30px;"><strong>method</strong> name  : string <span style="color: #008000;">(* not optional *)</span>
+<strong>method</strong> email : string option <span style="color: #008000;">(* optional *)</span></pre>
+In other languages, a runtime assert will do, for instance in PHP :
+<pre style="padding-left: 30px;"><strong>assert</strong> (isset($this-&gt;name))</pre>
+OCaml will not require you to explicitly declare all values as optional or mandatory. Instead, it will deduce that information from the way you use each value. For instance, since <code>json_of_string</code> expects a non-optional string argument, you can simply write :
+<pre style="padding-left: 30px;"><strong>let</strong> parsed_content = json_of_string json <span style="color: #008000;">(* json is not optional *)</span></pre>
+If json is an optional string, this will create a compilation error unless you explicitly define what should happen when the string is missing. The most common approach is to decide that the result should be missing too :
+<pre style="padding-left: 30px;"><strong>let</strong> parsed_content = <strong>match</strong> json <strong>with</strong>
+  | <span style="color: #008080;">None</span>   -&gt; <span style="color: #008080;">None</span>
+  | <span style="color: #008080;">Some</span> s -&gt; <span style="color: #008080;">Some</span> (json_of_string s) <span style="color: #008000;">(* by definition, s is not optional *)</span></pre>
+If using the Batteries library (which, by the way, you should), you can express this more easily :
+<pre style="padding-left: 30px;"><strong>let</strong> parsed_content = <span style="color: #008080;">BatOption</span>.map json_of_string json</pre>
+<h4>Set a default value with assignments</h4>
+This advice is almost identical to the previous one : if you need to construct a non-optional value, but only have access to an optional value, you will have to provide a default value. Using standard OCaml :
+<pre style="padding-left: 30px;"><strong>let</strong> role = <strong>match</strong> person.role <strong>with</strong>
+  | <span style="color: #008080;">None</span>      -&gt; <span style="color: #008080;">`Guest</span>
+  | <span style="color: #008080;">Some</span> role -&gt; role</pre>
+Using Batteries, there is an almost equivalent version :
+<pre style="padding-left: 30px;"><strong>let</strong> role = <span style="color: #008080;">BatOption</span>.default <span style="color: #008080;">`Guest</span> person.role</pre>
+This version is almost equivalent, because it will evaluate the default value even if it is not required. Let's assume that the default value is itself provided by a complex computation, such as a database access :
+<pre style="padding-left: 30px;"><strong>let</strong> role = <strong>match</strong> person.role <strong>with</strong>
+  | <span style="color: #008080;">None</span>      -&gt; readfrom database <span style="color: #008000;">(* only executed if person.role is missing *)</span>
+  | <span style="color: #008080;">Some</span> role -&gt; role 
+
+<strong>let</strong> role = <span style="color: #008080;">BatOption</span>.default
+  (readfrom database) <span style="color: #008000;">(* Always executed, even if unnecessary *)</span>
+  role</pre>
+The Batteries library provides an alternate function for that :
+<pre style="padding-left: 30px;"><strong>let</strong> role = <span style="color: #008080;">BatOption</span>.map_default
+  readfrom database <span style="color: #008000;">(* only executed if person.role is missing *)</span>
+  role</pre>
+<h4>Checking whether a variable equals to any of the given values</h4>
+If the values have a legitimate reason to be strings, integers or other types with unlimited numbers of values, then « is in list » predicates are the preferred choice :
+<pre style="padding-left: 30px;"><strong>if </strong><span style="color: #008080;">List</span>.mem current_day [<span style="color: #ff0000;">"Monday"</span>;<span style="color: #ff0000;">"Wednesday"</span>;<span style="color: #ff0000;">"Friday"</span>] <strong>then</strong>
+  <span style="color: #008000;">(* do something *) </span></pre>
+Days are a quite bad example, because these are better represented as a variant (which then type-checks whether you have written<em> Mornday</em> instead of <em>Monday</em>). If you have already defined the type of weekdays, then :
+<pre style="padding-left: 30px;"><strong>if</strong> <span style="color: #008080;">List</span>.mem (current_day : weekday) [<span style="color: #008080;">`Monday</span>;<span style="color: #008080;">`Wednesday</span>;<span style="color: #008080;">`Friday</span>] <strong>then</strong>
+  <span style="color: #008000;">(* do something *)</span></pre>
+If this is a one-shot check, or if you would rather not define a weekday type yet, you should instead go for an exhaustive pattern-matching :
+<pre style="padding-left: 30px;"> <strong>match</strong> current_day <strong>with</strong>
+  | <span style="color: #008080;">`Monday</span> | <span style="color: #008080;">`Wednesday</span> | <span style="color: #008080;">`Friday</span> -&gt;
+    <span style="color: #008000;">(* do something *)</span>
+  | <span style="color: #008080;">`Tuesday</span> | <span style="color: #008080;">`Thursday</span> | <span style="color: #008080;">`Saturday</span> | <span style="color: #008080;">`Sunday</span> -&gt; ()</pre>
+<h4>Extract complex or repeated logic into functions</h4>
+This is a fairly fundamental concept — but it consists in two distinct parts. There is a separation and naming part (you pull out a piece of code and give it a name, which helps understand what it does and how it relates to the rest of the program) and there is an extraction and reuse part (the piece of code is pulled out into a more globally accessible location and parametrized, so that it may be used in other places).
+
+With the above example, simple separation-and-naming would be :
+<pre style="padding-left: 30px;"><strong>let </strong>is_discount_day = <strong>match </strong>current_day <strong>with</strong>
+ | <span style="color: #008080;">`Monday</span> | <span style="color: #008080;">`Wednesday</span> | <span style="color: #008080;">`Friday</span> -&gt; current_date &gt; <span style="color: #ff0000;">20</span>
+ | <span style="color: #008080;">`Tuesday</span> | <span style="color: #008080;">`Thursday</span> | <span style="color: #008080;">`Saturday</span> | <span style="color: #008080;">`Sunday</span> -&gt; <span style="color: #ff0000;">false</span>
+<strong>in</strong>
+
+<strong>if </strong>is_discount_day <strong>then </strong>
+  <span style="color: #008000;">(* do something *)</span></pre>
+The variable is defined in the same scope it is use in, and it assumes that <code>current_day</code> and <code>current_date</code> values have been defined previously in that scope. Extraction-and-reuse would go further :
+<pre style="padding-left: 30px;"><strong>type </strong>weekday =
+  [ <span style="color: #008080;">`Monday</span> | <span style="color: #008080;">`Tuesday</span> | <span style="color: #008080;">`Wednesday</span>
+  | <span style="color: #008080;">`Thursday</span> | <span style="color: #008080;">`Friday</span> | <span style="color: #008080;">`Saturday</span> | <span style="color: #008080;">`Sunday</span> ]
+<strong>
+let </strong>is_discount_day (day:weekday) date =
+<span style="color: #008080;">  List</span>.mem day [<span style="color: #008080;">`Monday</span>;<span style="color: #008080;">`Wednesday</span>;<span style="color: #008080;">`Friday</span>] <strong>&amp;&amp;</strong> date &gt; <span style="color: #ff0000;">20</span>
+
+...
+
+  <strong>if </strong>is_discount_day current_day current_date <strong>then </strong>
+    <span style="color: #008000;">(* do something *)</span></pre>
+Now, is-discount-day is a global function available from everywhere in the code, and it uses the provided parameters to determine whether this is indeed a discount day.
+<h4>Memoize the results of repeated function calls</h4>
+OCaml has several ways to perform memoization. One of them is lazy evaluation :
+<pre style="padding-left: 30px;"><strong>val</strong> discount_day = <strong>lazy</strong> (is_discount_day current_day current_date)
+<strong>method</strong> discount_day = <span style="color: #008080;">Lazy</span>.force discount_day</pre>
+The lazy expression will only be evaluated the first time the <code>Lazy.force</code> function is called on it.
+
+Note that if the current day or current date can change, then the memoization actually <em>breaks</em> things !
+
+Memoization is also helpful when dealing with a function that requires arguments, in which case a different result will be provided for each argument set. A common solution is to use a hash table to store these :
+<pre style="padding-left: 30px;"><strong>let</strong> fibonacci =
+  <strong>let</strong> memo = <span style="color: #008080;">Hashtbl</span>.create <span style="color: #ff0000;">100</span> <strong>in</strong>
+  <strong>let rec</strong> fib n =
+    <strong>try</strong> <span style="color: #008080;">Hashtbl</span>.find memo n <strong>with </strong><span style="color: #008080;">Not_found</span> -&gt;
+      <strong>let</strong> result = fib (n-<span style="color: #ff0000;">1</span>) + fib (n-<span style="color: #ff0000;">2</span>) <strong>in</strong>
+      <span style="color: #008080;">Hashtbl</span>.add memo n result ; result
+  <strong>in</strong> fib</pre>
+This works fine for short-lived functions — don't do this for global functions that might stick around for a long time, because the memoization hash table will grow and its contents will never be garbage-collected. If you really have to, use a <em>weak</em> hash table, such as Batteries' <code>BatInnerWeaktbl</code>, so that the garbage collector may reclaim the memoized values when it runs out of memory.
+
+Also don' t overdo memoization — it only works when arguments are reliably passed more than once <em>and</em> the time to compute the value is significantly larger than the time to retrieve and store it <em>and</em> it is worth the memory usage <em>and </em>the function has no side-effects.
+<h4>Use the seven list manipulation primitives</h4>
+Almost any processing on collections of items can be expressed in terms of seven fundamental patterns. Recognizing those patterns can help improve the clarity of both the code and the underlying algorithm.
+
+<strong>1. Map</strong> transforms a list into another, item by item, in linear time. Use a map operation when all you need is a one-to-one transformation. The line below extracts three recipes from the database using their identifier.
+<pre style="padding-left: 30px;"><strong>let</strong> recipes = <span style="color: #008080;">List</span>.map from_database [ <span style="color: #ff0000;">"omelet"</span> ; <span style="color: #ff0000;">"cheeseburger"</span> ; <span style="color: #ff0000;">"risotto"</span> ]</pre>
+<strong>2. Reduce</strong> transforms a list of values into a single value by repeatedly applying a function that combines together two values into one. The typical example is a fold, which uses a function to combine each list element, in turn, with an accumulator. It can be used to extract the sum of values in a list, for example :
+<pre style="padding-left: 30px;"><strong>let</strong> total = <span style="color: #008080;">List</span>.fold_left (+) <span style="color: #ff0000;">0</span> [ <span style="color: #ff0000;">5</span> ; <span style="color: #ff0000;">6</span> ; <span style="color: #ff0000;">3</span> ; <span style="color: #ff0000;">8</span> ; <span style="color: #ff0000;">9</span> ; <span style="color: #ff0000;">0</span> ; <span style="color: #ff0000;">7</span> ; <span style="color: #ff0000;">6</span> ]</pre>
+This transform allows a preliminary map step which transform the values inside the list into values that can be combined. For instance, to find the age of the oldest person in a list of people :
+<pre style="padding-left: 30px;"><strong>let</strong> oldest = <span style="color: #008080;">List</span>.fold_left (<strong>fun</strong> acc person -&gt; max age person.age) <span style="color: #ff0000;">0</span> people</pre>
+<strong>3. Extract </strong>works like a map, but the transformation function returns zero, one or more results for each call. All the results are included in the final list. The most elementary implementation is literally to have a map (that transforms a list into a list of lists) followed by a concatenation (that transforms a list of lists into a list). For instance, to get all the ingredients involved in a list of recipes :
+<pre style="padding-left: 30px;"><strong>let </strong>ingredients =
+  <span style="color: #008080;">List</span>.concat (<span style="color: #008080;">List</span>.map (<strong>fun</strong> recipe -&gt; recipe.ingredients) recipes)</pre>
+<strong>4. Filter</strong> is a subset of Extract where the transform may not return more than one result — but it may still return none, so its result is simply an optional type. For instance, to extract the list of all recipes that have a wine recommandation along with their recommended wine :
+<pre style="padding-left: 30px;"><strong>let</strong> wines = <span style="color: #008080;">BatList</span>.filter_map
+  (<strong>fun</strong> recipe -&gt; <span style="color: #008080;">BatOption</span>.map (<strong>fun</strong> wine -&gt; recipe,wine) recipe.wine) recipes</pre>
+The OCaml language also provides a standard <code>List.filter</code> function which keeps values for which a property is true. For instance, to get the list of recipes that have a wine recommendation :
+<pre style="padding-left: 30px;"><strong>let</strong> have_wines = <span style="color: #008080;">List</span>.filter (<strong>fun</strong> recipe -&gt; recipe.wine &lt;&gt; <span style="color: #008080;">None</span>) recipes</pre>
+This approach is weaker — the wines in the resulting list are still treated as optional by the type system, so you will need bogus pattern matching for a case that never happens (no wine) to extract the actual wine values. A <code>filter_map</code> lets you encode the filter property in the type of the result, which makes using the filtered list easier.
+
+<strong>5. Sort</strong> unsurprisingly sorts the list. The canonical sort — using the canonical order relationship — is a theoretical curiosity, and in practice most sorts use a <em>projection function</em> p such that A &lt; B iff p(A) &lt; p(B). This is best illustrated in SQL, in the form of the ORDER BY &lt;projection&gt; statement. Two useful helper functions :
+<pre style="padding-left: 30px;"><strong>let</strong> project compare p a b = compare (p a) (p b)
+<strong>let</strong> descending compare a b = compare b a</pre>
+For instance, to sort the list of recipes based on how long each of them takes :
+<pre style="padding-left: 30px;"><strong>let</strong> by_duration =
+  <span style="color: #008080;">List</span>.sort (project compare (<strong>fun</strong> recipe -&gt; recipe.duration)) recipes</pre>
+<strong>6. Group</strong> works like Sort, but further regroups « equal » items together by returning a list of lists. It works using a comparison function that is usually based on a projection function. For instance, to get three lists containing one-star, two-star and three-star recipes :
+<pre style="padding-left: 30px;"><strong>let</strong> by_stars =
+  <span style="color: #008080;">BatList</span>.group (project compare (<strong>fun</strong> recipe -&gt; recipe.stars)) recipes</pre>
+There is a special case when the projection function returns booleans, which is known as a <em>partition</em>. For instance, to extract recipes that are desserts and recipes that are not :
+<pre style="padding-left: 30px;"><strong>let</strong> desserts, non_desserts =
+<span style="color: #008080;">  BatList</span>.partition (<strong>fun</strong> recipe -&gt; recipe.is_dessert) recipes</pre>
+<strong>7. Search</strong> extracts one element from the list (if possible) based on a certain condition or property. Elementary searches are « first element » and « last element. » More complex searches : finding a value by key in a list of key-value pairs using <code>List.assoc</code> or using a predicate using <code>List.find</code>. The heavy-duty search tool is <code>BatList.find_map</code>, used below to find a recipe that is recommended by at least one person, and the recommending person :
+<pre style="padding-left: 30px;"><strong>let </strong>recipe, recommender = <span style="color: #008080;">BatList</span>.find_map
+  (<strong>fun</strong> recipe -&gt; <span style="color: #008080;">BatOption</span>.map (<strong>fun </strong>person -&gt; recipe, person) recipe.recommended)
+  recipes</pre>
+These seven patterns can be used in conjunction to perform almost any algorithm on collections, sequences or lists. For a more complex example, assume we need the ten ingredients that appear the most often in desserts. We would filter recipes by desserts, extract their ingredients, group them by name, sort the sub-lists by list length and take the name of the first element of the first ten sub-lists :
+<pre style="padding-left: 30px;"><strong>open </strong><span style="color: #008080;">BatPervasives</span> <span style="color: #008000;">(* for operator |&gt; *)</span>
+<strong>open </strong><span style="color: #008080;">BatList
+</span>
+<strong>let</strong> ten_best_ingredients recipes = recipes
+  |&gt; filter (<strong>fun</strong> r -&gt; r.dessert)
+  |&gt; map (<strong>fun</strong> r -&gt; r.ingredients) |&gt; concat
+  |&gt; group (project compare (<strong>fun</strong> i -&gt; i.name))
+  |&gt; sort (descending (project compare length))
+  |&gt; take <span style="color: #ff0000;">10</span>
+  |&gt; map hd
+  |&gt; map (<strong>fun</strong> i -&gt; i.name)</pre>
+<small>Article &copy; brewbooks &mdash; <a href="http://www.flickr.com/photos/brewbooks/3203211847/">Flickr</a></small>

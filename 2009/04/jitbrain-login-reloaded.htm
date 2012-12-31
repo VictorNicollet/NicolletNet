@@ -1,0 +1,43 @@
+@title JITBrain - Login Reloaded
+@draft
+
+The login page is functional and skinned! You can now login, sign up, retrieve your password, and if you were trying to do something that requires an authentication, you will be able to resume that once you authenticate. The corresponding articles have been added to the ongoing series: <a href="../jitbrain/delayed-requests">Delayed Requests</a>, <a href="../jitbrain/password-recovery">Password Recovery</a> and <a href="../jitbrain/stylesheets">Stylesheets</a>.
+
+The next step is to design the core of the JITBrain application: the form that lets the user add an issue to the tracker. It has to be carefully balanced for optimal usability, so expect a lot of tweaking and AJAX programming (and an introduction to jQuery).
+
+So far, JITBrain is 1286 lines of PHP (not counting the CSS, obviously):
+<blockquote>
+<pre>   20 config/db.php
+   54 config/domain.php
+   17 config/error.php
+
+   19 controllers/confirm.php
+   50 controllers/do-login.php
+   99 controllers/do-reset-password.php
+   78 controllers/do-signup.php
+   43 controllers/files.php
+    3 controllers/index.php
+   17 controllers/login.php
+   25 controllers/reset-password.php
+
+   83 models/authentication.php
+
+   77 objects/lazy.php
+
+  115 utils/db.php
+   67 utils/error.php
+   52 utils/pervasive.php
+   27 utils/redirect.php
+   88 utils/request.php
+   40 utils/session.php
+
+   27 views/confirm.php
+   68 views/loginpage.php
+   17 views/page404.php
+   37 views/plainpage.php
+  105 views/resetpassword.php
+   58 views/twocolform.php
+
+ 1286 total</pre>
+</blockquote>
+Enjoy your read!

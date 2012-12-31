@@ -1,0 +1,48 @@
+@title Of Recursive Types
+@draft
+
+Objective Caml supports recursive types out of the box, like most programming languages. A classic example is the tree, for instance to represent an expression:
+<blockquote>
+<pre style="color:#000000;background:#ffffff;"><span style="color:#000084; font-weight:bold; ">type</span> lambda =
+  | Var <span style="color:#000084; font-weight:bold; ">of</span> <span style="color:#000084; font-weight:bold; ">int</span>
+  | App <span style="color:#000084; font-weight:bold; ">of</span> lambda * lambda
+  | Abs <span style="color:#000084; font-weight:bold; ">of</span> lambda</pre>
+</blockquote>
+The problem is that such definitions are not very useful. Sure, they define a variant composite type that can be used to represent trees, but the nodes in those trees cannot be extended in any way. For instace, if you wanted to type-check a lambda-expression using the classic ruleset, and bind a type to every sub-expression, you would have no way of doing so because you cannot attach data to an existing value in Objective Caml.
+
+What you would end up doing is something like this:
+<blockquote>
+<pre style="color:#000000;background:#ffffff;"><span style="color:#000084; font-weight:bold; ">type</span> lambda =
+  | Var <span style="color:#000084; font-weight:bold; ">of</span> <span style="color:#000084; font-weight:bold; ">int</span>
+  | App <span style="color:#000084; font-weight:bold; ">of</span> term * term
+  | Abs <span style="color:#000084; font-weight:bold; ">of</span> term
+
+<span style="color:#000084; font-weight:bold; ">and</span> term  =
+  {
+    term_type : your_term_type ;
+    term_form : lambda
+  }</pre>
+</blockquote>
+That's better (you can now bind arbitrary data to every term) but you still have to change the original definition of your term if you need new data to be added.
+
+One way of improving things is to give every term a unique identifier (and be stuck with the issue of generating unique identifiers, which is not a trivial thing to do once you need to account for child expressions depending on parent expressions and cloning). It can work, but I would advise against it.
+
+My personal advice is to use this:
+<blockquote>
+<pre style="color:#000000;background:#ffffff;"><span style="color:#000084; font-weight:bold; ">type</span> 'term lambda =
+  | Var <span style="color:#000084; font-weight:bold; ">of</span> <span style="color:#000084; font-weight:bold; ">int</span>
+  | App <span style="color:#000084; font-weight:bold; ">of</span> 'term * 'term
+  | Abs <span style="color:#000084; font-weight:bold; ">of</span> 'term
+
+<span style="color:#808080; ">(* Somewhere else *)</span>
+<span style="color:#000084; font-weight:bold; ">type</span> term =
+  {
+    term_type : your_term_type ;
+    term_form : term lambda
+  }</pre>
+</blockquote>
+The variant is defined on its own, without any recursion, so that it may be used in any number of ways with different data associated. So, one module may use the recursive definition as a standalone type for marshaling, another may use the recursive definition with some information about whether an abstraction's variable is used anywhere for better execution speed, and a third may also add type information or code generation information.
+
+And you can even convert between the various definitions using a map-like (non-recursive) function that translates terms from one type to another!
+
+<strong>Conclusion</strong>: separate concerns. Being a variant is one concern, being recursive is another. So, define the variant non-recursively, then define the recursion as part of another type (along with per-node additional data, if any).

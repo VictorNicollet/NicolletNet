@@ -1,0 +1,122 @@
+@title The C++ hits you! You feel confused.
+@draft
+
+If you're reading this post, you're probably either a beginner intending to learn C++, a veteran keen on flaming my teaching philosophy, or someone searching for the origin of the "The foobar hits you! You feel confused." Nethack quote. Either way, welcome.
+
+I intended this article as a short introductory meta-note about learning C++. It should give you some elements that can be helpful in understanding C++ books and tutorials. If you're really keen on doing this, I suggest <a href="http://www.mindview.net/Books/TICPP/ThinkingInCPP2e.html" target="_blank">Thinking in C++</a> and the <a href="http://www.parashift.com/c++-faq-lite/" target="_blank">C++ FAQ Lite</a>, both of which are freely available online and are quality resources.
+
+And stay away from any tutorials that <em>#include &lt;iostream.h&gt;</em> !
+<h3><!--more--></h3>
+<div style="float:right;border:1px dotted #FFCC88;padding:8px;margin:25px"><strong>Table of contents</strong>
+- <a href="#benefits">The benefits</a>
+- <a href="#downsides">The downsides</a>
+- <a href="#compiling">The compiling process</a>
+- <a href="#undef">Undefined behavior</a>
+- <a href="#modern">Modern C++</a></div>
+<h3><a name="benefits"></a>The benefits</h3>
+Why would someone use C++?
+
+<strong>As a project manager:</strong> you probably have existing code written in C++ that you can leverage for your project (or C code that you could interface with), costly tools related to C++ that you don't want to buy again for another language, and you might already have a team of C++ programmers that can work on it—so why choose another language?
+
+<strong>As an individual programmer:</strong> you might want to be hired by an industry that uses C++ a lot (such as the games industry or front-office investment banking), or it might be the only language you have managed to learn—or the only one you like.
+
+In both cases, you might be constrained to a platform that has no support for other languages you might prefer, or be shoehorned into using a specific language by the project requirements.
+<h3><a name="downsides"></a>The downsides</h3>
+Why would someone not use C++?
+
+<strong>It's dangerous</strong>. C++ leaves a huge amount of things undefined, meaning that virtually every large project written in C++ will rely on some specific behavior that is not guaranteed by the language. This leads to unpredictable errors that happen only on certain computers and are extremely difficult to track.
+
+Also, when a part of a C++ program fails, the entire program fails—therefore, if you wish to isolate your program from a subprogram written by someone else, you have to separate them and therefore spend a lot of time on working on communication between the two.
+
+Last but not least, C++ relies on a "the programmer is always right" philosophy. If you cannot be up to the task of always being right, you might want to avoid using C++ on a large scale.
+
+<strong>It might be awkward for specific situations</strong>. C++ is a general-purpose compiled language, so it certainly does not excel at all tasks. This can be an issue for the programmer himself (text manipulation in C++ lacks all the amenities of PHP and Perl text manipulation), for the organization (the C++ compilation model does not lend itself to short modify-and-test cycles like Lua or Python would) or for the user (no user will install a C++ application to visit a website, but nearly all of them can run JavaScript or ActionScript in their browsers).
+<h3><a name="compiling"></a>How C++ code turns into executables</h3>
+As a programmer, you write source code. Source code is stored in plain text files—usually with the .cpp extension, to indicate that it's C++ code. Text editors (including notepad) can open source code files, but people usually have dedicated source code editors that add many features (such as highlighting relevant parts of programs or smart search-and-replace tool). I use emacs on Linux and Visual C++ Express Edition on Windows—both are free and available online for download.
+
+So, I would write this code (don't try to understand the details just yet) :
+<pre style="padding-left: 30px;">void print(int x)
+{
+  ... explain how to show the integer x to the user ...
+}
+
+print(2 + 3);</pre>
+Then, I use a compiler to create the executable.
+<blockquote>The C++ compiler is a program that reads a C++ source file and turns it into a program.</blockquote>
+Well, that's not entirely true. The problem is that the average program contains hundreds of thousands of lines of code, and many people work on such programs, which makes it necessary to separate the program into separate source files. What if, for instance, I wanted to let a co-worker use the <em>'print'</em> function I've defined above?
+
+Besides, for performance purposes, it would be wise to avoid processing a file that has not changed since the last time it was processed. This has led to the creation of object files.
+<blockquote>The C++ compiler is a program that reads a C++ source file and turns it into an object file.
+
+The C++ linker is a program that reads several object files and connects them together to form a program.</blockquote>
+The linking process mostly just sticks the object files together in an executable file. It sometimes performs two additional operations:
+<ul>
+	<li>If an object file uses something provided by another object file (that is, your code uses some code written by another programmer), it connects the two together. This leads to linker errors if a thing is defined  by two object files (which one should be used?) or if it's defined by none (it's required, but not provided).Here, it finds out that my object file needs 'print', and that an object file provided by someone else defines 'print', so it connects them.</li>
+	<li>If an object file provides something that nobody uses, it is often stripped from the resulting executable file to avoid wasting space.</li>
+</ul>
+We're getting close, but we're not there yet. There is still one problem: how does the linker know what an object file uses? Using a piece of code usually involves the <em>name</em> of that piece, but a program may involve a lot of pieces with the same name, and therefore needs more information to select one. Therefore, C++ requires the programmer to declare in his code that he's using a certain piece of code, along with all appropriate information about that piece.
+
+In the 'print' example above, you would have to specify a few more details in order to differentiate 'print' that displays an integer from 'print' that displays some text. The declaration of my 'print' would look like this:
+<pre style="padding-left: 30px;">void print(int);
+
+print(2 + 3);</pre>
+This also has a useful side-effect: since you've given a lot of information about that piece of code, the compiler can determine whether you're using correctly or not based on that information. This means that you don't have to wait until link-time to find out if you have errors, and the compiler can even give you the lines where the errors happen (the linker often does not have access to line numbers).
+
+As a consequence, the C++ language requires you to <em>always </em>declare objects before you use them (and, of course, defining an object counts as declaring it).
+
+However, all users of my code will have to declare the things that I provide. Wouldn't it be easier if I provided them with a list of declarations that they can just copy-paste into their own code? In fact, wouldn't it be even easier if the language provided a way of inserting a list of declarations in your source code?
+
+This is precisely what the preprocessor does: it inserts lists of declarations (called header files, which use the .h or .hpp extension) into source files. For instance, I would write:
+<pre style="padding-left: 30px;"><span style="color: #ff6600;"><strong>-- myfile.cpp</strong> --</span>
+
+void print(int x)
+{
+  ... explain how to print x ...
+}
+
+<span style="color: #ff6600;"><strong>-- myfile.hpp --</strong></span>
+
+void print(int);
+
+<span style="color: #ff6600;"><strong>-- yourfile.cpp --</strong></span> 
+
+#include "myfile.hpp"
+print(2 + 3);</pre>
+The '#include' tells the preprocessor that it should copy-paste the contents of the 'myfile.hpp' file right there. This operation happens before the compiler manipulates the file, so that the compiler always sees the transformed file.
+<blockquote>The preprocessor reads each source file (.cpp) and inserts any header files (.hpp) that the source file includes. The result of preprocessing a source file is called a translation unit.
+
+The compiler reads each translation unit and turns it into a lightweight, optimized representation that is quite close to machine language, and stores it in an object file (.o or .obj) for later reuse.
+
+The linker reads all object files, connects them together to resolve pieces of code references between objects, and eliminates unused pieces. This results in an executable program.</blockquote>
+There are many variations on the above layout (such as precompiled headers, or libraries), but you don't need to know about these yet. Besides, while knowledge of the above is useful to understand error messages and code layout, you don't need to do that manually: most compilers actually the entire preprocess-compile-link sequence for you without needing human intervention in the simple cases.
+<h3><a name="undef"></a>Undefined Behavior</h3>
+Before you advance any further, you need to understand undefined behavior. The C++ language is defined by a standard: a complex document that describes in excruciating detail every single feature of the language and how it should behave. The philosophy of the C++ language is that compilers should have as much latitude as possible in order to generate high-performance executables.
+
+This has led to three levels of description:
+<ul>
+	<li>Standard-defined details must be supported by every C++ compiler in the world. If you rely on these details, your program will work across all platforms that have a standard C++ compiler. For instance, that every opening brace "(" should be matched by a closing brace ")" is part of the standard.</li>
+	<li>Implementation-defined details are not specified by the standard, they are left for the compiler writers to determine. The only constraint is that compiler writers must make a decision and document that decision. So, you can rely on these details being defined and safe on every platform, although they will not be the same between platforms. For instance, an integer may require two, four or eight bytes depending on the platform being 16-bit, 32-bit or 64-bits.</li>
+	<li>Undefined behavior is just undefined. This lets the compiler writers do anything without telling the programmer what they are doing. This can be a compiler warning or error, doing "what the programmer expects", crashing the program, randomly altering values in other parts of the program, and in some cases outright crashing the computer. The blue screen of death and Windows access violations are typical examples of what undefined behavior can lead to.</li>
+</ul>
+The problem with undefined behavior is that it can indeed do "what the programmer expects" while you're developing, and then suddenly stop working when you give the program to a friend, reboot your own computer, or are trying to do a demo in front of your investors.
+
+This means that you should never write code unless you are absolutely certain that the standard or your implementation allows it. The natural consequence is that although C++ is an extremely complex and varied language, most expert C++ programmers will only ever use a small subset of C++ that they are intimately familiar with, because straying from these subsets in a safe fashion requires you to spend a lot of time reading the standard and the compiler documentation just to check that what you are doing can be done.
+
+This is also the reason why C++ is not advised as a first language: it's easy to write a C++ program that compiles and works on the first run but crashes and burns when you least expect it—writing reliable programs require the programmer maturity to always check with the standard whether the code is safe, and beginners seldom have the will or the ability to check the standard.
+<h3><a name="modern"></a>Modern C++</h3>
+There are different styles of writing C++. By styles, I do not mean how many spaces each tab contains, where you place your curly braces, how you name your variables or whether you prefix members with "m_". Many people, including experienced programmers (<a href="http://www.nicollet.net/2008/08/cpp-warts/" target="_blank">and me, too</a>), tend to make a fuss about these typographical details, but what ultimately matters is that you should be able to write in whatever style your team needs you to write, to read whatever code your team needs you to read, and that you should choose for your own programs the style which requires the least brainpower on your part to read and write (this tends to be, for me, the default style enforced by my editor).
+
+The style in which most experienced C++ users write is called Modern C++. It relies on a technique known as RAII to avoid forgetting "always do B after A" constraints such as "always release memory after you use it", "always close files after you write them" and "always display a frame after rendering it". In particular, Modern C++ code never uses the <em>delete</em> operator explicitly, and instead gives memory ownership to scoped objects that will delete it themselves when they go out of scope. By tying a necessary operation (delete memory) to an inevitable event (leave a certain scope), you ensure that the operation always happens.
+
+By contrast, many inexperienced C++ programmers (whether they come from a C background or followed a C tutorial with some C++ details) write in a style known as "C with classes". They take advantage of a small number of C++ features that do not exist in C, but otherwise use C approaches to problems. While this is not, in itself, a problem, it is essential to note that C with classes does not play well with several C++ features, such as exceptions or polymorphism.
+
+Modern C++ adepts tend to find C-with-classes to be counter-productive. This is a subjective statement—someone who writes C-with-classes code can seldom be more productive, because this would require Modern C++ techniques, and learning these takes time. However, someone who masters Modern C++ has access to techniques that can shorten code by an order of magnitude while also keeping it safe and correct (and delegating such boring verification tasks to the computer), making them intrinsically more productive that C-with-classes authors.
+
+Do not expect to "guess" Modern C++ on your own—beginners are inevitably drawn to C-with-classes. As you learn, you will inevitably meet Modern C++ programmers who will comment on your code and explain to you that some part is too long and could be shortened by correct application of modern techniques, or that another part is not exception-safe and should be rewritten using safe idioms that Modern C++ provides. Do <strong>not</strong> contradict them without giving their proposal some attention, for even if you do not ultimately listen to their advice, the mere act of trying out what they suggest makes you a better C++ programmer. Over the course of a few years, you will move from a C-with-classes programmer to a Modern C++ programmer, if you have enough Modern C++ programmers around to teach you (in my case, I spent 5 years as a C-with-classes programmer).
+<h3>Related Posts</h3>
+<ul>
+	<li><a title="Permanent Link to &quot;An Introduction to C++ Pointers&quot;" rel="bookmark" href="http://www.nicollet.net/2008/09/introduction-to-cpp-pointers/">An Introduction to C++ Pointers</a> : one of the trickiest tricks in the C++ bag (see also <a title="Permanent Link to &quot;Array iterators&quot;" rel="bookmark" href="http://www.nicollet.net/2008/09/array-iterators/">Array iterators</a>)</li>
+	<li><a title="Permanent Link to &quot;Can references be null?&quot;" rel="bookmark" href="http://www.nicollet.net/2009/11/can-references-be-null/">Can references be null?</a> : the classic example of undefined behavior</li>
+	<li><a title="Permanent Link to &quot;Member and Non-Member Functions&quot;" rel="bookmark" href="http://www.nicollet.net/2008/12/cpp-functions/">Member and Non-Member Functions</a> : thorny first-class functions in C++</li>
+</ul>
+Do you know of other benefits or downsides to C++? Do you think everyone should learn, if only for the learning experience? Do you have horror stories of undefined behavior rampaging through code bases? Please leave a comment below!

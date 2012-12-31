@@ -1,0 +1,20 @@
+@title Announcing Ohm, an OCaml Web Framework
+@draft
+
+For the last two years, I worked as tech lead for the French start-up <a href="http://runorg.com/" target="_blank">RunOrg</a>. Our web app application is written entirely in OCaml — with a few bits of HTML, CSS and JS for the client side. From the very start, I chose to write an in-house web framework instead of going with Ocsigen. I called it <strong>Ohm</strong>, because O is a good starting letter for OCaml-based projects and there is an interesting pun about the path of least resistance hidden in there.
+<p style="text-align: center;"><strong><a href="http://ohm-framework.com" target="_blank">Starting today, Ohm is open source software</a></strong></p>
+<a href="http://ohm-framework.com"><img class="aligncenter size-full wp-image-2787" title="Logo-320" src="http://www.nicollet.net/wp-content/uploads/2012/10/Logo-320.png" alt="" width="320" height="200" /></a>
+
+Aside from being written in OCaml, there is nothing special about the Ohm framework. It does not implement novel ideas about event-based programming like <em>node.js</em> does, nor does it aim to write an entire application in a single language like <em>Opa</em> does, nor does it even hope to somehow define a new way of writing web applications like <em>Ocsigen</em> does.
+
+The Ohm framework is all about writing boring web software in OCaml.
+
+It might seem insane to center a web framework around writing boring software — this is not where the sexy high-tech magic happens! Rails is sexy. Node is sexy. Backbone is sexy. And didn't Java and .NET already capture the boring software market years ago anyway? Behemoth companies would never use OCaml, and start-ups never write boring software!
+
+The sad truth is that while we get excited about the sexy high-tech magic, we spend most of our days writing boring software, and we have some sort of selective blindness that makes us underestimate the amount of boring work every single time. Sure, you might be working on the next Twitter and writing real-time user interfaces and high-scalability back-ends and clever algorithms. But your web application contains close to a hundred different screens (it does, count them!) and each of these has been written by a developer at some point in the past, complete with parsing a request, fetching things from a database and formatting them as HTML. And it was probably re-written a few times when the User Experience team identified major usability issues or the Product Manager decided a new feature had to be added. Not to mention the various boring back-end work, like those weekly reports the Co-Founders are addicted to or the tens of APIs that your application connects to because the Growth Hackers asked for it.
+
+Someone said that the world isn't made out of atoms, it's made out of the space between atoms. That's the same thing: <strong>sexy high-tech magic is made out of Boring</strong>.
+
+Two years of full-time work is a gold mine of important lessons. There is not a single line of code in the Ohm framework that started with « Hey, it would be cool if I could do this! » Every piece of the framework is there because there is a significant pain in writing boring software that it aims to solve.
+
+I will be writing an article about why everyone should be using Ohm and OCaml. Until, feel free to play around with the framework, and drop me a line if you have any questions!

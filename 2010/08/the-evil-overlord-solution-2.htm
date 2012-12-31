@@ -1,0 +1,33 @@
+@title The Evil Overlord Solution (2)
+@draft
+
+Not so long ago, the <a href="http://www.nicollet.net/2010/07/the-evil-overlord-returns/" target="_blank">Evil Overlord Returned</a>. Your job as a minion of evil was to help the Evil Overlord and the equally evil Empress Bing from Alpha Centauri pick a winner at random. The winner would then use a secret weapon to enslave mankind, because that's what these kinds of people do.
+
+Neither trusts you, so you had to find a provable way of offering each a 50% probability of winning. And the three of you can only communicate using one-on-one encrypted communication channels.
+
+There were two interesting answers by Guillaume and Iftah, both of which should work (although Guillaume's solution relies on instant communication, which is not necessarily available.
+
+This is actually a common problem in cryptography. Let's start with a traditional coin-flipping problem: one participant picks heads or tails, then someone else flips a coin. The participant wins if he chose correctly. The problem is that no one trusts anyone, so the "someone else" could easily be accused of cheating by the first participant (choosing an unfair coin, or even announcing heads or tails without flipping a coin).
+
+In real life, one person flips the coin and hides the result, then the other person picks heads or tails, and the coin is revealed. The first person cannot manipulate the result even by using an unfair coin, and the other person does not know the result when they choose. This relies on the second person being able to verify that the coin <em>was not tampered with</em> while they were choosing. If one participant is on Earth and the other is on Alpha Centauri, this is impossible.
+
+This is where hash functions come in. A hash function transforms a piece of text into a fixed-length text called a <em>hash</em>. For instance, the MD5 hash function turns HEADS into 7eb87d1ebe8f12eb105d00464a1eb496. <strong>The entire point of a hash function is that you cannot reverse it</strong>: if I gave you a hash, you couldn't be able to find the original text.
+
+So, the Evil Overlord would pick heads or tails with any method he wished (including, for instance, a fair coin toss) and write a long piece of text that indicates the chosen value, and compute its hash. For instance:
+<blockquote>b5d3945edb299c8f54634b8c87c47a47</blockquote>
+Then, he sends that hash to Empress Bing. She has no way of determining what piece of text this represents (because a hash function cannot be reversed). So she picks and announces either heads or tails. Suppose, for instance that she chooses "tails".
+
+The Evil Overlord then reveals the value he chose:
+<blockquote>I chose tails. My clever choice will let me rule the world!</blockquote>
+This lets Empress Bing win. The Evil Overlord cannot win, because that would involve finding a sentence containing "tails" that also results in the same hash, which is the same as reversing the hash and is therefore impossible. Of course, he could try tricking the Empress by providing a different sentence:
+<blockquote>I chose heads. Really, I swear!</blockquote>
+But that sentence would have a different hash, and the Empress would be able to find out very quickly by computing the hash herself:
+<blockquote>bee5be82d96f76bffc07786c70cacb06</blockquote>
+This means that his original choice cannot be tampered with in response to Empress Bing's choice, without her knowing.
+
+If any of the participants use a fair coin toss, then there's a 50% probability of winning.
+<p style="text-align: center;">—</p>
+
+This reminds me... back in Computer Science school, I had to submit a paper by e-mail before midnight, but the paper was too big. So, I uploaded the file to my web server and send the teacher a link to it. However, this would have let me alter the file (since it was on my web server, I could spend the rest of the night working on it, and upload it a second time right before the teacher woke up and downloaded it). So, in order to prove that the online version was indeed uploaded before midnight, I sent the MD5 hash of the file to the teacher in the e-mail.
+
+This only works for Computer Science assignments, obviously.

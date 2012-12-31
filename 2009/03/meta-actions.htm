@@ -1,0 +1,103 @@
+@title C++ Metaprogramming : Actions
+@draft
+
+I sometimes have meta-programs written using C++ templates that have to build a function which performs various tasks. One example would be to create a serialization-deserialization function pair for an object that's identified as an aggregate of values. Or once could be describing an operation as a series of tags or traits, and the metaprogram must explore those traits and generate the function.
+
+I propose here a small one-file template metaprogramming library that allows the compile-time creation of functions from component sub-functions. First, an example of how it can be used:
+<blockquote>
+<pre style="color:#000000;background:#ffffff;"><span style="color:#004a43; ">#</span><span style="color:#004a43; ">include </span><span style="color:#800000; ">&lt;</span><span style="color:#40015a; ">iostream</span><span style="color:#800000; ">&gt;</span>
+<span style="color:#004a43; ">#</span><span style="color:#004a43; ">include </span><span style="color:#800000; ">"</span><span style="color:#40015a; ">cacoethes/action.hpp</span><span style="color:#800000; ">"</span>
+
+<span style="color:#800000; font-weight:bold; ">struct</span> outer
+<span style="color:#800080; ">{</span>
+  <span style="color:#800000; font-weight:bold; ">static</span> <span style="color:#800000; font-weight:bold; ">void</span> before<span style="color:#808030; ">(</span><span style="color:#800000; font-weight:bold; ">int</span> <span style="color:#808030; ">&amp;</span>i<span style="color:#808030; ">)</span>
+  <span style="color:#800080; ">{</span> <span style="color:#666616; ">std</span><span style="color:#800080; ">::</span><span style="color:#603000; ">cout</span> <span style="color:#808030; ">&lt;</span><span style="color:#808030; ">&lt;</span> <span style="color:#800000; ">"</span><span style="color:#0000e6; ">outer::before(</span><span style="color:#800000; ">"</span> <span style="color:#808030; ">&lt;</span><span style="color:#808030; ">&lt;</span> i <span style="color:#808030; ">&lt;</span><span style="color:#808030; ">&lt;</span> <span style="color:#800000; ">"</span><span style="color:#0000e6; ">)</span><span style="color:#0f69ff; ">n</span><span style="color:#800000; ">"</span><span style="color:#800080; ">;</span> <span style="color:#808030; ">+</span><span style="color:#808030; ">+</span>i<span style="color:#800080; ">;</span> <span style="color:#800080; ">}</span>
+
+  <span style="color:#800000; font-weight:bold; ">static</span> <span style="color:#800000; font-weight:bold; ">void</span> after <span style="color:#808030; ">(</span><span style="color:#800000; font-weight:bold; ">int</span> <span style="color:#808030; ">&amp;</span>i<span style="color:#808030; ">)</span>
+  <span style="color:#800080; ">{</span> <span style="color:#666616; ">std</span><span style="color:#800080; ">::</span><span style="color:#603000; ">cout</span> <span style="color:#808030; ">&lt;</span><span style="color:#808030; ">&lt;</span> <span style="color:#800000; ">"</span><span style="color:#0000e6; ">outer::after(</span><span style="color:#800000; ">"</span> <span style="color:#808030; ">&lt;</span><span style="color:#808030; ">&lt;</span> i <span style="color:#808030; ">&lt;</span><span style="color:#808030; ">&lt;</span> <span style="color:#800000; ">"</span><span style="color:#0000e6; ">)</span><span style="color:#0f69ff; ">n</span><span style="color:#800000; ">"</span><span style="color:#800080; ">;</span> <span style="color:#808030; ">-</span><span style="color:#808030; ">-</span>i<span style="color:#800080; ">;</span> <span style="color:#800080; ">}</span>
+<span style="color:#800080; ">}</span><span style="color:#800080; ">;</span>
+
+<span style="color:#800000; font-weight:bold; ">struct</span> inner
+<span style="color:#800080; ">{</span>
+  <span style="color:#800000; font-weight:bold; ">static</span> <span style="color:#800000; font-weight:bold; ">void</span> before<span style="color:#808030; ">(</span><span style="color:#800000; font-weight:bold; ">int</span> <span style="color:#808030; ">&amp;</span>i<span style="color:#808030; ">)</span>
+  <span style="color:#800080; ">{</span> <span style="color:#666616; ">std</span><span style="color:#800080; ">::</span><span style="color:#603000; ">cout</span> <span style="color:#808030; ">&lt;</span><span style="color:#808030; ">&lt;</span> <span style="color:#800000; ">"</span><span style="color:#0000e6; ">inner::before(</span><span style="color:#800000; ">"</span> <span style="color:#808030; ">&lt;</span><span style="color:#808030; ">&lt;</span> i <span style="color:#808030; ">&lt;</span><span style="color:#808030; ">&lt;</span> <span style="color:#800000; ">"</span><span style="color:#0000e6; ">)</span><span style="color:#0f69ff; ">n</span><span style="color:#800000; ">"</span><span style="color:#800080; ">;</span> i<span style="color:#808030; ">*</span><span style="color:#808030; ">=</span><span style="color:#008c00; ">3</span><span style="color:#800080; ">;</span> <span style="color:#800080; ">}</span>
+
+  <span style="color:#800000; font-weight:bold; ">static</span> <span style="color:#800000; font-weight:bold; ">void</span> after <span style="color:#808030; ">(</span><span style="color:#800000; font-weight:bold; ">int</span> <span style="color:#808030; ">&amp;</span>i<span style="color:#808030; ">)</span>
+  <span style="color:#800080; ">{</span> <span style="color:#666616; ">std</span><span style="color:#800080; ">::</span><span style="color:#603000; ">cout</span> <span style="color:#808030; ">&lt;</span><span style="color:#808030; ">&lt;</span> <span style="color:#800000; ">"</span><span style="color:#0000e6; ">inner::after(</span><span style="color:#800000; ">"</span> <span style="color:#808030; ">&lt;</span><span style="color:#808030; ">&lt;</span> i <span style="color:#808030; ">&lt;</span><span style="color:#808030; ">&lt;</span> <span style="color:#800000; ">"</span><span style="color:#0000e6; ">)</span><span style="color:#0f69ff; ">n</span><span style="color:#800000; ">"</span><span style="color:#800080; ">;</span> i<span style="color:#808030; ">/</span><span style="color:#808030; ">=</span><span style="color:#008c00; ">2</span><span style="color:#800080; ">;</span> <span style="color:#800080; ">}</span>
+<span style="color:#800080; ">}</span><span style="color:#800080; ">;</span>
+
+<span style="color:#800000; font-weight:bold; ">using</span> <span style="color:#800000; font-weight:bold; ">namespace</span> cacoethes<span style="color:#800080; ">;</span>
+<span style="color:#800000; font-weight:bold; ">typedef</span> action<span style="color:#800080; ">::</span>empty<span style="color:#800080; ">&lt;</span><span style="color:#800000; font-weight:bold; ">int</span><span style="color:#800080; ">&gt;</span> action1<span style="color:#800080; ">;</span>
+<span style="color:#800000; font-weight:bold; ">typedef</span> action<span style="color:#800080; ">::</span>decorate<span style="color:#800080; ">&lt;</span>action1<span style="color:#808030; ">,</span> inner<span style="color:#800080; ">&gt;</span> action2<span style="color:#800080; ">;</span>
+<span style="color:#800000; font-weight:bold; ">typedef</span> action<span style="color:#800080; ">::</span>decorate<span style="color:#800080; ">&lt;</span>action2<span style="color:#808030; ">,</span> outer<span style="color:#800080; ">&gt;</span> action3<span style="color:#800080; ">;</span>
+
+<span style="color:#800000; font-weight:bold; ">int</span> <span style="color:#400000; ">main</span><span style="color:#808030; ">(</span><span style="color:#808030; ">)</span>
+<span style="color:#800080; ">{</span>
+  <span style="color:#800000; font-weight:bold; ">int</span> value <span style="color:#808030; ">=</span> <span style="color:#008c00; ">10</span><span style="color:#800080; ">;</span>
+
+  <span style="color:#666616; ">std</span><span style="color:#800080; ">::</span><span style="color:#603000; ">cout</span> <span style="color:#808030; ">&lt;</span><span style="color:#808030; ">&lt;</span> <span style="color:#800000; ">"</span><span style="color:#0000e6; ">Action 1 (</span><span style="color:#800000; ">"</span> <span style="color:#808030; ">&lt;</span><span style="color:#808030; ">&lt;</span> value <span style="color:#808030; ">&lt;</span><span style="color:#808030; ">&lt;</span> <span style="color:#800000; ">"</span><span style="color:#0000e6; ">)</span><span style="color:#0f69ff; ">n</span><span style="color:#800000; ">"</span><span style="color:#800080; ">;</span>
+  action1<span style="color:#800080; ">::</span>execute<span style="color:#808030; ">(</span>value<span style="color:#808030; ">)</span><span style="color:#800080; ">;</span>
+
+  <span style="color:#666616; ">std</span><span style="color:#800080; ">::</span><span style="color:#603000; ">cout</span> <span style="color:#808030; ">&lt;</span><span style="color:#808030; ">&lt;</span> <span style="color:#800000; ">"</span><span style="color:#0000e6; ">Action 2 (</span><span style="color:#800000; ">"</span> <span style="color:#808030; ">&lt;</span><span style="color:#808030; ">&lt;</span> value <span style="color:#808030; ">&lt;</span><span style="color:#808030; ">&lt;</span> <span style="color:#800000; ">"</span><span style="color:#0000e6; ">)</span><span style="color:#0f69ff; ">n</span><span style="color:#800000; ">"</span><span style="color:#800080; ">;</span>
+  action2<span style="color:#800080; ">::</span>execute<span style="color:#808030; ">(</span>value<span style="color:#808030; ">)</span><span style="color:#800080; ">;</span>
+
+  <span style="color:#666616; ">std</span><span style="color:#800080; ">::</span><span style="color:#603000; ">cout</span> <span style="color:#808030; ">&lt;</span><span style="color:#808030; ">&lt;</span> <span style="color:#800000; ">"</span><span style="color:#0000e6; ">Action 3 (</span><span style="color:#800000; ">"</span> <span style="color:#808030; ">&lt;</span><span style="color:#808030; ">&lt;</span> value <span style="color:#808030; ">&lt;</span><span style="color:#808030; ">&lt;</span> <span style="color:#800000; ">"</span><span style="color:#0000e6; ">)</span><span style="color:#0f69ff; ">n</span><span style="color:#800000; ">"</span><span style="color:#800080; ">;</span>
+  action3<span style="color:#800080; ">::</span>execute<span style="color:#808030; ">(</span>value<span style="color:#808030; ">)</span><span style="color:#800080; ">;</span>
+<span style="color:#800080; ">}</span></pre>
+</blockquote>
+This example outputs, as expected:
+<pre style="padding-left: 30px;">Action 1 (10)
+Action 2 (10)
+inner::before(10)
+inner::after(30)
+Action 3 (15)
+outer::before(15)
+inner::before(16)
+inner::after(48)
+outer::after(24)</pre>
+The basic principle of the library is as expected: an action is a class that has a static 'execute()' function taking a reference to an argument. The function communicates with its caller through that reference, both as input and output.
+
+The simplest action is 'action::empty', which is in fact an action template with the type of the argument being a template parameter.
+
+From an action, once can construct another action through decoration. This involves providing a type which has two static functions, 'before()' and 'after()', both having the same signature as the 'execute()' function. The decoration, performed with the 'decorate&lt;&gt;' meta-function, creates a new action from the old one. Executing the new action runs the 'before()' function, then the 'execute()' of the old action, and finally the 'after()' function.
+
+Classic errors involve trying to decorate something that is not an action, or trying to decorate using a type that does not have <strong>static</strong> functions 'before()' and 'after()'.
+
+The "cacoethes/action.hpp" file itself is pretty simple:
+<blockquote>
+<pre style="color:#000000;background:#ffffff;"><span style="color:#696969; ">// Copyright (c) 2009, Victor Nicollet</span>
+<span style="color:#696969; ">// All rights reserved.</span>
+
+<span style="color:#004a43; ">#</span><span style="color:#004a43; ">ifndef</span><span style="color:#004a43; "> ACTION_HPP</span>
+<span style="color:#004a43; ">#</span><span style="color:#004a43; ">define</span><span style="color:#004a43; "> ACTION_HPP</span>
+
+<span style="color:#800000; font-weight:bold; ">namespace</span> cacoethes
+<span style="color:#800080; ">{</span>
+  <span style="color:#800000; font-weight:bold; ">namespace</span> action
+  <span style="color:#800080; ">{</span>
+    <span style="color:#800000; font-weight:bold; ">template</span> <span style="color:#800080; ">&lt;</span><span style="color:#800000; font-weight:bold; ">typename</span> ARG<span style="color:#800080; ">&gt;</span>
+    <span style="color:#800000; font-weight:bold; ">struct</span> empty
+    <span style="color:#800080; ">{</span>
+      <span style="color:#800000; font-weight:bold; ">typedef</span> ARG argument_type<span style="color:#800080; ">;</span>
+      <span style="color:#800000; font-weight:bold; ">static</span> <span style="color:#800000; font-weight:bold; ">inline</span> <span style="color:#800000; font-weight:bold; ">void</span> execute<span style="color:#808030; ">(</span>argument_type <span style="color:#808030; ">&amp;</span>arg<span style="color:#808030; ">)</span> <span style="color:#800080; ">{</span><span style="color:#800080; ">}</span>
+    <span style="color:#800080; ">}</span><span style="color:#800080; ">;</span>
+
+    <span style="color:#800000; font-weight:bold; ">template</span> <span style="color:#800080; ">&lt;</span><span style="color:#800000; font-weight:bold; ">typename</span> ACTION<span style="color:#808030; ">,</span> <span style="color:#800000; font-weight:bold; ">typename</span> OPERATIONS<span style="color:#800080; ">&gt;</span>
+    <span style="color:#800000; font-weight:bold; ">struct</span> decorate
+    <span style="color:#800080; ">{</span>
+      <span style="color:#800000; font-weight:bold; ">typedef</span> ACTION inner<span style="color:#800080; ">;</span>
+      <span style="color:#800000; font-weight:bold; ">typedef</span> <span style="color:#800000; font-weight:bold; ">typename</span> inner<span style="color:#800080; ">::</span>argument_type argument_type<span style="color:#800080; ">;</span>
+
+      <span style="color:#800000; font-weight:bold; ">static</span> <span style="color:#800000; font-weight:bold; ">inline</span> <span style="color:#800000; font-weight:bold; ">void</span> execute<span style="color:#808030; ">(</span>argument_type <span style="color:#808030; ">&amp;</span>arg<span style="color:#808030; ">)</span>
+      <span style="color:#800080; ">{</span>
+        OPERATIONS<span style="color:#800080; ">::</span>before<span style="color:#808030; ">(</span>arg<span style="color:#808030; ">)</span><span style="color:#800080; ">;</span>
+        ACTION<span style="color:#800080; ">::</span>execute<span style="color:#808030; ">(</span>arg<span style="color:#808030; ">)</span><span style="color:#800080; ">;</span>
+        OPERATIONS<span style="color:#800080; ">::</span>after<span style="color:#808030; ">(</span>arg<span style="color:#808030; ">)</span><span style="color:#800080; ">;</span>
+      <span style="color:#800080; ">}</span>
+    <span style="color:#800080; ">}</span><span style="color:#800080; ">;</span>
+  <span style="color:#800080; ">}</span>
+<span style="color:#800080; ">}</span>
+
+<span style="color:#004a43; ">#</span><span style="color:#004a43; ">endif</span></pre>
+</blockquote>
+<p style="text-align: center;"><a rel="license" href="http://creativecommons.org/licenses/by/3.0/"><img class="aligncenter" style="border-width:0" src="http://i.creativecommons.org/l/by/3.0/80x15.png" alt="Creative Commons License" /></a></p>

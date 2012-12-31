@@ -1,0 +1,17 @@
+@title Oracle Nonogram
+@draft
+
+A <em>nonogram</em> is a number and paint puzzle. The player is given a grid of cells, some of which must be painted black. For every row and every column, the player is given the number of contiguous black segments, as well as the number of cells in each. This lets the player deduce the position of black cells.
+
+[caption id="" align="aligncenter" width="426" caption="Nonogram being solved (courtesy of Wikipedia)"]<a href="http://en.wikipedia.org/wiki/Nonogram"><img title="Nonogram being solved (courtesy of Wikipedia)" src="http://upload.wikimedia.org/wikipedia/commons/6/64/Paint_by_numbers_Animation.gif" alt="" width="426" height="426" /></a>[/caption]
+
+<p style="text-align: left;">Originally a pen-and-paper game, there have been several implementations as video games, notably by Nintendo. The online gaming website ArmorGames proposes a variant of the game: when you paint a tile that should not be painted, the game notifies you that the tile is actually unpainted and you lose one life—you lose after five misses.
+
+[caption id="attachment_914" align="aligncenter" width="720" caption="Armor Picross 2 : an Oracle Nonogram"]<a href="http://armorgames.com/play/338/armor-picross-2"><img class="size-full wp-image-914" title="nanogram" src="http://www.nicollet.net/wp-content/uploads/2009/05/nanogram.png" alt="Armor Picross 2 : an Oracle Nonogram" width="720" height="500" /></a>[/caption]
+</p><p style="text-align: left;">The Armor Games version is an <em>oracle nonogram</em>: there is an all-knowing <a href="http://en.wikipedia.org/wiki/Oracle_machine" target="_blank">oracle</a> that can answer truthfully a certain set of questions about the solution that cannot be determined easily (or at all).</p>
+<p style="text-align: left;"><strong>The original version of the nonogram game can be solved by the computer in NP time (and some specific classes of nonograms can be solved in polynomial time). Can the oracle nonogram game be solved faster?</strong></p>
+<p style="text-align: left;">No. In fact, there is no general solution for the oracle nonogram. The wording on the oracle introduces a slight difference between the two problems: any way of painting blocks that is compatible with the constraints is a solution to the original nonogram game, but only one way of painting the blocks is a solution to the oracle nonogram (and it is against this solution that the oracle nonogram checks any paint attempts). So if there are several possible solutions to a given non-oracle nonogram, adding an oracle forces the player to ask the oracle the correct questions to determine which of the several solutions is the correct one.</p>
+<p style="text-align: left;">In an NxN nonogram where each row and each column contains a single painted cell, there are N! different solutions: the top-left to bottom-right diagonal is an obvious solution, and any other solution can be obtained from that diagonal by shuffling the coumns. In the N=15 example above, the number of solutions:</p>
+<p style="text-align: center;">15! = 1 307 674 368 000</p>
+
+You can get as many guesses as you want to find the correct solution, but you lose after five incorrect guesses. However, for any guessing strategy, I can create at least two solutions that guarantee the first four guesses will be incorrect (this is only possible if N ? 3, of course)...

@@ -1,0 +1,22 @@
+@title Shouldn't Happen...
+@draft
+
+Design and development is turning the great unknown chaos into tiny bits of controlled functionality with promises about what the result will be, and expectations about what the input should be.
+
+There is an interesting duality between two categories of expectations, depending on whether they are the responsibility of the user, or of the programmer.
+
+User errors are classic mistakes involving incorrect input, such as attempting to load a file that does not have the right format, or visiting a web site that does not exist, or entering an incorrect email address. A program is expected to, at the very least, gracefully handle these situations (because nobody likes errors) and the best programs are actively designed to reduce the possibility of error though appropriate user interface choices.
+
+Programmer errors are the most frequent ones, but most of there are luckily caught by a compiler (or, in the case of the less lucky interpreted languages, the parser). The basic idea is that if you expect a function parameter to be an integer, and you tell your compiler, then static analysis will determine that you will receive a string argument, and the <span style="text-decoration: line-through;">universe will collapse</span> build will fail.
+<h3>Static Analysis</h3>
+Static analysis can be very smart. It can prove beyond any doubts <a href="http://www.astree.ens.fr/" target="_blank">complex properties</a> about complex software written in obscenely low-level code (such as C with inline assembly). The problem if that working with a static analysis tool can add unusual constraints on the developers themselves: the halting problem dictates that no tool can safely predict the behavior of a program, so any given tool will either have false negatives (undetected bugs) or false positives (safe code reported as dangerous) and the general trend for static analysis tools is to avoid any false negatives at the cost of false positives.
+
+The quality of a static analysis tool is determined by how hard it is to write code without false positives (usually done by manually coding around the blind spots of the tool).
+
+Static analysis tools have two problems. One, they're not available for every single language and platform out there. Some of use are still using languages with <code>eval()</code>, throwing Java exception-safety out the window because we find it too constraining, doing without those pesky type systems and generally making a childish fuss about those "warning" thingies. Two, static analysis tools can only check constraints that are described by the developer in some form, such as assertions, preconditions, postconditions, type annotations or some other kind of attribute added to the code.
+
+So, if you forget to "assert" it, nobody is going to check it for you. For instance, no tool is going to warn you that you unwittingly leak a credit card number to a third party.
+<h3>The Elephant Statue</h3>
+In a sense, predicting user errors is the mirror activity of gathering specifications. Both force you to think about all possible situations your software will face, and decide what should happen: maybe you have to display an error, maybe you will have to tread the input in a clever but predictable way, or maybe you will have to rework your process to prevent that situation from happening.
+
+This is akin to creating an elephant statue by starting with a block of stone and carving out everything but the elephant. Deciding what your users can do implicitly defines what your users cannot do. Depending on the situation, you may guide your design with either approach.

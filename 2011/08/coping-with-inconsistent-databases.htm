@@ -1,0 +1,101 @@
+@title Coping With Inconsistent Databases
+@draft
+
+<img class="aligncenter size-full wp-image-2486" title="clock" src="http://www.nicollet.net/wp-content/uploads/2011/08/clock.png" alt="" width="675" height="100" />
+
+In <a href="http://www.nicollet.net/2011/07/nosql-is-a-premature-optimization/" target="_blank">my earlier article about the benefits of NoSQL</a>, I discussed eventually consistent databases. These are databases where « write A ; read A » can return an outdated or missing value, but « write A ; wait ; read A » will always return the correct value if you wait long enough. Dealing with eventual consistency can lead to bugs, because there are many pitfalls caused by race conditions. It's impossible for anyone to avoid race conditions by reading the code and thinking very hard about it. Instead, the code must be written using patterns and <em>mental tools</em> that by their very design prevent race conditions from happening. My point was that most programmers that only had experience with the absolute-consistency SQL world do not have the mental tools necessary to avoid those pitfalls. Not because they are incapable of it, but because they never had the training or the experience to acquire these mental tools.
+
+Today, an anonymous coward shared a few thoughts on the topic :
+<blockquote>They do not have the mental tools required to work with eventual consistency?
+The only mental tool I’ve seen is disregard for the issue.
+Waiting eagerly on another post discussing those “mental tools”.</blockquote>
+He/she is right, what <em>are</em> those mental tools anyway ?
+
+First, let me state the obvious again : eventually consistent databases almost never remain inconsistent long enough for users to notice and, even if they do notice, they usually don't care — through the prevalence of cache-powered websites, our users are used to seeing stale data every so often and know to hit the refresh button to deal with it. Aside from a few critical edge cases like online payment processing, <strong>the problem with eventual consistency is not the user</strong>.
+
+The problem is that software makes decisions based on available data and, if the available data is wrong, then the outcome is wrong. This decision-making process will turn a one-nanosecond inconsistency into a permanent error if you are unlucky, and the entire point of this article is how to prevent this from happening. Need an example?
+<h3>Event-Based vs State-Based</h3>
+Let's say I'm writing a badge module similar to the one used on <a href="http://stackoverflow.com/badges" target="_blank">Stack Overflow</a>. Here are the specifications:
+<blockquote>The user can publish articles. Their 10th article will bear a bronze badge, their 50th will bear a silver badge, and their 100th article will bear a golden badge.</blockquote>
+One way I can write this module is to intercept the «publish article» event and add my own bit of logic to it: if there are nine other articles, award the bronze badge. This is an event-based approach, because it performs some changes when an event happens. This way of doing things is almost universally followed in the SQL world, but it does not work in NoSQL environments that lack absolute consistency.<strong>
+</strong>
+
+<strong>What's the problem?</strong> One user, Bob, tries to cheat the system by publishing nine articles, then publishing articles X and Y in quick succession, hoping to get bronze badges for both. The behavior we want is that X should have the bronze badge and Y should not.
+<ul>
+	<li>If absolute consistency is guaranteed, then Y will be published when the database already knows that X has been published, it will be the 11th and thus will not receive the badge.</li>
+	<li>If only eventual consistency is guaranteed, then Y might be published before the existence of X has been acknowledged : both articles would receive badges.</li>
+</ul>
+The alternative is to use a state-based architecture where «On EVENT apply CHANGE» is replaced by «If STATE-A then STATE-B» : instead of «On publishing the tenth article, award badge» the system uses «If this is the tenth article, then it has the bronze badge.» Where an event-based solution would apply the CHANGE and move on, the state-based solution instead examines STATE-A whenever someone asks for STATE-B and applies the rule every single time.
+
+Going back to Bob's problem : if you ask a few nanoseconds after both articles are published «Does article Y have the bronze badge?» then the answer will still be «Yes» because eventual consistency takes a short while to set in. But if you ask the same question a few seconds later, then article Y will be correctly known as being the 11th article and the answer will be «No»
+
+An application that is entirely based on state-based rules can work with an eventually consistent database without ever having permanent errors — by definition, any errors would only last as long as the underlying inconsistencies remain. In practice, from my experience with CouchDB, all temporary errors are gone after a couple of seconds in the very worst case, and it's usually gone before that.
+
+But state-based rules do mean that whenever the application needs to know STATE-B, it must read STATE-A and apply the rule again. Does this mean that I will have to count the articles (a potentially costly operation) whenever I need to know if a given article has the bronze badge? This is pure insanity!
+<h3>State-Based Caches</h3>
+The NoSQL answer is «Cache it!»
+
+In fact, I will go even further: a NoSQL-friendly architecture eliminates several downsides of caching while keeping all the performance benefits, in ways that no event-based SQL solution can.
+<ul>
+	<li>Staleness of cached data is not an issue: the software is already designed to deal with eventual consistency and a cache is just another kind of eventually consistent data source. Unlike traditional software that relies on absolute consistency, NoSQL-friendly applications can make business decisions based on cached data without any risk.</li>
+	<li>Dependencies between STATE-A and STATE-B are usually first-class citizens of the application source code, so when a state change happens it's easy to follow the threads and invalidate all the dependencies. The application can rely on invalidation instead of timeouts to keep the cache up-to-date.</li>
+	<li>Most NoSQL solutions already provide some level of caching. For instance, counting the number of published articles in CouchDB is <a href="http://wiki.apache.org/couchdb/Introduction_to_CouchDB_views#Reduced_Value_Sizes" target="_blank">a constant-time cached operation</a>, and the database keeps the cache up-to-date without developer intervention. In fact, manual caching is almost never a requirement for simple rules in CouchDB — and even then, the database provides a "last changes" real-time feed that the developer can use to make cache management easier.</li>
+</ul>
+It interesting to note that several common patterns in SQL event-based applications are in fact poor implementations of a caching strategy for a state-based rule. An upvote/downvote system such as the one <a href="http://www.reddit.com/" target="_blank">Reddit</a> uses involves storing both the number of votes in the <em>item</em> table, and the individual votes in an <em>user-comment</em> association table — the former is used to quickly determine the current score of an item, while the latter is used to prevent people from voting several times. The state-based query implemented here is :
+<p style="padding-left: 30px;"><code>SELECT SUM(score) FROM votes WHERE item_id = ?
+</code></p>
+However, the naive event-based solution is to intercept "upvote" and "downvote" events and perform this query instead:
+<p style="padding-left: 30px;"><code>UPDATE item SET score = score + 1 WHERE item_id = ?</code></p>
+This is done in the hopes that the sequence of of +1's and -1's will remain equivalent to the original state-based query, which is only the case if upvotes and downvotes are the only events that affect the votes table. If, say, banning an user account retroactively deletes all the associated votes, it would take another ad hoc query to keep the cache correct. Maybe something like this:
+<p style="padding-left: 30px;"><code>UPDATE item NATURAL JOIN vote SET score = item.score - vote.score
+WHERE vote.user_id = ?</code></p>
+This is because of a fundamental difference between event-based and state-based designs : if your value actually depends on the state, then it takes one state-based piece of code to compute it, but it takes one event-based piece of code<em> for each possible event that could ever affect it</em>.
+
+And even then, you still have to write the state-based update code because you will need to run it to rebuild the cache whenever something goes wrong.
+<h3><strong>Typical State-Based Architecture</strong></h3>
+There are three kinds of rules in any application :
+<ul>
+	<li>State-based rules : when this value is X, that value is F(X). Most <em>indirect</em> consequences of user input are here.</li>
+	<li>Event-based input rules : when this event happens in the real world, do X. This could be caused by user input, or when communicating with a third party API.</li>
+	<li>Event-based output rules : when this happens in the application, perform X in the real world. The classic example is sending an e-mail, but this covers <em>pushing</em> any kind of data to anyone outside your application.</li>
+</ul>
+<strong>State-based rules</strong> can be handled natively.
+
+<strong>Input rules</strong> are usually handled by performing an <em>atomic, non-conflicting</em> write to the database whenever the event happens — it should be done in such a way that no conflict can happen after the event has passed. One solution is to simply create a new document with an unique identifier every time an event happens: unique identifiers prevent conflicts, and you can then rely on state-based rules to aggregate a sequence of events into a more coherent current state. In my current project, every notification received from PayPal is appended to a database, and a state-based rule aggregates those notifications into a pending-failed-successful state for every transaction. As an added bonus this solution also provides a history (the list of related events) and the possibility to <em>cancel</em> events by deleting the corresponding document in the same way that one can revert a Wikipedia article to a previous version by removing the corresponding diffs.
+
+Another solution for handling input rules is useful when the user <em>sets</em> a value — what matters to the user is the resulting value, not the operation that resulted in that value. If setting this value can be done by an <em>atomic, non-conflicting</em> update, then do so. Keep in mind that if you use CouchDB master-master replication, then updates are <em>not</em> non-conflicting !
+
+<strong>Output rules</strong> are trickier. If you are lucky, your output rule is in fact tied to an input event such as «When you click this button, I will ask Paypal for your money» and this can in fact be handled as a normal input rule that just happens to query a third party API for more input data.
+
+Application-initiated output events involve creating an entry that represents the outgoing event before it happens, with a timestamp of the moment the event should happen, appropriately set some time into the future. That entry is then managed by standard state-based rules that can alter it or disable it as part of the corresponding source data eventually becoming consistent. The delay should be calculated to ensure that the database does become consistent, and a delay of few minutes is not a problem because the action was not initiated by the user. Once the delay expires, the application reads back the entry and performs the output action if it is still appropriate.
+
+Back to Bob's articles : let's say the specifications require that I send Bob a congratulatory e-mail whenever an article gets a badge. Be cause he cheated, the state-based rule determines mistakenly that Bob's articles X and Y both received a bronze badge, so it creates two entries in the «congratulatory e-mail» section, both set one minute into the future.
+
+The trick here is that the identifiers of those entries are something along the lines of "Bronze-Badge-Y" so that applying the state-based rule several times merely updates the same entry instead of creating a new one every time. After a few seconds, the eventual consistency catches up with Bob and article Y loses its bronze badge status. The rule-based system detects that the "Bronze-Badge-Y" entry needs to be updated and marks it as «do not send».
+<h3>User Uncertainty</h3>
+Earlier, I skimmed over the fact that users don't care about eventual consistency. There's one exception to this rule — when you're asking users to make a decision based on data you are showing them, you cannot afford to go wrong.
+
+If you ask your user whether they wish to pay $100, and you bill them $101 instead because the price changed in the database while the user was reading the confirmation form, then you have a problem.
+
+This problem, however, is not specific to the NoSQL eventual consistency world. In fact, the average SQL application has the same problem: it's impossible to start a transaction, show the user a confirmation form, and only end the transaction when the user confirms. Transactions do not work that way. Instead, both SQL and NoSQL solutions must resort to a conflict detection strategy: when the user confirms, check whether the user's decision is still compatible with the application state and if it isn't, show them an error message — «Sorry, the price just went up to $101, do you still want to go on?»
+
+It is possible to detect conflict using state-based rules in an eventually consistent database: entry A, created when the user confirmed the payment, states that $100 should be billed, but entry B created a few seconds before entry A states that the price is now $101. The problem is that it might take a short while for entries A and B to be processed together, but we need to show a confirmation page straight away...
+
+You have two possibilities here. The first is the most obvious one: have the user wait until the eventual consistency kicks in and you can genuinely confirm their purchase; you may optimise your NoSQL usage to make that delay shorter, such as by avoiding master-master replication on that particular database.
+
+The second possibility, for which I have a personal preference, is to provide an answer straight away, but reserve the right to deny that decision later. This means that in 99% of the cases, there is no conflict and the user does not have to wait. In 99% of the remaining cases, the user waited long enough on the confirmation page that the conflict is detected straight away. It really takes a stroke of bad luck for the user's decision to happen precisely as the situation changes, so having to cancel in those specific cases is acceptable, especially since your state-based architecture can handle the cancellation quite well.
+
+This is no different than having to cancel an e-commerce order because the ordered item was lost at the warehouse — the computer said yes, but reality said no.
+<h3>TL ; DR</h3>
+<ol>
+	<li>An UPDATE is <em>permanently</em> inconsistent if it was based on <em>temporarily</em> inconsistent data.</li>
+	<li>The result of a CREATE is never <em>permanently</em> inconsistent.
+So, don't UPDATE objects, CREATE object <em>modifications</em>.</li>
+	<li>To get the latest version of an object, apply a map-reduce algorithm to the modifications.</li>
+	<li>You should cache data, the cache must be re-calculated whenever the underlying data changes.</li>
+	<li>Some UPDATEs are in fact hidden cache refreshes. Use a normal cache instead.</li>
+	<li>When affecting the outside world, wait for the eventual consistency to kick in before you act.</li>
+	<li>Conflicts can affect users, but only rarely. Plan your UI accordingly.</li>
+</ol>
+
+<small>Article Image &copy; Chris Dlugosz &mdash; <a href="http://www.flickr.com/photos/chrisdlugosz/4324706280/">Flickr</a></small>

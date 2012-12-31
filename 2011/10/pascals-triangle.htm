@@ -1,0 +1,58 @@
+@title Pascal's Triangle
+@draft
+
+<img class="aligncenter size-full wp-image-2570" title="triangle" src="http://www.nicollet.net/wp-content/uploads/2011/10/triangle1.png" alt="" width="675" height="100" />Grant Muller writes that <a href="http://grantmuller.com/algorithms-can-really-beat-you-up/" target="_blank">Algorithms can Really Beat You</a>:
+<blockquote>I stared at the pyramid of numbers scribbled hastily in blue dry erase. The only thing clear to me in that moment was that I wouldn’t have this figured out in five minutes. Or even ten.
+
+“Any number in the pyramid, or in this case tree array, is the sum of the two numbers above it,” the young man continued, “write a function that gets the value of any x, y coordinate in this structure.”</blockquote>
+Sitting quietly in the middle of that article was an old friend of mine, Pascal's Triangle, that I encounter every so often when doing nerdy things with equations.
+
+The first rows in Pascal's Triangle are 1, 11, 121, 1331 and 14641 — the most observant will notice that those are the values of 11<sup>0</sup>, 11<sup>1</sup>, 11<sup>2</sup>, 11<sup>3</sup> and 11<sup>4</sup>. In fact, if you consider the values of the sixth row, 1-5-10-10-5-1, they correspond to the number 161051, which is 11<sup>5</sup>.
+
+And the reason for this is the way in which Pascal's Triangle is constructed: take a row, duplicate it, shift one copy to the left by one, and add them together.
+<pre><code>  1 1           1 2 1         1 3 3 1
++   1 1       +   1 2 1     +   1 3 3 1
+= 1 2 1       = 1 3 3 1     = 1 4 6 4 1</code></pre>
+This is the same as saying that «any number is the sum of the numbers above it», or T(x,y) = T(x-1,y-1) + T(x,y-1). As an amusing side-effect of this construction method, the sum of all numbers in a given row is always a power of two — by adding two copies of the previous row together, you are multiplying that sum by two every time. Remember this tidbit, it will come in handy later on.
+
+What does this have to do with the powers of 11 ? Well, to multiply by 11, you would multiply by 10 (which is easier: shift all the digits to the left) and add the original number. So, multiplication by 11 works in exactly the same way as the Pascal's Triangle. Which is why the numbers are the same.
+
+Another place where Pascal's Triangle appears is binomial coefficients:
+<blockquote>(a + b)<sup>2</sup> = <strong>1</strong> a<sup>2</sup> + <strong>2</strong> ab + <strong>1</strong> b<sup>2</sup>
+(a + b)<sup>3</sup> = <strong>1</strong> a<sup>3</sup> + <strong>3</strong> a<sup>2</sup>b + <strong>3</strong> ab<sup>2</sup> + <strong>1</strong> b<sup>3</sup>
+(a + b)<sup>4</sup> = <strong>1</strong> a<sup>4</sup> + <strong>4</strong> a<sup>3</sup>b + <strong>6</strong> a<sup>2</sup>b<sup>2</sup> + <strong>4</strong> ab<sup>3</sup> + <strong>1</strong> b<sup>4</sup></blockquote>
+To expand (a + b)<sup>n</sup>, all you need to know is the values on row n of the Triangle. And the reason for this is exactly the same as the one for 11 (and in fact, 11 is a special case of the binomial formula where a=10 and b=1).
+
+But that's not all. Let's discuss something entirely different for a second — the fun thing about math is precisely that you can start exploring entirely different venues and end up where you started anyway. So, suppose you have a N-bit integer, and you wish to count how many such integers have exactly M bits set to 1. This is number is known as «<em>N choose M»</em>, and is fairly frequently found in mathematics. How do you do determine that number?
+
+One way, the <em>combinatorics </em>approach, is to determine an algorithm that generates such a value, and count how many independent possible choices that algorithm had. My algorithm in this situation is «pick one bit at random, set it to 1, repeat M times»
+
+For the first step, there are N possible bits to choose from.
+
+For the next step, there are N-1 possible bits, and so on until only N-M bits are left. So, there are N × (N-1) × (N-2) × (N -3) ... (N-M+1) possible runs for this algorithm. This can be written more concisely using factorials : N! / (N-M)!
+
+But wait! This algorithm actually generates each set of bits several times: once for every possible order of selection of those bits — which is known to be M! for a set of M bits. So, the actual number of distinct runs of my algorithm is N! / ( M! × (N-M)! )
+
+This is something we learn in high school in France, or at least we did back when I was still in high school.
+
+The other way to determine this number is to solve that problem recursively: let's say that there are C(N,M) different N-bit integer with M bits set to 1. For each such integer one of two possible cases happens:
+<ul>
+	<li>It consists of a 0 followed by an (N-1)-bit integer with M bits set to 1. There are C(N-1,M) such integers.</li>
+	<li>It consists of a 1 followed by an (N-1)-bit integer with (M-1) bits set to1. There are C(N-1,M-1) such integers.</li>
+</ul>
+So, recursively, C(N,M) = C(N-1,M) + (N-1,M-1), with the edge cases being C(N,N) = C(N,0) = 1 (there's only one integer with all-zeroes, and only one integer with all-ones). <strong>This is the same formula as Pascal's Triangle</strong> !
+<p style="padding-left: 30px;">T(x,y) = C(N,M) where y = N and x = M</p>
+So, here's the pseudocode for a function that correctly computes T(x,y) far faster than the recursive version suggested by Grant, by using the factorial-based definition we found for C(N,M) :
+<pre style="padding-left: 30px;"><code><span style="color: #000080;">function </span>T(x,y) {
+  <span style="color: #000080;">var </span>num = 1, denom = 1, start = y-x;
+  <span style="color: #000080;">for </span>(i = 1; i &lt;= x; ++i) {
+    num = num * (start + i);
+    denom = denom * i;
+  }
+  <span style="color: #000080;">return </span>num / denom;
+}</code></pre>
+Last question: what is C(N,0) + C(N,1) + ... C(N,N) ? It is merely counting the number of N-bit integers that have <em>any</em> combination of bits set to 1. We know there are 2<sup>N</sup> integers. Remember when I told you the sum of the elements in a row of the Triangle was a power of two?
+
+Yes, maths are fun like that.
+
+<small>Article Image © PhilosophyGeek — <a href="http://www.flickr.com/photos/philosophygeek/95036486/">Flickr</a></small>

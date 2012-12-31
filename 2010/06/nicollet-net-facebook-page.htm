@@ -1,0 +1,38 @@
+@title Nicollet.Net Facebook Page
+@draft
+
+There have been three changes to the blog layout this week-end:
+<ul>
+	<li>Removed the calendar from the sidebar.</li>
+	<li>Added a "Like" button to every post.</li>
+	<li>Added a fan page badge to the sidebar, using the newly created Nicollet.net fan page :</li>
+</ul>
+<div style="margin:auto; width: 300px"><iframe src="http://www.facebook.com/plugins/likebox.php?id=133220253364964&amp;width=300&amp;connections=10&amp;stream=false&amp;header=false&amp;height=255" scrolling="no" frameborder="0" style="border:none; overflow:hidden; width:300px; height:255px;" allowTransparency="true">&nbsp;</iframe>&nbsp;
+</div>
+
+Dear readers and subscribers : I know that you're more than an user agent and IP address! If you like what you're reading on this blog, please consider joining the facebook page: it's a simple way to help others discover this blog, you will be kept up to date with frequent updates, and I will get to see your happy little faces :)
+
+Anyway, below is a simple tutorial for adding Facebook capabilities to a website or blog, just in case.
+<h3>Adding the "Like" button</h3>
+The idea behind the "Like" button is that Facebook will keep track of who liked what page on the internet, based on the page's address. By default, it shows how many people clicked the "like" button. If the friends of a visitor liked the post, these friends will be explicitly named. If nobody has liked the page, it cleverly displays a "<em>be the first of your friends to like this page</em>". Oh, and you can choose to rename "like" to "recommend" if you think the former sounds stupid.
+
+This button is implemented as an iframe. You can generate the HTML for a certain page by <a href="http://developers.facebook.com/docs/reference/plugins/like" target="_blank">going here</a> and entering the address of the page. You will end up with HTML that looks like this:
+<pre style="padding-left: 30px;">&lt;iframe src="http://www.facebook.com/plugins/like.php
+?href=<span style="color: #ff0000;">http%3A%2F%2Fwww.nicollet.net%2F</span>&amp;amp;layout=sta
+ndard&amp;amp;show_faces=true&amp;amp;width=450&amp;amp;action=li
+ke&amp;amp;colorscheme=light&amp;amp;height=80" scrolling="no
+" frameborder="0" style="border:none; overflow:hidden
+; width:450px; height:80px;" allowTransparency="true"
+&gt;&lt;/iframe&gt;</pre>
+Hidden in this mess is the address of the page to be liked, which means you can generate it using your server. For instance, to get this nice button below every post, I edited my Wordpress blog template to add this iframe at the bottom of every post, then replaced the URL address with some PHP code:
+<pre style="padding-left: 30px;">&lt;?php echo urlencode(the_permalink()) ?&gt;</pre>
+It's important to keep in mind that Facebook determines the number of "likes" based on the URL. So, make sure all "like" buttons for a given page use the same address (for instance, adding a "like" button to forum threads would involve using the link to the <em>first page</em> of the thread on all pages of the thread).
+<h3>Creating a Facebook Page</h3>
+This one is exceedingly simple. Go to the <a href="http://www.facebook.com/pages/create.php" target="_blank">page creation form</a>, fill in any required information, and go! If creating a professional page, you might want to create a Facebook account that is distinct from your private account, to use as a page administrator profile. Once the page is created, add a picture, fill in the info tab, and write a short text in the left sidebar. Then, start promoting the page.
+<h3>Adding the Page Badge to your site</h3>
+Actually, it's called a "like box", and again, there's a <a href="http://developers.facebook.com/docs/reference/plugins/like-box" target="_blank">clean creation form available</a>. Fill in any required details, and copy-paste the generated HTML back on your site. The only difficulty here is figuring out your page number. It's hidden in the URL of your page: for instance, you can find the Nicollet.Net page at
+
+<blockquote><a href="http://www.facebook.com/home.php?#!/pages/NicolletNet/133220253364964">http://www.facebook.com/home.php?#!/pages/NicolletNet/<span style="color:red">133220253364964</span></a></blockquote>
+
+The page number appears at the end of that address, so just copy-paste that value.
+

@@ -1,0 +1,38 @@
+@title Verification Bandwidth
+@draft
+
+We're all in the software business, so you already know this to be true. <strong>Software doesn't work</strong>. Think about it: you release your current project and then it's 1° on time, 2° full-featured and 3° bug-free. Pick any two.
+
+The are many technical solutions for delivering software without bugs. Architectures. Design methodologies. Frameworks. Programming languages. I was fairly convinced for a while that Objective Caml was the ultimate solution to software bugs. <strong>These solutions don't work</strong>.
+
+Lets take a simple example. A web site. Users can send private message to each other, and each message has a web address so I can send it to the user in an e-mail: «You have received a message, click here to view it». And then, a web developer writes the code for that address: grab the message identifier from the URL, ask the database for the message contents, mash them up with some HTML and send them to the viewer. That's a bug right there. What about messages that don't exist?
+
+If you're on your average web platform, the server will spit out an error message along the lines of «Silly human, this value is NULL» and it will obviously happen during your demo to your investors. Bad tech start-up, no funding cookie. The good news is that with Objective Caml is that values cannot be NULL — <a href="http://sadekdrobi.com/2008/12/22/null-references-the-billion-dollar-mistake/" target="_blank">nullable references are a billion dollar mistake</a> that the creators of ML wisely avoided. So, instead, you will get a compiler error about using a can-be-null type when a cannot-be-null type was expected. The buggy code will never reach production, the investors will not see anything out of the ordinary and you will get your funding.
+
+But there's still a bug. At no point did the code check that the viewer was indeed allowed to view that private message. That's not a bug Objective Caml or any other automated tool on earth can detect for you. Unless you explain it to them — but if you forget to check this, you will probably also forget to teach the tool to detect that you forgot to check this. Foiled by Occam's Razor once more. This is a human problem : if no human in the entire development process thought «<em>we really need to make sure private messages really are private</em>» then you can be certain that no automated tool will think of that for them. Until a mischevious user finds out and you get sued.
+
+Our limited mental capabilities mean that every single human project since we started sharpening sticks at throwing rocks at each other follows the exact same structure: baby steps are interspersed with verification sessions that help keep the entire project on course. To fall back on a classic analogy, wow do we build bridges? The architect comes up with a general plan: it's going to be this kind of bridge, going from here to there, build using these materials. Then, all kinds of verifications happen: technical (are these materials going to hold?), functional (is it wide enough for a two-lane road?), organizational (can we fund this?). The plans are adjusted to take any new elements into account, and the cycle continues until the bridge is done. And it turns out no one thought about oscillation frequencies in bridges and you get the Tacoma Narrows Bridge bug.
+
+Any project is going to evolve under the effect of two distinct forces: implementation and verification. Both ingredients are necessary for success. Not enough implementation — not enough code, not enough plans, not enough features — is usually quite obvious: just count the features and you know you're not done yet. Not enough verification, on the other hand, is a lot harder to detect because by definition you would need more of it to find out that you need more. As a project lead, this is an extremely important metric to manage: <strong>verification bandwidth</strong> — the amount of pre-implementation constraints and post-implementation feedback that is collected and applied to the project — will make the difference between a quality product and a dud.
+
+And we already have a lot of tools for doing just that. Specifications aim to crystallize a lot of pre-implementation requirements into document form, which makes it easier to apply to the project than if they were just random comments floating around in collective memory or e-mails. Well-written annotations in a specification document can be a gold mine during implementation. And when bugs are detected after the implementation, bug tracking tools help bridge the gap between testers and implementers.
+
+But there's more to this than just good specifications and good bug tracking.
+
+Agile folks recognize that while pre-implementation requirements are useful, post-implementation feedback is a much more valuable source of information. The various flavors of Agile development all have this in common: to make it as easy as possible to collect post-implementation feedback and apply it to the project. Weekly Scrum meetings, hands-on demos to stakeholders, continuous user testing with short cycles, are all ways of improving collection ; frequent refactoring, high quality code and evolving designs are all ways of improving the team's ability to incorporate feedback into the project.
+
+In fact, the shorter the feedback cycle, the better. This is the general idea behind automated testing: why let frail flesh-and-blood humans handle the testing if a computer can do it for you? Static type systems eliminate the need for a tester to painstakingly traversing all the pages of your PHP site looking for broken links and null variable errors. Automated Unit Tests and Regression Tests let you refactor your entire application without having a human tester look at even one screen. And what the automated tests cannot find — rely on code reviews or human testers to identify issues, and then retro-fit your automated test suite to detect that issue. You're trading off a small bit of implementation for what amounts to a large verification payoff.
+
+And self-feedback is just as important. Having experienced developers who can identify problems in code on their own <em>before it's even written</em> are perhaps the single most important source of software quality. Developers who understand the problem domain and apply common sense efficiently are certainly a huge asset as well.
+
+In any given project, the sources of verification information are the following:
+<ul>
+	<li>Developers - costly to acquire, but the most efficient kind there is</li>
+	<li>Compilers and static analysis tools</li>
+	<li>Automated tests</li>
+	<li>Stakeholder feedback</li>
+	<li>Dedicated testers - especially if they can communicate with developers directly</li>
+	<li>Written specifications</li>
+	<li>End user feedback</li>
+</ul>
+Try looking at your current project in terms of verification bandwidths: what are your primary sources of feedback? What are your bottlenecks? How can you improve?

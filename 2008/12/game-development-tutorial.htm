@@ -1,0 +1,672 @@
+@title Game Development Tutorial
+@draft
+
+Creating video games is not easy, but few things are easy: cooking for ten, writing a book or running ten miles are quite difficult as well. The difference is that with games, people don't know how to start. To cook for ten people, you know it's going to involve shopping for ingredients, using a kitchen to boil, simmer, roast and prepare them, and serve them. Writing a book involves typing on your keyboard until you've written all the hundreds of pages you wanted to write. Running ten miles involves getting your shoes on and going outside.
+
+But how does one start creating a video game? How does the initial idea of a video game translate to an actual program you can run? This step isn't the hardest of all steps in game development (far from it) but it deters a lot of otherwise well-motivated wannabes.
+
+As a former game developer (I was the lead programmer for <a href="http://www.int13.net/darklaga.htm" target="_blank">Darklaga : Cannonball Symphony</a>) I will try to answer a few of these questions on the technical side. To this end, I have written a short video game which you can find <a href="http://nicollet.net/files/articles/tutorial/pong.html" target="_blank">here</a>, which happens to be a reimplementation of <a href="http://en.wikipedia.org/wiki/Pong" target="_blank">Pong</a> (one of the earliest video games). In this article, I will discuss video game development using that game as an illustration.
+<h2>How Game Development Works</h2>
+So, how does a video game get created? It usually follows the same set of steps:
+<ul>
+	<li>A team of designers has a basic idea for a game. it designs most of the high-level details of the game: the look and feel, the various elements and their behavior, win and loss conditions, player controls, and so on.</li>
+	<li>A team of artists creates the graphics and sounds for the game, using their favorite editors and tools and recording studios, according to the designer's vision.</li>
+	<li>A team of programmers writes the program itself, describing how, where and when the graphics should appear and the sounds should be played, and how the player's input affects this, according to the designer's vision.</li>
+	<li>Testers play the game, provide input to the designers, who alter the design to please the testers. The cycle repeats until the testers are happy or money runs out.</li>
+	<li>A publisher takes the game, packages it, sends it to retail stores and advertises it.</li>
+</ul>
+Of course, all of this could be done by a single person (Pong), or it could be done by an independent team of five (Darklaga), or it could be done by a professional experienced studio backed by a strong publisher (Red Alert 3).
+
+In an ideal world, you would be able to pitch in an idea, and people would take that idea, create a game from it, publish it and give you a share of the money. This rarely happens in the real world, because games take time to be developed, there's limited manpower to go around, and so those few idea-pitcher positions are already taken by people with vast amounts of experience and connections in the business. Tom Sloper has a few quite interesting articles about getting your game done, which you can read <a href="http://www.sloperama.com/advice/idea.htm" target="_blank">here</a>.
+
+So, if you have a great game idea, but neither connections nor experience in the business, you're basically stuck with either giving up or doing it yourself. This will involve either convincing a programmer to work for you, or doing the programming yourself. If you want to try programming, read on.
+<h2>Programming Games</h2>
+Video games are computer programs: contraptions designed and written by programmers to make the computer behave in a certain way. Since programmers tend not to be happy with available tools, they often invent new ways of programming computers, which means there are many ways of creating a video game. For instance, the Pong game I wrote for this article is written using a programming language called Javascript (or ECMAScript, depending on whom you ask). The part of the program responsible for making the ball bounce on the screen edges looks like this:
+<blockquote>
+<pre style="background: #ffffff none repeat scroll 0% 50%; color: #000000;"><span style="color: #000084; font-weight: bold;">if</span> (<span style="color: #000084; font-weight: bold;">this</span>.ball.y + ball.h &gt; field.h)
+  { <span style="color: #000084; font-weight: bold;">this</span>.ball.vy = - ball.s } 
+
+<span style="color: #000084; font-weight: bold;">if</span> (<span style="color: #000084; font-weight: bold;">this</span>.ball.y - ball.h &lt; - field.h)
+  { <span style="color: #000084; font-weight: bold;">this</span>.ball.vy = ball.s }</pre>
+</blockquote>
+Different programming languages look different. Sometimes, differences are small, so an equivalent program in the C++ programming language would look like:
+<blockquote>
+<pre style="background: #ffffff none repeat scroll 0% 50%; color: #000000;"><span style="color: #000084; font-weight: bold;">if</span> (<span style="color: #000084; font-weight: bold;">this</span> -&gt; ball.y + ball::h &gt; field::h)
+  { <span style="color: #000084; font-weight: bold;">this</span> -&gt; ball.vy = - ball::s } 
+
+<span style="color: #000084; font-weight: bold;">if</span> (<span style="color: #000084; font-weight: bold;">this</span> -&gt; ball.y - ball::h &lt; - field::h)
+  { <span style="color: #000084; font-weight: bold;">this</span> -&gt; ball.vy = ball::s }</pre>
+</blockquote>
+These two are fairly similar, because both C++ and Javascript belong to the same family of languages (called the C family) and therefore share a lot of features and constructs. By contrast, Objective Caml is a programming language of the ML family, and has a quite different take on things:
+<blockquote>
+<pre style="background: #ffffff none repeat scroll 0% 50%; color: #000000;"><span style="color: #000084; font-weight: bold;">method</span> verticalBounce =
+  <span style="color: #000084; font-weight: bold;">if</span> y -. Const.ball_h &lt; -. Const.field_h <span style="color: #000084; font-weight: bold;">then</span>
+    {&lt; vy = Const.ball_s &gt;}
+  <span style="color: #000084; font-weight: bold;">else</span> <span style="color: #000084; font-weight: bold;">if</span> y + Const.ball_h &gt; Const.field_h <span style="color: #000084; font-weight: bold;">then</span>
+    {&lt; vy = -. Const.ball_s &gt;}
+  <span style="color: #000084; font-weight: bold;">else</span>
+    self</pre>
+</blockquote>
+Different languages have different capabilities. I chose Javascript because it allows running the game in a browser with no downloading or applets. One could choose the ActionScript language to run a video game in a Flash or Flex applet, or the Java language for running a video game in a Java applet, both within a browser. Developing for Windows or the XBox could involve using the C#, F# or VisualBasic.Net languages. Developing for the PC and most consoles can also happen in the C++ and C languages, as well as one of the many BASIC language variants and many others as well. Writing the central server program for multiplayer games could involve the ErLang or Stackless Python programming languages for performance reasons. Writing a video game for a pocket calculator would involve using the assembly language for that calculator. Every programmer know several languages, and chooses whichever best fits the problem he is solving.
+<div>
+<blockquote><em>Code is written for humans to read and only incidentally. for computers to execute.</em>
+- Donald Knuth</blockquote>
+</div>
+All languages have a thing in common: they're human-readable text which the computer does not understand, and as such they necessitate a translation phase where the program, written in a programming language, is transformed into a sequence of machine instructions that the computer can execute. This translation sometimes happens before running the program (done by another program called a <strong>compiler</strong>), and sometimes it happens while running the program (done by another program called an <strong>interpreter</strong>). Some languages, such as C++, tend to be always compiled, while other languages, such as JavaScript, tend to be always interpreted, and many programs are half-compiled and half-interpreted.
+
+Almost everyone has a Javascript interpreter on their computer: Internet Explorer, Firefox and Safari all bundle one, because web pages tend to use Javascript to make their content dynamic and interact with the user. Because of this, all you need to start programming is a text editor (such as Notepad) to edit javascript files and a web browser (such as Internet Explorer) to view the result. I prefer to use improved tools (the <a href="http://www.crimsoneditor.com/" target="_blank">Crimson Editor</a>, <a href="http://www.mozilla.com/en-US/firefox/" target="_blank">Firefox</a> and the <a href="http://getfirebug.com/" target="_blank">Firebug</a> plug-in) because they help me write programs faster.
+<div>
+<blockquote><em>If I have seen further it is only by standing on the shoulders of Giants.</em>
+- Isaac Newton</blockquote>
+</div>
+A very important aspect of programming (and computer usage in general) is the use of existing tools for accomplishing common tasks. Programmers who regularly solve the same problems eventually write down code to solve these problems, once and for all, and then store that code in code libraries. Sometimes, a library is useful enough that it deserves to be published and used by many other programmers worldwide. For instance, my Pong game needs to move green things around on the screen, which is a fairly common task that is already done by the <a href="http://jquery.com/" target="_blank">jQuery</a> Javascript library. In general, when a programmer has a difficult task to solve, he usually searches for an existing solution on the web before rolling out his own.
+<h2>A Programming Primer</h2>
+This article is not going to teach you how to program. That would require more space and time than I have here. What it can do, however, is teach a few basic elements of programming in Javascript, which you may also find useful in other languages.
+
+The simplest way of executing Javascript is to write it as part of a web page. For instance:
+<blockquote>
+<pre style="background: #ffffff none repeat scroll 0% 50%; color: #000000;"><span style="color: #7f0055;">&lt;</span><span style="color: #000084; font-weight: bold;">html</span><span style="color: #7f0055;">&gt;</span>
+  <span style="color: #7f0055;">&lt;</span><span style="color: #000084; font-weight: bold;">head</span><span style="color: #7f0055;">&gt;</span>
+    <span style="color: #7f0055;">&lt;</span><span style="color: #000084; font-weight: bold;">title</span><span style="color: #7f0055;">&gt;</span><span style="color: #7f0055;">&lt;/</span><span style="color: #000084; font-weight: bold;">title</span><span style="color: #7f0055;">&gt;</span>
+    <span style="color: #7f0055;">&lt;</span><span style="color: #000084; font-weight: bold;">script</span> type=<span style="color: #0000ff;">"</span><span style="color: #0000ff;">text/javascript</span><span style="color: #0000ff;">"</span><span style="color: #7f0055;">&gt;</span>
+<span style="color: #808080;">&lt;![CDATA[</span>
+   { write your javascript code here }
+<span style="color: #808080;">]]&gt;</span>
+    <span style="color: #7f0055;">&lt;/</span><span style="color: #000084; font-weight: bold;">script</span><span style="color: #7f0055;">&gt;</span>
+  <span style="color: #7f0055;">&lt;/</span><span style="color: #000084; font-weight: bold;">head</span><span style="color: #7f0055;">&gt;</span>
+  <span style="color: #7f0055;">&lt;</span><span style="color: #000084; font-weight: bold;">body</span><span style="color: #7f0055;">&gt;</span><span style="color: #7f0055;">&lt;/</span><span style="color: #000084; font-weight: bold;">body</span><span style="color: #7f0055;">&gt;</span>
+<span style="color: #7f0055;">&lt;/</span><span style="color: #000084; font-weight: bold;">html</span><span style="color: #7f0055;">&gt;</span></pre>
+</blockquote>
+Save this text with the "html" file extension, and start writing Javascript. Open the file in a browser to test it (depending on your security settings, you might have to enable scripts for this to work). Again, I strongly advise you to use the CrimsonEditor/Firefox/Firebug triad for working with Javascript.
+<h3>Statements, Variables, Values</h3>
+Javascript is an imperative language: it describes sequences of operations to be performed by the computer. Individual operations are called <strong>statements</strong>. For instance, the sentence <span style="font-family: courier new,courier;">$(document).text("Hello")</span> is an operation which replaces the content of the document with the text "Hello". You can chain several statements together by separating them with semicolons: the statements are then executed in order, left-to-right and top-to-bottom. One very useful statement is the "alert" statement, which creates a message box containing some text:
+<blockquote>
+<pre style="background: #ffffff none repeat scroll 0% 50%; color: #000000;">alert(<span style="color: #0000ff;">"This is my message"</span>)</pre>
+</blockquote>
+If you're using Firebug, you have access to the superior "console.debug" option, which is not as nasty as a message box and allows you to output things more complex than text:
+<blockquote>
+<pre style="background: #ffffff none repeat scroll 0% 50%; color: #000000;">console.debug(<span style="color: #0000ff;">"This is my message"</span>)</pre>
+</blockquote>
+Programs manipulate values: these can be numbers, lists of other values, pieces of text, parts of a web page, or even parts of a program. The most elementary operation to be performed with a value is to store it in a <strong>variable</strong>: this is useful so that values are kept around when you're not using them. A variable is just a name which is associated with a value: you can retrieve that value at any time by writing the variable's name, and you can change the value of a variably any time you wish.
+
+Creating a variable uses the "var" keyword, which is reserved for that purpose:
+<blockquote>
+<pre style="background: #ffffff none repeat scroll 0% 50%; color: #000000;"><span style="color: #000084; font-weight: bold;">var</span> zero = 0</pre>
+</blockquote>
+This statement creates a variable, called zero, and associates it with the number 0. You can use a variable anywhere you would use its value:
+<blockquote>
+<pre style="background: #ffffff none repeat scroll 0% 50%; color: #000000;"><span style="color: #000084; font-weight: bold;">var</span> message = <span style="color: #0000ff;">"This is my message"</span> ;
+alert(message)</pre>
+</blockquote>
+This displays "This is my message" in a message box. You can also change the value of a variable after you've created it. That operation is called an assignment:
+<blockquote>
+<pre style="background: #ffffff none repeat scroll 0% 50%; color: #000000;"><span style="color: #000084; font-weight: bold;">var</span> message = <span style="color: #0000ff;">"This is my message"</span> ;
+alert(message) ;
+message = <span style="color: #0000ff;">"On second thought, it isn't"</span> ;
+alert(message)</pre>
+</blockquote>
+This displays "This is my message" followed by "On second thought, it isn't". The first value assigned to the variable is lost, replaced by the second value assigned to the variable.
+
+You can manipulate values in many fashions. For instance, you can have arithmetic operations (+a, -a, a + b, a - b, a / b are fairly obvious, a * b is multiplication, and a % b is the remainder of dividing a by b), comparisons (a == b for equality, a != b for inequality, a &lt; b, a &gt; b, a &lt;= b and a &gt;= b), and logical connectors (a &amp;&amp; b : and, a || b: or, !a : not).
+<h3>Blocks, Functions</h3>
+I have mentioned earlier that you can manipulate parts of a program. The easiest way of doing so (although somewhat limited) is to use <strong>blocks</strong> and <strong>control structures</strong>. A block is zero, one or more statements between curly braces, for instance { a ; b }. A control structure is a special statement which is followed by a block, and executes that block under special circumstances. For example, a <strong>conditional statement</strong> only executes its associated block if a certain condition is true:
+<blockquote>
+<pre style="background: #ffffff none repeat scroll 0% 50%; color: #000000;"><span style="color: #000084; font-weight: bold;">if</span> (age &lt; 13)
+{ alert(<span style="color: #0000ff;">"You are not allowed to view this website"</span>)  }</pre>
+</blockquote>
+Control statements give you control over which statements are executed in certain situations. They are invaluable for expressing complex behavior in your programs. A typical extension of the conditional statement is to also specify something to be done when the condition is not verified:
+<blockquote>
+<pre style="background: #ffffff none repeat scroll 0% 50%; color: #000000;"><span style="color: #000084; font-weight: bold;">if</span> (name == <span style="color: #0000ff;">"John"</span>) { alert(<span style="color: #0000ff;">"Hello, John!"</span>) }
+<span style="color: #000084; font-weight: bold;">else</span>                { alert(<span style="color: #0000ff;">"Who are you?"</span>) }</pre>
+</blockquote>
+By now, you have probably noticed that I position my blocks and statements around randomly. This is indeed the case: Javascript doesn't care about the position of your statements and blocks. Just like in English, you can write your sentences every way you wish as long as you don't split or swap your words.
+
+Another typical control statement is the <strong>loop</strong>. It executes its associated block repeatedly as long as its condition is true. So, displaying a countdown from 10 to 0 would look like this:
+<blockquote>
+<pre style="background: #ffffff none repeat scroll 0% 50%; color: #000000;"><span style="color: #000084; font-weight: bold;">var</span> i = 10 ;
+<span style="color: #000084; font-weight: bold;">while</span> (i != 0)
+{ alert(i) ; i = i - 1 }</pre>
+</blockquote>
+The loop displays the number, then substracts one from it, until the number is no longer different from zero.
+
+The improved version of a block is a <strong>function</strong>: a function is, for all purposes, a block that can be manipulated as a value. This means that you can assign it to variables, keep it around, and execute it when you want it to. You create a function from a block by using the "function()" keyword in front of that block. You then call functions (which executes the corresponding block) by appending two parentheses after the variable name:
+<blockquote>
+<pre style="background: #ffffff none repeat scroll 0% 50%; color: #000000;"><span style="color: #000084; font-weight: bold;">var</span> scare = <span style="color: #000084; font-weight: bold;">function</span>() { alert(<span style="color: #0000ff;">"Boo!"</span>) }; 
+
+<span style="color: #000084; font-weight: bold;">if</span> (surprise)
+{ scare() ; alert(<span style="color: #0000ff;">"Sorry for scaring you!"</span>) }
+<span style="color: #000084; font-weight: bold;">else</span>
+{ alert(<span style="color: #0000ff;">"I'm going to scare you!"</span>) ; scare() }</pre>
+</blockquote>
+Functions serve several purposed in a program. Their primary purpose is to eliminate repeated code: if you have code which is repeated in several places, turn that code into a function and call the function wherever you need without having to rewrite the code. This even works if you have code that is not identical, but still similar enough:
+<blockquote>
+<pre style="background: #ffffff none repeat scroll 0% 50%; color: #000000;"><span style="color: #000084; font-weight: bold;">var</span> i = 1 ;
+<span style="color: #000084; font-weight: bold;">var</span> total = 0 ;
+<span style="color: #000084; font-weight: bold;">while</span> (i &lt;= 10) { total = total + i }
+alert(total) ; 
+
+i = 1 ;
+total = 0;
+<span style="color: #000084; font-weight: bold;">while</span> (i &lt;= 20) { total = total + i }
+alert(total)</pre>
+</blockquote>
+These two pieces of code compute the sum of numbers between 1 and 10, and between 1 and 20. The only difference here is the number 10 (or 20). It is then possible to make this number a <strong>parameter</strong> of a function: when a function has a parameter, a value for that parameter has to be provided when the function is called. The parameter then becomes a variable associated to that value. In this case:
+<blockquote>
+<pre style="background: #ffffff none repeat scroll 0% 50%; color: #000000;"><span style="color: #000084; font-weight: bold;">var</span> sum = <span style="color: #000084; font-weight: bold;">function</span>(max)
+{ <span style="color: #000084; font-weight: bold;">var</span> i = 1 ;
+  <span style="color: #000084; font-weight: bold;">var</span> total = 0 ;
+  <span style="color: #000084; font-weight: bold;">while</span> (i &lt;= max) { total = total + i }
+  alert(total) }; 
+
+sum(10) ;
+sum(20)</pre>
+</blockquote>
+A function may have several parameters. If that is the case, then the parameter values must be provided in the same order. Parameters enhance the ability of functions to eliminate repetitive code.
+
+The secondary use of functions is to serve in special situations where one needs to represent a block. For instance, the setTimeout() operation registers a function to be executed after a specified duration. So, for instance:
+<blockquote>
+<pre style="background: #ffffff none repeat scroll 0% 50%; color: #000000;">alert(<span style="color: #0000ff;">"First message"</span>) ;
+setTimeout(<span style="color: #000084; font-weight: bold;">function</span>(){ alert(<span style="color: #0000ff;">"Third message"</span>) }, 3000) ;
+alert(<span style="color: #0000ff;">"Second message"</span>)</pre>
+</blockquote>
+This displays "First message". When that message box is closed, it registers "Third message" to be displayed after 3 seconds (3000 milliseconds) and immediately displays "Second message". Another example is jQuery's "when document is loaded" operation, $():
+<blockquote>
+<pre style="background: #ffffff none repeat scroll 0% 50%; color: #000000;">$(<span style="color: #000084; font-weight: bold;">function</span>(){ alert(<span style="color: #0000ff;">"Document has finished loading"</span>) });</pre>
+</blockquote>
+Note that you can define functions and assign them to a new variable in a single action using an alternative simplified syntax:
+<blockquote>
+<pre style="background: #ffffff none repeat scroll 0% 50%; color: #000000;"><span style="color: #000084; font-weight: bold;">function</span> sum(max)
+{ <span style="color: #000084; font-weight: bold;">var</span> i = 1 ;
+  <span style="color: #000084; font-weight: bold;">var</span> total = 0 ;
+  <span style="color: #000084; font-weight: bold;">while</span> (i &lt;= max) { total = total + i }
+  alert(total) }</pre>
+</blockquote>
+<h3>Objects, Classes</h3>
+One other feature of Javascript is the ability to combine several values into one. For example, it's interesting to store together in a single variable the horizontal and vertical positions of the ball in a Pong game, yet still be able to access them independently. In Javascript, an <strong>object</strong> is an aggregation of several values: these values are members of the object, and they are given names which allows the program to access them:
+<blockquote>
+<pre style="background: #ffffff none repeat scroll 0% 50%; color: #000000;"><span style="color: #000084; font-weight: bold;">var</span> obj = { x : 10, y : 20 } ;
+alert (obj.x) ;
+alert (obj.y) ;
+obj.x = 30 ;
+alert (obj.x)</pre>
+</blockquote>
+This code creates an object with members x (equals 10) and y (equals 20). It then displays the value of member x, then the value of member y. Then, it changes the value of member x, and displays it again. The result is 10, 20, 30.
+
+When it becomes useful to create many objects along the same pattern, as well as define functions which can operate on these objects, Javascript allows you to define classes of objects. A class is a template which allows the creation of objects which have function members that operate on the object. A <strong>class</strong> is a template used for the creation of objects. For instance:
+<blockquote>
+<pre style="background: #ffffff none repeat scroll 0% 50%; color: #000000;"><span style="color: #000084; font-weight: bold;">function</span> number(x)
+{ <span style="color: #000084; font-weight: bold;">this</span>.x = x } 
+
+number.<span style="color: #000084; font-weight: bold;">prototype</span>.increase = <span style="color: #000084; font-weight: bold;">function</span>() { <span style="color: #000084; font-weight: bold;">this</span>.x = <span style="color: #000084; font-weight: bold;">this</span>.x + 1 } ; 
+
+number.<span style="color: #000084; font-weight: bold;">prototype</span>.show = <span style="color: #000084; font-weight: bold;">function</span>() { alert(<span style="color: #000084; font-weight: bold;">this</span>.x) } ; 
+
+<span style="color: #000084; font-weight: bold;">var</span> n = <span style="color: #000084; font-weight: bold;">new</span> number(10) ;
+n.show() ;
+n.increase() ;
+n.show()</pre>
+</blockquote>
+This example introduces several new concepts, which are all necessary to understand classes:
+<ul>
+	<li>The 'prototype' keyword indicates that the 'number' function is in fact a class, and defines two functions, 'increase' and 'show', as being members of all objects of class 'number'.</li>
+	<li>The 'new' keyword creates a new object of the 'number' class. That is, it creates an empty object, then adds every function inside the class prototype to that object. Then, it calls the function 'number' itself, with the provided parameter values.</li>
+	<li>The 'this' keyword acts as a variable. Whenever a member of an object is called,'this' becomes equal to that object, so that any operations applied to 'this' will be applied to the object. When the 'number' function is called because of the 'new' keyword, 'this' becomes equal to the newly created object.</li>
+</ul>
+In detail, what the example above does is:
+<ul>
+	<li>Define a function called 'number'.</li>
+	<li>Decide that 'number' is in fact a class, and define member functions 'increase' and 'show'.</li>
+	<li>Create a new instance of 'number' : this creates an object, adds the 'increase' and 'show' functions to it, sets 'this' to that object, and calls 'number'.</li>
+	<li>When 'number' is called, it creates a new member 'x' and sets it to 10. So, the new object has a member 'x' equal to 10.</li>
+	<li>The program calls the 'show' function. This sets 'this' to the object, and the function reads the 'x' member of that object (which equals 10) and displays it.</li>
+	<li>The program calls the 'increase' function. This sets 'this' to the object, and the function adds one to the 'x' member of that object (so it now equals 11).</li>
+	<li>The program calls the 'show' function. This sets 'this' to the object, and the function reads the 'x' member of that object (which is now 11) and displays it.</li>
+</ul>
+Note that the value of 'this' is restored after a member function returns.
+<h3>But I Can't Remember All This!</h3>
+Of course, you can't. This kind of stuff takes time and patience to remember. So, take your time and read it a few times. If you don't understand something, try it out to see for yourself what happens. If you really don't get it, ask around. I'm willing to answer questions if you ask them in comments to this entry, and you can always ask questions around the good folks at <a href="http://www.gamedev.net/" target="_blank">gamedev.net</a> anytime. After a few weeks of practice, you'll be able to do most of this on your own.
+<h2>Game Design</h2>
+Before you jump right into coding (and drawing your assets, if applicable) you need to have a fairly complete and detailed description of the game you intend to develop. Otherwise, like a mason without a plan, the house you build is unlikely to ever be finished, and will crash to the ground in strong wind if it is.
+
+The basic requirements for a pong game are as follows:
+<ul>
+	<li>The Pong game contains a square ball and two rectangular paddles.</li>
+</ul>
+<ul>
+	<li>The ball moves at a certain speed along both horizontal and vertical axis.</li>
+	<li>When it hits the top or bottom of the screen, the vertical velocity is reversed.</li>
+	<li>When it hits the left or right edges of the screen, the horizontal velocity is reversed and the ball is moved to the center (horizontally). The player on the other side gains a point.</li>
+	<li>When it hits a paddle, the horizontal velocity is reversed.</li>
+</ul>
+<ul>
+	<li>Paddles are vertical, and there is one on each side of the screen.</li>
+	<li>They move up and down at a fixed speed.</li>
+	<li>When they hit the top or bottom edges of the screen, they stop moving.</li>
+	<li>They move slightly slower than the ball (so that "follow the ball" is not a winning strategy).</li>
+	<li>The player controls the left paddle, an AI controls the right paddle.</li>
+</ul>
+<h2>Writing the program</h2>
+The game is a large piece of functionality. However, programming only allows us to express small bits of functionality. So, we will have to split up the program in smaller pieces before we can create it.
+
+One common way of splitting things is the MVC architecture. MVC stands for Model/View/Controller, which can be explained like this:
+<ul>
+	<li>The <strong>Model </strong>describes everything that happens behind the scenes. It doesn't care about how the game will be displayed on the screen, or how the input from the player will be received. What it cares about is where the ball is, where the paddles are, how the ball should bounce when it hits something, and when scores should increase. This will be an entire object containing all the data required to describe the game, along with functions that compute the movement of the paddles and ball over time.</li>
+	<li>The <strong>View</strong> describes how the game should be displayed. It doesn't really care why the ball and paddles move a certain way: all it cares about is where the ball and paddles are, and which way they are moving. It gets this information from the model, and displays it in one way or another.</li>
+	<li>The <strong>Controller </strong>is what makes the game interactive: it reads user input in one way or another, generates AI strategies, and enters all that data into the model. Once the model has computed the new positions and scores, it asks the view to draw it, then starts again.</li>
+</ul>
+Applying MVC splits the program in three parts that are much cleaner and, therefore, potentially easier to create. It's usually considered a good first step when designing a program.
+<h3>The Model</h3>
+Since the view depends on the model, and the controller depends on both the view and the model, the first thing to be implemented is usually the model: it's independent of anything else, and so it can be written on its own.
+
+First, there is data to be stored that will change a lot over time:
+<ul>
+	<li>The position of the ball, as the ball's velocity.</li>
+	<li>The vertical position of each paddle, and its vertical velocity.</li>
+	<li>The score of each player.</li>
+</ul>
+Then, there's also data that will not change:
+<ul>
+	<li>The default horizontal and vertical speed of the ball.</li>
+	<li>The horizontal position and default vertical speed of the paddles.</li>
+	<li>The dimensions of the field, ball and paddles.</li>
+</ul>
+We can store these constants in objects that will never be changed:
+<blockquote>
+<pre style="background: #ffffff none repeat scroll 0% 50%; color: #000000;"><span style="color: #000084; font-weight: bold;">var</span> field    = { w: 320, h: 240 };
+<span style="color: #000084; font-weight: bold;">var</span> paddle   = { x: 300, w:   2, h:  30, s: 76 };
+<span style="color: #000084; font-weight: bold;">var</span> ball     = { w:   5, h:   5, s: 120 };</pre>
+</blockquote>
+The changing data itself should be stored in a model object, which should store the different categories of model data in sub-objects:
+<blockquote>
+<pre style="background: #ffffff none repeat scroll 0% 50%; color: #000000;"><span style="color: #000084; font-weight: bold;">function</span> model()
+{ <span style="color: #000084; font-weight: bold;">var</span> s = ball.s;
+  <span style="color: #000084; font-weight: bold;">this</span>.left   = {  pos: 0,   vel: 0 };
+  <span style="color: #000084; font-weight: bold;">this</span>.right  = {  pos: 0,   vel: 0 };
+  <span style="color: #000084; font-weight: bold;">this</span>.ball   = {    x: 0,     y: 0,
+                    vx: s,    vy: s };
+  <span style="color: #000084; font-weight: bold;">this</span>.scores = { left: 0, right: 0 }
+}</pre>
+</blockquote>
+Before going on, let's discuss a bit all these definitions. Obviously, this code creates a model class with data for left and right paddles, a ball, and scores. Constants are also defined to describe the dimensions of the field, paddles and ball, as well as the default speeds of the ball and paddles. This can be inferred fairly easily from the code if you know JavaScript. The unanswered question is, what do those numbers represent?
+<ul>
+	<li>Since the play field is symmetric, I have chosen coordinates (0,0) to represent the center of the field. This way, the top and bottom edges are at -field.h and field.h respectively (which means the total height of the field is, in fact, 480 pixels and not 240 pixels), the left and right edges are at -field.w and field.w (total width of 640 pixels). In general, the width and height are actually half-widths and half-heights, and the position of an object is in fact the position of its center.</li>
+	<li>Speeds are expressed in pixels per second. This means that the ball traverses the field vertically in 2 seconds and horizontally in 2.6 seconds, and the paddles traverse the field vertically in a bit more than 3 seconds (all of this is computed without taking the dimensions of the elements into account).</li>
+	<li>The scores are points. You add one point to the winner's score on each round.</li>
+</ul>
+Initially, everything is centered, and the ball moves to the bottom-right (and since it moves faster than the AI's paddle, the AI always loses the first round, but that's not really a problem because it lets the player get his bearings for nearly two seconds).
+
+The most elementary thing that can happen to the model is be controlled: this makes the paddles move by changing their velocity. So, when a player presses a key, the velocity changes, and when the key is released the velocity resets to zero. The model doesn't care about keys (that is the job of the controller), only about directions, so the movement functions have a direction parameter:
+<blockquote>
+<pre style="background: #ffffff none repeat scroll 0% 50%; color: #000000;">model.<span style="color: #000084; font-weight: bold;">prototype</span>.moveLeft = <span style="color: #000084; font-weight: bold;">function</span>(d)
+{ <span style="color: #000084; font-weight: bold;">this</span>.left.vel  = d * paddle.s }; 
+
+model.<span style="color: #000084; font-weight: bold;">prototype</span>.moveRight = <span style="color: #000084; font-weight: bold;">function</span>(d)
+{ <span style="color: #000084; font-weight: bold;">this</span>.right.vel = d * paddle.s };</pre>
+</blockquote>
+These functions are added to the model class and move the left and right paddle, at the appropriate speed, depending on the direction. Here, we assume that the direction parameter d will equal -1 for "up", 0 for "don't move" and 1 for "down", and we'll have to take care in the controller in order to guarantee that.
+
+The other thing that the model does is make things move. In the computer world, movement is a quick succession of different images which give the illusion of movement (as with <a href="http://www.flipbook.info/" target="_blank">flipbooks</a>). So, instead of working in a continuous motion, the model should skip ahead of time by a certain duration (known as the time step). Here, I'm going to choose a reasonable timestep: 10 milliseconds (that's 100 steps per second):
+<blockquote>
+<pre style="background: #ffffff none repeat scroll 0% 50%; color: #000000;"><span style="color: #000084; font-weight: bold;">var</span> timestep = 0.01;</pre>
+</blockquote>
+The update function is pretty heavy: it has to move the objects around (to match those 10 milliseconds) then determine if the ball should bounce, if the paddles should stop moving, and if the scores should increase. The entire function is:
+<blockquote>
+<pre style="background: #ffffff none repeat scroll 0% 50%; color: #000000;">model.<span style="color: #000084; font-weight: bold;">prototype</span>.update = <span style="color: #000084; font-weight: bold;">function</span>()
+{
+  <span style="color: #000084; font-weight: bold;">var</span> t = timestep; 
+
+  <span style="color: #000084; font-weight: bold;">this</span>.left.pos  += t * <span style="color: #000084; font-weight: bold;">this</span>.left.vel;
+  <span style="color: #000084; font-weight: bold;">this</span>.right.pos += t * <span style="color: #000084; font-weight: bold;">this</span>.right.vel;
+  <span style="color: #000084; font-weight: bold;">this</span>.ball.x    += t * <span style="color: #000084; font-weight: bold;">this</span>.ball.vx;
+  <span style="color: #000084; font-weight: bold;">this</span>.ball.y    += t * <span style="color: #000084; font-weight: bold;">this</span>.ball.vy; 
+
+  <span style="color: #000084; font-weight: bold;">var</span> clip = <span style="color: #000084; font-weight: bold;">function</span>(pad)
+  { <span style="color: #000084; font-weight: bold;">var</span> pos = pad.pos;
+    pos = Math.<span style="color: #000084; font-weight: bold;">min</span>(pos,field.h - paddle.h);
+    pos = Math.<span style="color: #000084; font-weight: bold;">max</span>(pos,paddle.h - field.h);
+    <span style="color: #000084; font-weight: bold;">if</span> (pos != pad.pos) pad.vel = 0;
+    pad.pos = pos;
+  }; 
+
+  clip(<span style="color: #000084; font-weight: bold;">this</span>.left);
+  clip(<span style="color: #000084; font-weight: bold;">this</span>.right); 
+
+  <span style="color: #000084; font-weight: bold;">if</span> (<span style="color: #000084; font-weight: bold;">this</span>.ball.y + ball.h &gt; field.h)
+  { <span style="color: #000084; font-weight: bold;">this</span>.ball.vy = - ball.s } 
+
+  <span style="color: #000084; font-weight: bold;">if</span> (<span style="color: #000084; font-weight: bold;">this</span>.ball.y - ball.h &lt; - field.h)
+  { <span style="color: #000084; font-weight: bold;">this</span>.ball.vy = ball.s } 
+
+  <span style="color: #000084; font-weight: bold;">if</span> (<span style="color: #000084; font-weight: bold;">this</span>.ball.x - ball.h &lt; - paddle.x + paddle.w &amp;&amp;
+      <span style="color: #000084; font-weight: bold;">this</span>.ball.x + ball.h &gt; - paddle.x - paddle.w &amp;&amp;
+      <span style="color: #000084; font-weight: bold;">this</span>.ball.y + ball.h &gt; <span style="color: #000084; font-weight: bold;">this</span>.left.pos - paddle.h &amp;&amp;
+      <span style="color: #000084; font-weight: bold;">this</span>.ball.y - ball.h &lt; <span style="color: #000084; font-weight: bold;">this</span>.left.pos + paddle.h )
+  { <span style="color: #000084; font-weight: bold;">this</span>.ball.vx = ball.s } 
+
+  <span style="color: #000084; font-weight: bold;">if</span> (<span style="color: #000084; font-weight: bold;">this</span>.ball.x - ball.h &lt; paddle.x + paddle.w &amp;&amp;
+      <span style="color: #000084; font-weight: bold;">this</span>.ball.x + ball.h &gt; paddle.x - paddle.w &amp;&amp;
+      <span style="color: #000084; font-weight: bold;">this</span>.ball.y + ball.h &gt; <span style="color: #000084; font-weight: bold;">this</span>.right.pos - paddle.h &amp;&amp;
+      <span style="color: #000084; font-weight: bold;">this</span>.ball.y - ball.h &lt; <span style="color: #000084; font-weight: bold;">this</span>.right.pos + paddle.h)
+  { <span style="color: #000084; font-weight: bold;">this</span>.ball.vx = - ball.s }  
+
+  <span style="color: #000084; font-weight: bold;">if</span> (<span style="color: #000084; font-weight: bold;">this</span>.ball.x - ball.h &lt; -field.w)
+  { <span style="color: #000084; font-weight: bold;">this</span>.scores.right++;
+    <span style="color: #000084; font-weight: bold;">this</span>.ball.x = 0;
+    <span style="color: #000084; font-weight: bold;">this</span>.ball.vx = ball.s } 
+
+  <span style="color: #000084; font-weight: bold;">if</span> (<span style="color: #000084; font-weight: bold;">this</span>.ball.x + ball.h &gt; field.w)
+  { <span style="color: #000084; font-weight: bold;">this</span>.scores.left++;
+    <span style="color: #000084; font-weight: bold;">this</span>.ball.x = 0;
+    <span style="color: #000084; font-weight: bold;">this</span>.ball.vx = - ball.s } 
+
+};</pre>
+</blockquote>
+Let's go through it step-by-step:
+<ul>
+	<li>First, it moves objects around. This is done by adding (+=) the moved distance (t * speed) to the position of objects. This computes the final position of objects after that step. The next steps then handle collisions.</li>
+	<li>The first collision test is handled by the "clip" function, which prevents the paddles from leaving the screen (it's a function because there are two paddles, so I created it once and used it for both paddles). The basic rule is: clip the paddle to the screen and, if it went outside, set its speed to zero. Since the position of the paddle is the position of its center, I have to take the height of the paddle into account in order to avoid leaving the field.</li>
+	<li>The next two collision tests happen between the ball and the top and bottom edges of the field: if the ball went beyond these, the vertical speed is set so that the ball moves back into the field.</li>
+	<li>The next two collision tests happen between the ball and the paddles. It tests whether the ball-rectangle hits the paddle-rectangle by checking whether any of them intersect (collision detection is a <a href="http://www.harveycartel.org/metanet/tutorials/tutorialA.html" target="_blank">topic in itself</a>) and if they do, sets the horizontal speed to move back into the field.</li>
+	<li>The last two collision tests check if the ball leaves the field on either side. When this happens, the score of the corresponding player is increased (++), the ball is moved to the center (x=0) and its speed is reversed.</li>
+</ul>
+So, if we call the "update" function, it computes the state of the game after 10 milliseconds. If we do it often enough, we can get the game state in real time. Now, we have to display it.
+<h3>The View</h3>
+The view is the part of the program responsible for displaying things to the player. It reads data from the model, and somehow maps it to whatever display techniques the program has.
+
+In this example, I'm using the jQuery library. It allows the program to resize and move around DIV elements of a web page (by default, a DIV element is a rectangle with a set position). So, the first step I will take is create the HTML page which will be manipulated by the view:
+<blockquote>
+<pre style="background: #ffffff none repeat scroll 0% 50%; color: #000000;"><span style="color: #7f0055;">&lt;</span><span style="color: #7f0055;">html</span><span style="color: #7f0055;">&gt;</span>
+  <span style="color: #7f0055;">&lt;</span><span style="color: #7f0055;">head</span><span style="color: #7f0055;">&gt;</span><span style="color: #7f0055;">&lt;</span><span style="color: #7f0055;">title</span><span style="color: #7f0055;">&gt;</span>Pong<span style="color: #7f0055;">&lt;/</span><span style="color: #7f0055;">title</span><span style="color: #7f0055;">&gt;</span>
+  <span style="color: #7f0055;">&lt;</span><span style="color: #7f0055;">script</span> type=<span style="color: #0000ff;">"</span><span style="color: #0000ff;">text/javascript</span><span style="color: #0000ff;">"</span> src=<span style="color: #0000ff;">"</span><span style="color: #0000ff;">jquery.js</span><span style="color: #0000ff;">"</span><span style="color: #7f0055;">&gt;</span><span style="color: #7f0055;">&lt;/</span><span style="color: #7f0055;">script</span><span style="color: #7f0055;">&gt;</span>
+  <span style="color: #7f0055;">&lt;</span><span style="color: #7f0055;">script</span> type=<span style="color: #0000ff;">"</span><span style="color: #0000ff;">text/javascript</span><span style="color: #0000ff;">"</span> src=<span style="color: #0000ff;">"</span><span style="color: #0000ff;">pong.js</span><span style="color: #0000ff;">"</span><span style="color: #7f0055;">&gt;</span><span style="color: #7f0055;">&lt;/</span><span style="color: #7f0055;">script</span><span style="color: #7f0055;">&gt;</span>
+  <span style="color: #7f0055;">&lt;</span><span style="color: #7f0055;">style</span><span style="color: #7f0055;">&gt;</span>
+#playfield {
+  color           : black;
+  background-color: black;
+  border          : 0px none black;
+  margin          : 0px;
+  padding         : 0px;
+  position        : absolute;
+  top             : 0px;
+  left            : 0px }
+div {
+  font-size       : 1px;
+  color           : white;
+  background-color: #33FF33;
+  margin          : 0px;
+  padding         : 0px;
+  position        : absolute;
+  top             : 0px;
+  left            : 0px }
+div.score {
+  color           : #33FF33;
+  background-color: transparent;
+  width           : 640px;
+  font-size       : 20px;
+  font-family     : courier new }
+  <span style="color: #7f0055;">&lt;/</span><span style="color: #7f0055;">style</span><span style="color: #7f0055;">&gt;</span>
+  <span style="color: #7f0055;">&lt;/</span><span style="color: #7f0055;">head</span><span style="color: #7f0055;">&gt;</span>
+  <span style="color: #7f0055;">&lt;</span><span style="color: #7f0055;">body</span><span style="color: #7f0055;">&gt;</span>
+    <span style="color: #7f0055;">&lt;</span><span style="color: #7f0055;">input</span> id=<span style="color: #0000ff;">"</span><span style="color: #0000ff;">playfield</span><span style="color: #0000ff;">"</span><span style="color: #7f0055;">/&gt;</span>
+    <span style="color: #7f0055;">&lt;</span><span style="color: #7f0055;">div</span><span style="color: #7f0055;">&gt;</span><span style="color: #7f0055;">&lt;</span><span style="color: #7f0055;">div</span> id=<span style="color: #0000ff;">"</span><span style="color: #0000ff;">paddle_left</span><span style="color: #0000ff;">"</span><span style="color: #7f0055;">/&gt;</span><span style="color: #7f0055;">&lt;/</span><span style="color: #7f0055;">div</span><span style="color: #7f0055;">&gt;</span>
+    <span style="color: #7f0055;">&lt;</span><span style="color: #7f0055;">div</span><span style="color: #7f0055;">&gt;</span><span style="color: #7f0055;">&lt;</span><span style="color: #7f0055;">div</span> id=<span style="color: #0000ff;">"</span><span style="color: #0000ff;">paddle_right</span><span style="color: #0000ff;">"</span><span style="color: #7f0055;">/&gt;</span><span style="color: #7f0055;">&lt;/</span><span style="color: #7f0055;">div</span><span style="color: #7f0055;">&gt;</span>
+    <span style="color: #7f0055;">&lt;</span><span style="color: #7f0055;">div</span><span style="color: #7f0055;">&gt;</span><span style="color: #7f0055;">&lt;</span><span style="color: #7f0055;">div</span> class=<span style="color: #0000ff;">"</span><span style="color: #0000ff;">score</span><span style="color: #0000ff;">"</span> style=<span style="color: #0000ff;">"</span><span style="color: #0000ff;">text-align:left</span><span style="color: #0000ff;">"</span> id=<span style="color: #0000ff;">"</span><span style="color: #0000ff;">score_left</span><span style="color: #0000ff;">"</span><span style="color: #7f0055;">&gt;</span>0<span style="color: #7f0055;">&lt;/</span><span style="color: #7f0055;">div</span><span style="color: #7f0055;">&gt;</span><span style="color: #7f0055;">&lt;/</span><span style="color: #7f0055;">div</span><span style="color: #7f0055;">&gt;</span>
+    <span style="color: #7f0055;">&lt;</span><span style="color: #7f0055;">div</span><span style="color: #7f0055;">&gt;</span><span style="color: #7f0055;">&lt;</span><span style="color: #7f0055;">div</span> class=<span style="color: #0000ff;">"</span><span style="color: #0000ff;">score</span><span style="color: #0000ff;">"</span> style=<span style="color: #0000ff;">"</span><span style="color: #0000ff;">text-align:right</span><span style="color: #0000ff;">"</span> id=<span style="color: #0000ff;">"</span><span style="color: #0000ff;">score_right</span><span style="color: #0000ff;">"</span><span style="color: #7f0055;">&gt;</span>0<span style="color: #7f0055;">&lt;/</span><span style="color: #7f0055;">div</span><span style="color: #7f0055;">&gt;</span><span style="color: #7f0055;">&lt;/</span><span style="color: #7f0055;">div</span><span style="color: #7f0055;">&gt;</span>
+    <span style="color: #7f0055;">&lt;</span><span style="color: #7f0055;">div</span><span style="color: #7f0055;">&gt;</span><span style="color: #7f0055;">&lt;</span><span style="color: #7f0055;">div</span> id=<span style="color: #0000ff;">"</span><span style="color: #0000ff;">ball</span><span style="color: #0000ff;">"</span><span style="color: #7f0055;">/&gt;</span><span style="color: #7f0055;">&lt;/</span><span style="color: #7f0055;">div</span><span style="color: #7f0055;">&gt;</span>
+  <span style="color: #7f0055;">&lt;/</span><span style="color: #7f0055;">body</span><span style="color: #7f0055;">&gt;</span>
+<span style="color: #7f0055;">&lt;/</span><span style="color: #7f0055;">html</span><span style="color: #7f0055;">&gt;</span></pre>
+</blockquote>
+This creates several rectangles, with identifiers, and also determines their color and margin. Note that the playfield is an "input" (because we need to receive input from the player, so we use this object as a trick). Also, all "div" elements are within "div" elements, to prevent their relative positions from influencing each other (because several elements with an absolute position are within the same body).
+
+Most of the above should be fairly obvious to you (if it isn't you can peek at a few online courses: <a href="http://www.w3schools.com/html/DEFAULT.asp" target="_blank">html</a> and <a href="http://www.w3schools.com/css/DEFAULT.asp" target="_blank">css</a>).
+
+A point of interest here is the fact that the HTML file includes our script (pong.js) as well as the jQuery script (jquery.js). You can download jQuery <a href="http://jquery.com/" target="_blank">here</a>.
+
+what is interesting about jQuery is that it allows selecting the objects quite easily, and then telling them to do things such as moving. An extremely important function in the view is this:
+<blockquote>
+<pre style="background: #ffffff none repeat scroll 0% 50%; color: #000000;"><span style="color: #000084; font-weight: bold;">var</span> move = <span style="color: #000084; font-weight: bold;">function</span>(avatar,pos,spd,size)
+{ <span style="color: #000084; font-weight: bold;">var</span> x = pos.x - size.w + field.w;
+  <span style="color: #000084; font-weight: bold;">var</span> y = pos.y - size.h + field.h;
+  avatar.stop()
+    .css({left:x,top:y})
+    .animate({left:x+10*spd.vx, top:y+10*spd.vy},10000,<span style="color: #0000ff;">"linear"</span>);
+};</pre>
+</blockquote>
+This function has four parameters: the 'avatar' is a jQuery object representing one of the "div" elements above (the ball, a paddle etc), the 'pos' is the position (with x and y coordinates) where that object should be, 'spd' is the velocity (with vx and vy coordinates) with which the object moves, and 'size' is the dimensions (with w and h coordinates) of that object. The dimensions are required because the position of a jQuery object (with 'absolute' positioning, as we are using here) is expressed as an offset between the top-left corner of the screen and the top-left container of the object itself, whereas the position in the model is the offset between the center of the playing field and the center of the object. So, variables 'x' and 'y' are computed to represent the object's position on the HTML page.
+
+This function stops the current movement of the avatar with 'stop()' then sets the left and top coordinates with 'css()', and finally asks the object to move with 'animate()' by specifying the destination (which we compute by adding the distance traversed in ten seconds to the current position), the duration (10 seconds = 10000 milliseconds) and the animation style ("linear", which means there are no accelerations and no brakes).
+
+In short, this function should be called whenever the movement of an object <em>changes</em>: jQuery then takes care of animating the object until its movement changes again. This way, we don't have to change the movement of objects every ten milliseconds.
+
+However, this requires the view to store the previous value of movement, in order to determine when movement changes by comparing the new value and the old value (if they're the same, no changes happened). So, the view object would look like this:
+<blockquote>
+<pre style="background: #ffffff none repeat scroll 0% 50%; color: #000000;"><span style="color: #000084; font-weight: bold;">function</span> view()
+{ <span style="color: #000084; font-weight: bold;">this</span>.ball   = {   vx: <span style="color: #000084; font-weight: bold;">null</span>,    vy: <span style="color: #000084; font-weight: bold;">null</span> };
+  <span style="color: #000084; font-weight: bold;">this</span>.scores = { left:    0, right:    0 };
+  <span style="color: #000084; font-weight: bold;">this</span>.paddle = { left: <span style="color: #000084; font-weight: bold;">null</span>, right: <span style="color: #000084; font-weight: bold;">null</span> };
+  <span style="color: #000084; font-weight: bold;">this</span>.avatar = { ball: $(<span style="color: #0000ff;">'div#ball'</span>),
+                  sc_l: $(<span style="color: #0000ff;">'div#score_left'</span>),
+                  sc_r: $(<span style="color: #0000ff;">'div#score_right'</span>),
+                  pa_l: $(<span style="color: #0000ff;">'div#paddle_left'</span>),
+                  pa_r: $(<span style="color: #0000ff;">'div#paddle_right'</span>),
+                  play: $(<span style="color: #0000ff;">'input#playfield'</span>) }; 
+
+  <span style="color: #000084; font-weight: bold;">this</span>.avatar.ball.width(1.9*ball.w)  .height(1.9*ball.h);
+  <span style="color: #000084; font-weight: bold;">this</span>.avatar.pa_l.width(1.9*paddle.w).height(1.9*paddle.h);
+  <span style="color: #000084; font-weight: bold;">this</span>.avatar.pa_r.width(1.9*paddle.w).height(1.9*paddle.h);
+  <span style="color: #000084; font-weight: bold;">this</span>.avatar.play.width(2*field.w)   .height(2*field.h);
+}</pre>
+</blockquote>
+This class does the following things:
+<ul>
+	<li>It defines members "ball", and "paddle" which contain the velocities (but not positions) of paddles and the ball. So, when velocities change, the view notices and asks jQuery to change the trajectories. It also defines the currently displayed score (so that, when these change, they are updated).</li>
+	<li>It defines the avatars: this is done by using the jQuery selector: <span style="font-family: courier new,courier;">$('div#paddle_left')</span> selects the DIV element with the identifier 'paddle_left' that we defined in the HTML page earlier.</li>
+	<li>It resizes the avatars based on the constants, with the functions 'width()' and 'height()'. Note that the width and height of the ball and paddles are smaller than they should be: this is a common trick for games, since players are bound to notice some close misses and interpret them as "this shouldn't have missed", making the image of the paddles and ball smaller reduces near misses and keeps the players happier.</li>
+</ul>
+Next, the view object uses a 'render()' function to display things. This function will use the 'move()' function we defined earlier:
+<blockquote>
+<pre style="background: #ffffff none repeat scroll 0% 50%; color: #000000;">view.prototype.render = <span style="color: #000084; font-weight: bold;">function</span>(model)
+{ <span style="color: #000084; font-weight: bold;">var</span> move = <span style="color: #000084; font-weight: bold;">function</span>(avatar,pos,spd,size)
+  { <span style="color: #000084; font-weight: bold;">var</span> x = pos.x - size.w + field.w;
+    <span style="color: #000084; font-weight: bold;">var</span> y = pos.y - size.h + field.h;
+    avatar.stop()
+      .css({left:x,top:y})
+      .animate({left:x+10*spd.vx, top:y+10*spd.vy},10000,<span style="color: #0000ff;">"linear"</span>);
+  }; 
+
+  <span style="color: #000084; font-weight: bold;">if</span> (<span style="color: #000084; font-weight: bold;">this</span>.ball.vx != model.ball.vx || <span style="color: #000084; font-weight: bold;">this</span>.ball.vy != model.ball.vy)
+  { <span style="color: #000084; font-weight: bold;">this</span>.ball.vx = model.ball.vx;
+    <span style="color: #000084; font-weight: bold;">this</span>.ball.vy = model.ball.vy;
+    move(<span style="color: #000084; font-weight: bold;">this</span>.avatar.ball,model.ball,<span style="color: #000084; font-weight: bold;">this</span>.ball,ball) } 
+
+  <span style="color: #000084; font-weight: bold;">if</span> (<span style="color: #000084; font-weight: bold;">this</span>.paddle.left != model.left.vel)
+  { <span style="color: #000084; font-weight: bold;">this</span>.paddle.left = model.left.vel;
+    move(<span style="color: #000084; font-weight: bold;">this</span>.avatar.pa_l,
+         {x: -paddle.x, y:model.left.pos},
+         {vx: 0, vy: <span style="color: #000084; font-weight: bold;">this</span>.paddle.left}, paddle) } 
+
+  <span style="color: #000084; font-weight: bold;">if</span> (<span style="color: #000084; font-weight: bold;">this</span>.paddle.right != model.right.vel)
+  { <span style="color: #000084; font-weight: bold;">this</span>.paddle.right = model.right.vel;
+    move(<span style="color: #000084; font-weight: bold;">this</span>.avatar.pa_r,
+         {x: paddle.x, y: model.right.pos},
+         {vx: 0, vy: <span style="color: #000084; font-weight: bold;">this</span>.paddle.right}, paddle) } 
+
+  <span style="color: #000084; font-weight: bold;">if</span> (<span style="color: #000084; font-weight: bold;">this</span>.scores.left != model.scores.left)
+  { <span style="color: #000084; font-weight: bold;">this</span>.scores.left = model.scores.left;
+    <span style="color: #000084; font-weight: bold;">this</span>.avatar.sc_l.html(model.scores.left) } 
+
+  <span style="color: #000084; font-weight: bold;">if</span> (<span style="color: #000084; font-weight: bold;">this</span>.scores.right != model.scores.right)
+  { <span style="color: #000084; font-weight: bold;">this</span>.scores.right = model.scores.right;
+    <span style="color: #000084; font-weight: bold;">this</span>.avatar.sc_r.html(model.scores.right) }
+}</pre>
+</blockquote>
+The render function always checks whether the current value inside the model is different (!=) from the value stored in the view (this). When this is the case, the 'move' function is called to move the appropriate avatar in the appropriate fashion (or, in the case of scores, the inner text of the score avatar is changed using the 'html()' function from jQuery).
+<h3>The Controller</h3>
+The last piece of the game is the controller. It should gather information from the user, compute the AI's response to ball movement, and measure how long has elapsed since the last time the view has been refreshed and update the model accordingly.
+
+This time, the controller has no reason to be an object, because nobody will manipulate it (except, of course, itself). Instead, we can just define some values inside a function and use them to do the job:
+<blockquote>
+<pre style="background: #ffffff none repeat scroll 0% 50%; color: #000000;"><span style="color: #000084; font-weight: bold;">var</span> gameModel = <span style="color: #000084; font-weight: bold;">new</span> model();
+<span style="color: #000084; font-weight: bold;">var</span> gameView  = <span style="color: #000084; font-weight: bold;">new</span> view();</pre>
+</blockquote>
+As a first step in implementing the controller, we need to extract the keypresses from the user and write a function that applies them. This is done as follows:
+<blockquote>
+<pre style="background: #ffffff none repeat scroll 0% 50%; color: #000000;">  <span style="color: #000084; font-weight: bold;">var</span> keys  = { up: <span style="color: #000084; font-weight: bold;">false</span>, down: <span style="color: #000084; font-weight: bold;">false</span> }; 
+
+  gameView.avatar.play.keydown(<span style="color: #000084; font-weight: bold;">function</span>(event){
+    <span style="color: #000084; font-weight: bold;">if</span> (event.which == 38) keys.up = <span style="color: #000084; font-weight: bold;">true</span>;
+    <span style="color: #000084; font-weight: bold;">if</span> (event.which == 40) keys.down = <span style="color: #000084; font-weight: bold;">true</span>;
+    <span style="color: #000084; font-weight: bold;">return</span> <span style="color: #000084; font-weight: bold;">false</span>
+  }); 
+
+  gameView.avatar.play.keyup(<span style="color: #000084; font-weight: bold;">function</span>(event){
+    <span style="color: #000084; font-weight: bold;">if</span> (event.which == 38) keys.up = <span style="color: #000084; font-weight: bold;">false</span>;
+    <span style="color: #000084; font-weight: bold;">if</span> (event.which == 40) keys.down = <span style="color: #000084; font-weight: bold;">false</span>;
+    <span style="color: #000084; font-weight: bold;">return</span> <span style="color: #000084; font-weight: bold;">false</span>
+  });   
+
+  <span style="color: #000084; font-weight: bold;">var</span> playerMoveLeft = <span style="color: #000084; font-weight: bold;">function</span>(model)
+  { model.moveLeft((keys.up ? -1 : 0) + (keys.down ? 1 : 0)); }</pre>
+</blockquote>
+The 'keydown' function provided by jQueryhas a single parameter, which is a function. That parameter will be called whenever an unpressed key is pressed when the playing field is selected. The same happens for 'keyup', which reacts when a pressed key is released. The functions check what the key was by looking at 'event.which': a value of 38 is the "up" arrow key while a value of 40 is the "down" arrow key (39 and 41 are the left and right arrow keys, respectively). The functions also use the statement 'return false': this notifies the playing field (which is originally a text field from a form) that the key press should be ignored, instead of adding the letter to the field.
+
+What the functions do is set the value of keys.up and keys.down: the "playerMoveLeft" function then reads the value of the keys to determine which keys are currently pressed. The "a ? b : c" construct uses "b" if "a" is true, and "c" otherwise. So:
+<ul>
+	<li> If the up key is pressed but the down key is not, the direction is -1 + 0 = -1</li>
+	<li>If the down key is pressed but the up key is not, the direction is 0 + 1 = 1</li>
+	<li>If neither key is pressed, the direction is 0 + 0 = 0</li>
+	<li>If both keys are pressed, the direction is -1 + 1 = 0</li>
+</ul>
+So, the code above correctly responds to player input whenever the 'playerMoveLeft' function is called.
+
+Another step is to define a similar aiMoveRight function for computing the AI response. We want the AI do to something smart enough to be challenging. However, since the ball moves slowly from left to right, a perfect AI could simply compute where the ball will land and wait there: it would therefore never lose. This is a good thing for computer science, but a bad thing in game: a good game AI is not an AI that always wins, but an AI that loses in a challenging and fun manner.
+
+The following code accomplishes this:
+<blockquote>
+<pre style="background: #ffffff none repeat scroll 0% 50%; color: #000000;">  <span style="color: #000084; font-weight: bold;">var</span> aiMoveRight = <span style="color: #000084; font-weight: bold;">function</span>(model)
+  { <span style="color: #000084; font-weight: bold;">var</span> dir = 0;
+    <span style="color: #000084; font-weight: bold;">if</span> (model.ball.vx &gt; 0)
+    { <span style="color: #000084; font-weight: bold;">var</span> dist = (paddle.x - model.ball.x);
+      <span style="color: #000084; font-weight: bold;">var</span> target = model.ball.y + model.ball.vy * (dist / model.ball.vx);
+      <span style="color: #000084; font-weight: bold;">while</span> (target &gt; field.h-ball.h || target &lt; ball.h-field.h)
+      { <span style="color: #000084; font-weight: bold;">if</span> (target &gt; 0) { target = 2*(field.h-ball.h) - target }
+        <span style="color: #000084; font-weight: bold;">else</span>            { target = 2*(ball.h-field.h) - target }
+      }            
+
+      dir =
+        (model.right.pos + paddle.h &lt; target ?  1 : 0) +
+        (model.right.pos - paddle.h &gt; target ? -1 : 0)  
+
+      <span style="color: #000084; font-weight: bold;">var</span> accuracy =
+        field.h * Math.<span style="color: #000084; font-weight: bold;">exp</span>((model.scores.left - model.scores.right)/3); 
+
+      <span style="color: #000084; font-weight: bold;">if</span> (dist &gt; accuracy)
+      { dir = -dir }
+    } 
+
+    model.moveRight(dir);
+  }</pre>
+</blockquote>
+The general structure of the code is reasonably easy to get: the code computes the direction in which the AI (right) paddle should move, then sets that direction on the last line. If the ball is not moving right (vx &gt; 0) the AI paddle does not move (dir = 0). However, if the ball is indeed moving right, then the computation starts: the algorithm computes the distance between the ball and the paddle. From that, it computes the point where the ball should meet the paddle (and stores the vertical coordinate in the 'target' variable). Once the target is known, the direction is computed: if the paddle is below the target, it moves up, and if it's above, it moves down. This is a perfect AI: it never loses because it always knows where the ball hits and moves there immediately. So, we dumb it down by adding accuracy: if the ball is further away from the paddle than a certain distance threshold (stored in the 'accuracy' variable) then the paddle does the opposite of what it should do (dir = -dir).
+
+The two important questions here are: how is the target determined, and how is the accuracy determined?
+
+The <strong>target </strong>is computed by determining where the ball would end up if there were no top or bottom edges: one simply calculates the horizontal distance and deduces from the horizontal and vertical speed ratio the vertical distance that it will go from its current position. Once this position is known, the code takes into account bounces: if the target is outside the top or bottom edges, then it will bounce, which means that the target position should be reflected around that edge. For the bottom edge, reflection is done with 'target = 2*(field.h-ball.h) - target' and for the top edge it's done with 'target = 2*(ball.h-field.h) - target'. The AI repeats this reflection process until the target is within the playing field.
+
+The <strong>accuracy </strong>is computed by getting the exponential of the score difference (with a few modifiers, 'field.h' and '3', obtained through playtesting). The point of using an exponential is that, as the score difference increases (in favor of the player) the exponential increases substantially and so the accuracy also increases, and as the score difference increases (in favor of the AI) the exponential decreases substantially without going below zero. So, the point of the exponential is getting an accuracy that increases when the player is doing well, without going below zero.
+
+As a result, the AI starts playing perfectly when the player has three more points than the AI.
+
+The last thing the controller does is keep the model and view up to date. To do this, it computes the current time (in seconds, with decimals) and also remembers the last time it was updated. Then, if the last update is more than one timestep ago, it updates the model and increases the last-update-time by one timestep, and repeats this process until the model is up-to-date. Then, it renders the model.
+<blockquote>
+<pre style="background: #ffffff none repeat scroll 0% 50%; color: #000000;">  <span style="color: #000084; font-weight: bold;">var</span> time = <span style="color: #000084; font-weight: bold;">function</span>() { <span style="color: #000084; font-weight: bold;">return</span> +(<span style="color: #000084; font-weight: bold;">new</span> Date) / 1000 };
+  <span style="color: #000084; font-weight: bold;">var</span> last = time(); 
+
+  <span style="color: #000084; font-weight: bold;">var</span> act  = <span style="color: #000084; font-weight: bold;">function</span>()
+  {
+    playerMoveLeft(gameModel);
+    aiMoveRight(gameModel); 
+
+    <span style="color: #000084; font-weight: bold;">var</span> now = time();
+    <span style="color: #000084; font-weight: bold;">while</span> (now &gt; last)
+    { gameModel.update();
+      last += timestep } 
+
+    gameView.render(gameModel);
+    setTimeout(act,50);
+  }</pre>
+</blockquote>
+The time function uses a common trick: it creates a date object (which by default contains the current time), converts it to the number of milliseconds since a fixed point in time, and divides it by 1000. The 'return' statement means that when the function is called, it will be replaced by the returned value (var last = time();).
+
+The 'act()' function applies input to the game model, then performs as many updates as necessaryand finally renders the model. Then, it asks Javascript to execute 'act()' again in 50 milliseconds (that's 20 times per second).
+
+The result is to wrap all of this in a single 'controller()' function and ask jQuery to execute the entire thing when the document has finished loading:
+<blockquote>
+<pre style="background: #ffffff none repeat scroll 0% 50%; color: #000000;"><span style="color: #000084; font-weight: bold;">function</span> controller()
+{ <span style="color: #000084; font-weight: bold;">var</span> gameModel = <span style="color: #000084; font-weight: bold;">new</span> model();
+  <span style="color: #000084; font-weight: bold;">var</span> gameView  = <span style="color: #000084; font-weight: bold;">new</span> view();
+  <span style="color: #000084; font-weight: bold;">var</span> keys  = { up: <span style="color: #000084; font-weight: bold;">false</span>, down: <span style="color: #000084; font-weight: bold;">false</span> }; 
+
+  gameView.avatar.play.keydown(<span style="color: #000084; font-weight: bold;">function</span>(event){
+    <span style="color: #000084; font-weight: bold;">if</span> (event.which == 38) keys.up = <span style="color: #000084; font-weight: bold;">true</span>;
+    <span style="color: #000084; font-weight: bold;">if</span> (event.which == 40) keys.down = <span style="color: #000084; font-weight: bold;">true</span>;
+    <span style="color: #000084; font-weight: bold;">return</span> <span style="color: #000084; font-weight: bold;">false</span>
+  }); 
+
+  gameView.avatar.play.keyup(<span style="color: #000084; font-weight: bold;">function</span>(event){
+    <span style="color: #000084; font-weight: bold;">if</span> (event.which == 38) keys.up = <span style="color: #000084; font-weight: bold;">false</span>;
+    <span style="color: #000084; font-weight: bold;">if</span> (event.which == 40) keys.down = <span style="color: #000084; font-weight: bold;">false</span>;
+    <span style="color: #000084; font-weight: bold;">return</span> <span style="color: #000084; font-weight: bold;">false</span>
+  });   
+
+  <span style="color: #000084; font-weight: bold;">var</span> playerMoveLeft = <span style="color: #000084; font-weight: bold;">function</span>(model)
+  { model.moveLeft((keys.up ? -1 : 0) + (keys.down ? 1 : 0)); } 
+
+  <span style="color: #000084; font-weight: bold;">var</span> aiMoveRight = <span style="color: #000084; font-weight: bold;">function</span>(model)
+  { <span style="color: #000084; font-weight: bold;">var</span> dir = 0;
+    <span style="color: #000084; font-weight: bold;">if</span> (model.ball.vx &gt; 0)
+    { <span style="color: #000084; font-weight: bold;">var</span> dist = (paddle.x - model.ball.x);
+      <span style="color: #000084; font-weight: bold;">var</span> target = model.ball.y + model.ball.vy * (dist / model.ball.vx);
+      <span style="color: #000084; font-weight: bold;">while</span> (target &gt; field.h-ball.h || target &lt; ball.h-field.h)
+      { <span style="color: #000084; font-weight: bold;">if</span> (target &gt; 0) { target = 2*(field.h-ball.h) - target }
+        <span style="color: #000084; font-weight: bold;">else</span>            { target = 2*(ball.h-field.h) - target }
+      }            
+
+      dir =
+        (model.right.pos + paddle.h &lt; target ?  1 : 0) +
+        (model.right.pos - paddle.h &gt; target ? -1 : 0)  
+
+      <span style="color: #000084; font-weight: bold;">var</span> accuracy =
+        field.h * Math.<span style="color: #000084; font-weight: bold;">exp</span>((model.scores.left - model.scores.right)/3); 
+
+      <span style="color: #000084; font-weight: bold;">if</span> (dist &gt; accuracy)
+      { dir = -dir }
+    } 
+
+    model.moveRight(dir);
+  } 
+
+  <span style="color: #000084; font-weight: bold;">var</span> time = <span style="color: #000084; font-weight: bold;">function</span>() { <span style="color: #000084; font-weight: bold;">return</span> +(<span style="color: #000084; font-weight: bold;">new</span> Date) / 1000 };
+  <span style="color: #000084; font-weight: bold;">var</span> last = time(); 
+
+  <span style="color: #000084; font-weight: bold;">var</span> act  = <span style="color: #000084; font-weight: bold;">function</span>()
+  {
+    playerMoveLeft(gameModel);
+    aiMoveRight(gameModel); 
+
+    <span style="color: #000084; font-weight: bold;">var</span> now = time();
+    <span style="color: #000084; font-weight: bold;">while</span> (now &gt; last)
+    { gameModel.update();
+      last += timestep } 
+
+    gameView.render(gameModel);
+    setTimeout(act,50);
+  } 
+
+  act();
+} 
+
+$(<span style="color: #000084; font-weight: bold;">function</span>(){<span style="color: #000084; font-weight: bold;">new</span> controller});</pre>
+</blockquote>
+<h2>The Article</h2>
+This game uses 200 lines of Javascript and 50 lines of quick-and-dirty HTML. It took me about three hours to develop. This article is the longest article so far on Nicollet.Net and took me an entire day to write. You can expect other video games and maybe even other tutorials in the future, in the same vein as this one. If you have questions, or if you have enjoyed this, make sure to add a comment below. Links to this tutorial from places where beginners ask a lot of questions are also most welcome.

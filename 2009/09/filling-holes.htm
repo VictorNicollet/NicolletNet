@@ -1,0 +1,30 @@
+@title Filling in the Holes
+@draft
+
+As the technical lead on a software project, I get to interact on a daily basis with stakeholders that are technologically impaired. They think in high-level, end user terms like « I need a <a href="../2009/08/best-practices/">comment system</a> » or « send the user an e-mail notification » and they expect things to happen without having to delve into the boring techno-babblish details of how it's done. The rationale is that deciding <em>what</em> happens is a stakeholder job and deciding <em>how</em> it happens is a developer job.
+
+Of course, no matter how hard you try to separate the two, developers are sometimes going to decide what happens, because no stakeholder can spare the time needed to walk the development team through the bloody details of every single feature. Given the productivity gains from recent advances in development tools and the social skills of the average programmer, I think it's fair to say that an in-depth description of a feature takes about as long as the implementation of that same feature.
+
+This is why all projects follow the same steps regardless of the methodology used:
+<ol>
+	<li>A stakeholder makes some general statement about a feature, such as user comments being available on certain items.</li>
+	<li>The development team writes what they feel is the best implementation of that feature in the context of that project, filling in the missing details as they go.</li>
+	<li>The stakeholder sees the results and points out what details did not match their mental model of the requested features.</li>
+</ol>
+This introduces several dangers: there's the budget issue when missing details turn out to be costlier than originally envisioned, and there's mismatch issue that makes the customer unhappy. A good project manager should strive to reduce these. How?
+
+<strong>Gathering more requirements</strong> is a classic strategy in waterfall models. The basic reasoning is that the more details you manage to gather about the product to be implemented, the lower the chances of a surprise requirement blowing your budget away and the higher the chances of meeting the customer's expectations. The downside is that this step takes time, which in turn uses up the budget and delays the release.
+
+Also be careful when deciding on a budget after having gathered all the requirements. Everyone changes their mind sooner or later, and any requirement change, no matter how small, should prompt a critical analysis of the budget: adding « just one link » is indeed a tiny change, but the involved overhead (change the internal documentation, determine the impact on other feature, tell the developer, write the code, test the changes) adds up much faster than you think.
+
+<strong>Fast iterations involving the stakeholders</strong> is the Scrum approach, shared with many agile methodologies. It deals with budget issues by developing the simplest possible implementation that matches the requirements. It also provides the customer with feedback on the estimated implementation time through poker planning before every iteration, so that requirements can be changed on the fly if sacrificing a small feature can significantly reduce costs.
+
+Short-iteration agile projects build customer dissatisfaction into the development process: if you don't like the existing implementation, you can ask for a change and get it done on the next iteration. It also lets the developers decide based on technical considerations (<em>what's easier to implement</em>) as opposed to high-level decisions (<em>how the stakeholder wants a feature to behave</em>), which lets them work faster and do what they are skilled at.
+
+The downside to these approaches is that stakeholder involvement should not be taken for granted, and even when it is, it's not uncommon for customers to have dissenting opinions among themselves. Also, an agile process does not help if there's a fixed deadline and a fixed set of 1.0 features, and the customer expects these to be done in time.
+
+<strong>Having developers with common sense</strong> helps a lot—all the people working on the project should be able to tell ahead of time if a given solution is going to be unacceptable, and dismiss it if they see one. This avoids implementing useless solutions, or forwarding an useless solution to a customer for validation.
+
+The obvious corollary is that a developer should write bug-free code without having to be told to write bug-free code. Commits that contain segmentation faults, access violations, unhandled exceptions, blank pages, broken links or performance bottlenecks should be investigated into, to determine why a mistake was made and what steps should be taken to avoid repeating it.
+
+What other techniques have you come up with for reducing communication-related risks?

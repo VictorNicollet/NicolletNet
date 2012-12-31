@@ -1,0 +1,102 @@
+@title JSOS : JS-PHP mapping
+@draft
+
+I've been working on Javascript-PHP remote call mapping techniques. A set of PHP classes with static functions are selected as a public interface and automatically exported so that the Javascript can call them. Usually, this kind of mapping involves three difficult points:
+<ul>
+	<li>Detecting what functions are exported and building the appropriate JS code.</li>
+	<li>Detecting what function the JS is calling.</li>
+	<li>Transforming data between JS and PHP.</li>
+</ul>
+I solve these with glob(), __autoload and json_encode (respectively) in a little prototype I called JSOS (<span style="text-decoration: underline;">J</span>ava<span style="text-decoration: underline;">S</span>cript <span style="text-decoration: underline;">O</span>r <span style="text-decoration: underline;">S</span>omething). <em>jQuery</em> on the client side provides me with synchronous AJAX queries. The code (PHP with echoed Javascript) looks like this, and is placed in a controller:
+<pre style="padding-left: 30px;"><code><span style="color: #000000;"><span style="color: #0000bb;">&lt;?php
+ </span><span style="color: #007700;">function </span><span style="color: #0000bb;">__autoload</span><span style="color: #007700;">(</span><span style="color: #0000bb;">$classname</span><span style="color: #007700;">)
+ {
+   require_once(</span><span style="color: #0000bb;">$classname </span><span style="color: #007700;">. </span><span style="color: #dd0000;">'.inc.php'</span><span style="color: #007700;">);
+ }
+
+ if (!isset(</span><span style="color: #0000bb;">$_POST</span><span style="color: #007700;">[</span><span style="color: #dd0000;">'cls'</span><span style="color: #007700;">])) {
+   echo </span><span style="color: #dd0000;">'&lt;html&gt;&lt;head&gt;&lt;title&gt;JSOS&lt;/title&gt;'</span><span style="color: #007700;">;
+   echo </span><span style="color: #dd0000;">'&lt;script type="text/javascript" src="jquery.js"&gt;&lt;/script&gt;'</span><span style="color: #007700;">;
+   echo </span><span style="color: #dd0000;">'&lt;script type="text/javascript"&gt;var jsos={};'</span><span style="color: #007700;">;
+   echo </span><span style="color: #dd0000;">'$.ajaxSetup({async:false,timeout:5000});'</span><span style="color: #007700;">;
+   echo </span><span style="color: #dd0000;">'jsos.$=function(c,f,a){'</span><span style="color: #007700;">;
+   echo </span><span style="color: #dd0000;">'var o={exception:"Server disconnect"},'</span><span style="color: #007700;">;
+   echo </span><span style="color: #dd0000;">'t={cls:c,func:f};'</span><span style="color: #007700;">;
+   echo </span><span style="color: #dd0000;">'for(var i in a)t[""+i]=a[i];$.post(".",t,'</span><span style="color: #007700;">;
+   echo </span><span style="color: #dd0000;">'function(d){o=d},"json");if("exception" in o)throw o.exception;'</span><span style="color: #007700;">;
+   echo </span><span style="color: #dd0000;">'return o.result};'</span><span style="color: #007700;">;
+
+   foreach (</span><span style="color: #0000bb;"><a title="Open the PHP manual for glob" href="http://www.php.net/glob" target="_blank"><strong>glob</strong></a></span><span style="color: #007700;">(</span><span style="color: #dd0000;">'*.inc.php'</span><span style="color: #007700;">) as </span><span style="color: #0000bb;">$file</span><span style="color: #007700;">)
+   {
+ </span><span style="color: #0000bb;">    $class </span><span style="color: #007700;">= </span><span style="color: #0000bb;"><a title="Open the PHP manual for str_replace" href="http://www.php.net/str_replace" target="_blank"><strong>str_replace</strong></a></span><span style="color: #007700;">(</span><span style="color: #dd0000;">'.inc.php'</span><span style="color: #007700;">, </span><span style="color: #dd0000;">''</span><span style="color: #007700;">, </span><span style="color: #0000bb;">$file</span><span style="color: #007700;">);
+     echo </span><span style="color: #dd0000;">'jsos.' </span><span style="color: #007700;">. </span><span style="color: #0000bb;"><a title="Open the PHP manual for strtolower" href="http://www.php.net/strtolower" target="_blank"><strong>strtolower</strong></a></span><span style="color: #007700;">(</span><span style="color: #0000bb;">$class</span><span style="color: #007700;">) . </span><span style="color: #dd0000;">'={};'</span><span style="color: #007700;">;
+     </span><span style="color: #0000bb;">$text </span><span style="color: #007700;">= </span><span style="color: #0000bb;"><a title="Open the PHP manual for file_get_contents" href="http://www.php.net/file_get_contents" target="_blank"><strong>file_get_contents</strong></a></span><span style="color: #007700;">(</span><span style="color: #0000bb;">$file</span><span style="color: #007700;">);
+
+     </span><span style="color: #0000bb;"><a title="Open the PHP manual for preg_match_all" href="http://www.php.net/preg_match_all" target="_blank"><strong>preg_match_all</strong></a></span><span style="color: #007700;">(</span><span style="color: #dd0000;">'/public static function ([A-Za-z_0-9]+)\(([^)]*)\)/'</span><span style="color: #007700;">,
+                    </span><span style="color: #0000bb;">$text</span><span style="color: #007700;">, </span><span style="color: #0000bb;">$func</span><span style="color: #007700;">);
+
+     foreach (</span><span style="color: #0000bb;">$func</span><span style="color: #007700;">[</span><span style="color: #0000bb;">1</span><span style="color: #007700;">] as </span><span style="color: #0000bb;">$id </span><span style="color: #007700;">=&gt; </span><span style="color: #0000bb;">$value</span><span style="color: #007700;">) {
+       echo </span><span style="color: #dd0000;">'jsos.'</span><span style="color: #007700;">.</span><span style="color: #0000bb;"><a title="Open the PHP manual for strtolower" href="http://www.php.net/strtolower" target="_blank"><strong>strtolower</strong></a></span><span style="color: #007700;">(</span><span style="color: #0000bb;">$class</span><span style="color: #007700;">).</span><span style="color: #dd0000;">'.'</span><span style="color: #007700;">.</span><span style="color: #0000bb;"><a title="Open the PHP manual for strtolower" href="http://www.php.net/strtolower" target="_blank"><strong>strtolower</strong></a></span><span style="color: #007700;">(</span><span style="color: #0000bb;">$value</span><span style="color: #007700;">).</span><span style="color: #dd0000;">'=function('</span><span style="color: #007700;">;
+
+ </span><span style="color: #0000bb;">      $args </span><span style="color: #007700;">= </span><span style="color: #0000bb;"><a title="Open the PHP manual for explode" href="http://www.php.net/explode" target="_blank"><strong>explode</strong></a></span><span style="color: #007700;">(</span><span style="color: #dd0000;">','</span><span style="color: #007700;">, </span><span style="color: #0000bb;">$func</span><span style="color: #007700;">[</span><span style="color: #0000bb;">2</span><span style="color: #007700;">][</span><span style="color: #0000bb;">$id</span><span style="color: #007700;">]);
+
+       foreach (</span><span style="color: #0000bb;"><a title="Open the PHP manual for array_keys" href="http://www.php.net/array_keys" target="_blank"><strong>array_keys</strong></a></span><span style="color: #007700;">(</span><span style="color: #0000bb;">$args</span><span style="color: #007700;">) as </span><span style="color: #0000bb;">$key</span><span style="color: #007700;">) {
+ </span><span style="color: #0000bb;">        $args</span><span style="color: #007700;">[</span><span style="color: #0000bb;">$key</span><span style="color: #007700;">] = </span><span style="color: #0000bb;"><a title="Open the PHP manual for str_replace" href="http://www.php.net/str_replace" target="_blank"><strong>str_replace</strong></a></span><span style="color: #007700;">(array(</span><span style="color: #dd0000;">' '</span><span style="color: #007700;">, </span><span style="color: #dd0000;">'$'</span><span style="color: #007700;">), </span><span style="color: #dd0000;">''</span><span style="color: #007700;">, </span><span style="color: #0000bb;">$args</span><span style="color: #007700;">[</span><span style="color: #0000bb;">$key</span><span style="color: #007700;">]);
+       }
+
+       </span><span style="color: #0000bb;">$args </span><span style="color: #007700;">= </span><span style="color: #0000bb;"><a title="Open the PHP manual for array_filter" href="http://www.php.net/array_filter" target="_blank"><strong>array_filter</strong></a></span><span style="color: #007700;">(</span><span style="color: #0000bb;">$args</span><span style="color: #007700;">);
+
+       echo </span><span style="color: #0000bb;"><a title="Open the PHP manual for implode" href="http://www.php.net/implode" target="_blank"><strong>implode</strong></a></span><span style="color: #007700;">(</span><span style="color: #dd0000;">','</span><span style="color: #007700;">, </span><span style="color: #0000bb;">$args</span><span style="color: #007700;">).</span><span style="color: #dd0000;">'){return jsos.$'</span><span style="color: #007700;">;
+       echo </span><span style="color: #dd0000;">'("'</span><span style="color: #007700;">.</span><span style="color: #0000bb;">$class</span><span style="color: #007700;">.</span><span style="color: #dd0000;">'","'</span><span style="color: #007700;">.</span><span style="color: #0000bb;"><a title="Open the PHP manual for strtolower" href="http://www.php.net/strtolower" target="_blank"><strong>strtolower</strong></a></span><span style="color: #007700;">(</span><span style="color: #0000bb;">$value</span><span style="color: #007700;">).</span><span style="color: #dd0000;">'",['</span><span style="color: #007700;">.</span><span style="color: #0000bb;"><a title="Open the PHP manual for implode" href="http://www.php.net/implode" target="_blank"><strong>implode</strong></a></span><span style="color: #007700;">(</span><span style="color: #dd0000;">','</span><span style="color: #007700;">,</span><span style="color: #0000bb;">$args</span><span style="color: #007700;">).</span><span style="color: #dd0000;">'])};'</span><span style="color: #007700;">;
+     }
+   }
+
+   echo </span><span style="color: #dd0000;">'&lt;/script&gt;&lt;/head&gt;&lt;body&gt;&lt;/body&gt;&lt;/html&gt;'</span><span style="color: #007700;">;
+   exit;
+ }
+
+ </span><span style="color: #0000bb;">$args </span><span style="color: #007700;">= array();
+ foreach (</span><span style="color: #0000bb;">$_POST </span><span style="color: #007700;">as </span><span style="color: #0000bb;">$key </span><span style="color: #007700;">=&gt; </span><span style="color: #0000bb;">$val</span><span style="color: #007700;">) {
+   if (</span><span style="color: #0000bb;">$key </span><span style="color: #007700;">=== </span><span style="color: #dd0000;">'cls'</span><span style="color: #007700;">)
+ </span><span style="color: #0000bb;">    $cls </span><span style="color: #007700;">= </span><span style="color: #0000bb;">$val</span><span style="color: #007700;">;
+   elseif (</span><span style="color: #0000bb;">$key </span><span style="color: #007700;">=== </span><span style="color: #dd0000;">'func'</span><span style="color: #007700;">)
+   </span><span style="color: #0000bb;">  $func </span><span style="color: #007700;">= </span><span style="color: #0000bb;">$val</span><span style="color: #007700;">;
+   else
+     </span><span style="color: #0000bb;">$args</span><span style="color: #007700;">[(int)</span><span style="color: #0000bb;">$key</span><span style="color: #007700;">] = </span><span style="color: #0000bb;">$val</span><span style="color: #007700;">;
+ }
+
+ </span><span style="color: #0000bb;"><a title="Open the PHP manual for ksort" href="http://www.php.net/ksort" target="_blank"><strong>ksort</strong></a></span><span style="color: #007700;">(</span><span style="color: #0000bb;">$args</span><span style="color: #007700;">);
+
+ if (!</span><span style="color: #0000bb;"><a title="Open the PHP manual for class_exists" href="http://www.php.net/class_exists" target="_blank"><strong>class_exists</strong></a></span><span style="color: #007700;">(</span><span style="color: #0000bb;">$cls</span><span style="color: #007700;">)) {
+   echo </span><span style="color: #dd0000;">'{exception:"No such package!"}'</span><span style="color: #007700;">;
+   exit;
+ }
+
+ if (!</span><span style="color: #0000bb;"><a title="Open the PHP manual for method_exists" href="http://www.php.net/method_exists" target="_blank"><strong>method_exists</strong></a></span><span style="color: #007700;">(</span><span style="color: #0000bb;">$cls</span><span style="color: #007700;">, </span><span style="color: #0000bb;">$func</span><span style="color: #007700;">)) {
+   echo </span><span style="color: #dd0000;">'{exception:"No such method!"}'</span><span style="color: #007700;">;
+   exit;
+ }
+
+ try {
+   </span><span style="color: #0000bb;">$result </span><span style="color: #007700;">= </span><span style="color: #0000bb;"><a title="Open the PHP manual for call_user_func_array" href="http://www.php.net/call_user_func_array" target="_blank"><strong>call_user_func_array</strong></a></span><span style="color: #007700;">(array(</span><span style="color: #0000bb;">$cls</span><span style="color: #007700;">, </span><span style="color: #0000bb;">$func</span><span style="color: #007700;">), </span><span style="color: #0000bb;">$args</span><span style="color: #007700;">);
+   echo </span><span style="color: #0000bb;"><a title="Open the PHP manual for json_encode" href="http://www.php.net/json_encode" target="_blank"><strong>json_encode</strong></a></span><span style="color: #007700;">(</span><span style="color: #0000bb;"><a title="Open the PHP manual for compact" href="http://www.php.net/compact" target="_blank"><strong>compact</strong></a></span><span style="color: #007700;">(</span><span style="color: #dd0000;">'result'</span><span style="color: #007700;">));
+   exit;
+ }
+ catch (</span><span style="color: #0000bb;">Exception $e</span><span style="color: #007700;">) {
+   </span><span style="color: #0000bb;">$exception </span><span style="color: #007700;">= </span><span style="color: #dd0000;">"$e"</span><span style="color: #007700;">;
+   echo </span><span style="color: #0000bb;"><a title="Open the PHP manual for json_encode" href="http://www.php.net/json_encode" target="_blank"><strong>json_encode</strong></a></span><span style="color: #007700;">(</span><span style="color: #0000bb;"><a title="Open the PHP manual for compact" href="http://www.php.net/compact" target="_blank"><strong>compact</strong></a></span><span style="color: #007700;">(</span><span style="color: #dd0000;">'exception'</span><span style="color: #007700;">));
+   exit;
+ }
+ </span></span></code></pre>
+All files in the current directory with a '.inc.php' extension are assumed to contain a similarly-named class, and all public static functions of that class are exported. For example, suppose Test.inc.php contains the following definition:
+<pre style="padding-left: 30px;">class Test
+{
+  public static function Run($a) { return "$a$a"; }
+}</pre>
+Then, to call the Test::Run function from the above page, one would simply type in Javascript:
+<pre style="padding-left: 30px;">jsos.test.run('Hello');</pre>
+And indeed, with only five lines of code, the result to a client request is computed on the server and displayed on the client again, without issues. Here's the result running in Firebug:
+
+<a href="http://www.nicollet.net/wp-content/uploads/2009/08/jsos.png"><img class="aligncenter size-full wp-image-1105" title="jsos" src="http://www.nicollet.net/wp-content/uploads/2009/08/jsos.png" alt="jsos" width="634" height="215" /></a>
+
+Further work should include handling errors (right now, if the server encounters an error or outputs non-JSON data, the call will die with a "Server disconnect" exception), which makes debugging easier than having to wade through the Net tab of Firebug.

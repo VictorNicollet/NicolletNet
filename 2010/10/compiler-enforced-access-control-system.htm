@@ -1,0 +1,141 @@
+@title Compiler-Enforced Access Control System
+@draft
+
+My apologies to my non-technical readers: this article is going to be a hairy, brain-roasting piece of technical innovation. The same goes for my technical readers not familiar with <em>Hindley-Milner</em>.
+<h4>The Problem</h4>
+An <strong>access control system</strong> is a piece of software architecture that makes sure only authorized users can access certain parts of the software. Access restrictions are usually defined as rules in a variety of formats. The most basic ones apply to general user categories and features: for instance, only a <em>moderator</em> (user category) can <em>ban another user</em> (feature). Rules can get extremely complex. For your amusement, here's a real-life example:
+<blockquote>The event page may be edited by the creator of that event page, by the moderator of any of the groups in which that event was posted, or by any global administrator account, as long as the editing user has entered their password at least once since they entered the website.</blockquote>
+As a software architect mindful of the safety of your data, you have a few basic requirements for any access control system:
+<ul>
+	<li><strong>Exhaustivity</strong>: no access should remain unchecked. It's usually easy to determine through code reviews if a developer forgot to write the access-checking code for a feature. But that code is even slightly off, you have a potential disaster on your hands. This is usually solved by applying obscene amounts of testing, both automated and human, to check if all unauthorized accesses are denied by the system correctly.</li>
+	<li><strong>Predictability</strong>: one should tell if an operation is possible without actually trying it. This is useful for hiding unavailable buttons, displaying error messages in advance, or simply acting in a transactional manner when rollback is not available. This is usually solved by factoring out the code that does the access-checking, and call it both from the actual operation, and from any code that is about to run the operation and wonders if it can be done.</li>
+	<li><strong>Readability</strong>?: since documentation inevitably goes out of sync, the code should be readable enough by itself to determine what the access rules are. A 50-line sequence of API calls, database queries and well-named variables will require some reverse engineering, no matter how well-named the variable are.</li>
+</ul>
+This is pretty hard to achieve, mostly because every single project out there contains code like the one below:
+<pre style="padding-left: 30px;"><span style="color: #008080;">User</span>.checkRecipientList(<span style="color: #008080;">Request</span>.recipients, <span style="color: #008080;">Request</span>.user)
+
+<span style="color: #0000ff;">foreach</span> (<span style="color: #0000ff;">var</span> recipient <span style="color: #0000ff;">in</span> <span style="color: #008080;">Request</span>.recipients)
+{
+    <span style="color: #0000ff;">var</span> email = <span style="color: #0000ff;">new</span> <span style="color: #008080;">Email</span>();
+
+    email.From = <span style="color: #008080;">Request</span>.user
+    email.To   = recipient;
+    email.attach(file);
+    email.send();
+}</pre>
+Of course, the main danger is that the <code>Email</code> class was not written to check that the sender can indeed send a message with an attachment to the recipient. Of course, this can be solved through code reviews, which scan all classes in search of missing access control code, and functional tests, because the specs said an error message should appear. These are costly, tedious solutions that eliminate that problem. However, assuming that the class was indeed written correctly, there's another problem:
+<ul>
+	<li>The sending either fails silently (no user error message: bad user interface design!) or throws an exception which results in a partial sending (you can't cancel email once it is sent).</li>
+	<li>The compiler has no reason to complain or warn the developer about anything.</li>
+	<li>The developer wrote this code at 7 p.m. and had something else to do on the next morning.</li>
+	<li>The code reviewer and unit tester didn't know there was a special rule about sending attachments, and expect <code>User.checkRecipientList</code> to throw an error if a recipient is invalid.</li>
+	<li>The code coverage tool is perfectly fine with this.</li>
+	<li>The specs merely said «an error appears if a recipient is invalid»</li>
+</ul>
+In short, this piece of code contains a time bomb that no user or software can detect until it happens.
+<h4>The Tools</h4>
+Before I explain what I'll be doing, I need to describe the tools I'm going to use. As you might have guessed from the <em>Hindley-Milner</em> reference above, I'll be using a variant of ML, namely Objective Caml. The language provides a sophisticated type system, entirely checked at compile-time, and which can be almost completely inferred from the code (that is, you almost never have to add type annotations to your programs). For instance :
+<pre style="padding-left: 30px;"><span style="color: #0000ff;">let</span> print_integer x =
+  printf <span style="color: #ff0000;">"The integer is %d"</span> x
+
+print_integer <span style="color: #ff0000;">"hello"</span></pre>
+This code defines a function called <code>print_integer</code> that accepts a single argument, and uses the classic <code>printf</code> function to print it. It then tries to call that function with a string argument. The Objective Caml type inference algorithm will look at the format, which contains a single <code>%d</code>, and deduce that it expects a single integer argument. From there, it deduces that the first argument to <code>print_integer</code> should be an integer, and the function returns nothing : <code>int -&gt; unit</code>. As a consequence passing a string is a type error :
+<blockquote>This expression has type string but an expression was expected of type int</blockquote>
+A highly expressive compile-time type system means we can use it to prove important properties about our software, but it increases the size of type expressions (because types have to carry more information) : and type inference means we won't have to write those long type expressions everywhere.
+
+Objective Caml types are parametric, which works a bit like generics in C# and Java. The type system automatically infers the type parameters from the code :
+<pre style="padding-left: 30px;"><span style="color: #0000ff;">let</span> first_element array =
+  array.(0)
+</pre>
+In this example, the type of the function would be correctly identified as <code>'a array -&gt; 'a</code> : accepts an argument which is an array of a generic type <code>'a</code>, and returns an element of that same type <code>'a</code>. There are plenty of parametric types in the standard library alone : <code>'a array</code>, <code>'a list</code>, <code>'a option</code>...
+
+The latter is the Objective Caml replacement for null values : the language does not allow values to be null (when you say a variable is an array, then it's always a valid array), so values that might be missing are explicitly tagged as optional using the option type. For instance, when you're looking for an item in a database, you might want to return an optional type to represent the situation where the item is missing. While exceptions would interrupt the control flow and rise up to the nearest try-catch block that can handle them, using options forces the developer to decide on the spot what he wants to do with the value, usually with pattern matching:
+<pre style="padding-left: 30px;"><span style="color: #0000ff;">match</span> <span style="color: #008080;">Database</span>.read id <span style="color: #0000ff;">with</span>
+  | <span style="color: #008080;">Some</span> item -&gt; frobnicate item
+  | <span style="color: #008080;">None</span>      -&gt; frobnicate default_item
+</pre>
+Options have the advantage that you can't forget to handle the null case, because you have to use pattern matching to access the returned value. On the contrary, you can always forget that an exception might be thrown (and it's not obvious when doing a code review, either).
+<h4>The Solution</h4>
+Another important element of the Objective Caml type system is the ability of modules to hide away type information. Consider the following example :
+<pre style="padding-left: 30px;"><span style="color: #0000ff;">type</span> <span style="color: #008000;">'a page</span> = { password : <span style="color: #008000;">string</span> ; id : <span style="color: #008000;">int</span> }
+
+<span style="color: #0000ff;">let</span> read page =
+  <span style="color: #008080;">Database</span>.read page.id
+
+<span style="color: #0000ff;">let</span> write page content =
+  <span style="color: #008080;">Database</span>.write page.id content
+
+<span style="color: #0000ff;">let</span> unlock page password =
+  <span style="color: #0000ff;">if</span> password = page.password <span style="color: #0000ff;">then</span> <span style="color: #008080;">Some</span> page <span style="color: #0000ff;">else</span> <span style="color: #008080;">None</span>
+
+<span style="color: #0000ff;">let</span> lock page =
+  page
+</pre>
+This is an elementary access control system : you can read both locked and unlocked pages, but once you lock a page, you need to unlock it with a password before you can write to it again. Looking at the code above, this doesn't appear at all : theres no locked/unlocked boolean variable on the page, which means I could pass a locked page to the write function and it would not complain about it at all! The lock function merely returns its argument without doing anything to it! The only password-related code is the unlock function, which does indeed check that a page is password-protected, but there's no need to unlock a page before it's written to...
+
+The unnecessary type parameter on the page type should have been a hint, and it all becomes clear when one looks at the module signature :
+<pre style="padding-left: 30px;"><span style="color: #0000ff;">type</span> <span style="color: #008000;">'a page</span>
+
+<span style="color: #0000ff;">val</span> read   : <span style="color: #008000;">'a page -&gt; string</span>
+<span style="color: #0000ff;">val</span> write  : <span style="color: #008000;">[`Unlocked] page -&gt; string -&gt; unit</span>
+<span style="color: #0000ff;">val</span> unlock : <span style="color: #008000;">[`Locked]   page -&gt; string -&gt; [`Unlocked] page</span> <span style="color: #008000;">option</span>
+<span style="color: #0000ff;">val</span> lock   : <span style="color: #008000;">[`Unlocked] page -&gt; [`Locked] page</span>
+</pre>
+This module signature describes how every other module in the system will see our page-related functions. It hides the definition of the page type, to prevent people from accessing its fields directly, uses the seemingly unnecessary type parameter to carry additional information about the locked/unlocked state of the page, and it restricts the type of the write function to only accept pages which are unlocked. All of this is allowed : as long as the signature defines a type that's <em>more restrictive</em> than the actual type inside the module, it's still going to work.
+
+So, from inside the module, the page is fully accessible regardless of its locked/unlocked status, but outside the module, the locked/unlocked status is enforced at <strong>compile time</strong> by the type system. This is very important : if you try to write to the page without asking for a password first, you don't get a runtime exception, you get a compiler error message. And a pretty clean one, too:
+<blockquote>This expression has type <code>[`Locked] page</code> but an expression was expected of type <code>[`Unlocked] page</code></blockquote>
+Also, since the definition of the page type is hidden away by the module signature, the only way to create an unlocked page is with the unlock function above.
+
+As for performance, once the software is compiled, all of this vanishes into nothingness : Objective Caml only uses type information for checking the validity of the program, and discards it from the final binary.
+
+All of it using only standard language features. Can <strong>your</strong> language do that? ;)
+
+This approach revolves around proving that you have access to a certain feature of a certain object. That proof is created by a first function (the <strong>provider</strong>) , placed in the type parameter of the object, and required by a second function (the <strong>consumer</strong>) that actually performs the intended operation. In the example above:
+<ul>
+	<li>The <code>unlock</code> function is a provider : it proves that the user knows the password by placing <code>[`Unlocked]</code> in the type parameter of the page.</li>
+	<li>The <code>write</code> function is a consumer : it expects the page to be <code>[`Unlocked]</code> before it writes data to it.</li>
+</ul>
+In short, you have providers that perform the access control tests (<em>is this user authenticated? is he an administrator? does he know the password?</em>) and then securely store the result of those tests to be used by the features they are protecting. The type system prevents the users from using features without successfully calling the providers first, and the module system lets you write providers and consumers without having to define brand new types all the time.
+
+The security comes from the fact that if the consumer expects a certain proof (as an argument of specified type) then that argument was necessarily returned by one of the providers able to create that proof. Tight control of proof providers (made possible by the fact that providers are always in the same module as the one that defines the type that carries the proof) combined with responsible and conservative definition of consumers helps keep a system safe and secure.
+<h4>A Few Examples</h4>
+In practice, the proof that is being carried around takes many shapes, the two main ones being about proving <strong>who</strong> the user is, and proving <strong>what</strong> the user can do. The provider of who-proofs is the authentication system, which digs up information about the user from the cookie, the session and the database, and concludes about its nature:
+<pre style="padding-left: 30px;"><span style="color: #0000ff;">type</span> <span style="color: #008000;">'a user</span>
+
+<span style="color: #0000ff;">val</span> current_user : <span style="color: #008000;">[`Unknown] user</span>
+<span style="color: #0000ff;">val</span> as_admin     : <span style="color: #008000;">'</span><span style="color: #008000;">a user -&gt; [`Admin] user option</span>
+</pre>
+It's fairly common to transform who-proofs into what-proofs based on generic rules such as "<em>an administrator can edit everything</em>":
+<pre style="padding-left: 30px;"><span style="color: #0000ff;">type</span> <span style="color: #008000;">'a page</span><span style="color: #0000ff;">
+
+val</span> edit_by_author : <span style="color: #008000;">'a page -&gt; 'b user-&gt; [`Editable] page option</span><span style="color: #0000ff;">
+val</span> edit_by_admin  : <span style="color: #008000;">'a page -&gt; [`Admin] user -&gt; [`Editable] page</span><span style="color: #0000ff;">
+val</span> edit           : <span style="color: #008000;">[`Editable] page -&gt; string -&gt; unit</span>
+</pre>
+This illustrates the difference between absolute rules and conditional rules : "<em>an administrator can edit everything</em>" is an absolute rule, because it's always true, whereas "<em>the author can edit his creation</em>" is a conditional rule because the user might not be the author of the page. This is outlined in the example above by the fact that one function returns an option (indicating the possibility of failure) while the other does not.
+
+The edit-by-author property could also be handled by representing ownership as a proof on the page :
+<pre style="padding-left: 30px;"><span style="color: #0000ff;">val</span> is_author      : <span style="color: #008000;">'a page -&gt; 'b user -&gt; [`Owned] page option</span><span style="color: #0000ff;">
+val</span> edit_by_author : <span style="color: #008000;">[`Owned] page -&gt; [`Editable] page</span>
+</pre>
+As an example, the above can be used to construct a generic "editable" function that accepts any page and user as an argument, and proves whether the page can be edited by the user :
+<pre style="padding-left: 30px;"><span style="color: #0000ff;">let</span> editable page user = 
+    <span style="color: #0000ff;">match</span> is_admin user <span style="color: #0000ff;">with</span> 
+    | <span style="color: #008080;">Some</span> admin -&gt; <span style="color: #008080;">Some</span> (edit_by_admin admin page)
+    | <span style="color: #008080;">None</span> -&gt; <span style="color: #0000ff;">match</span> is_author page user <span style="color: #0000ff;">with</span> 
+              | <span style="color: #008080;">Some</span> owned -&gt; <span style="color: #008080;">Some</span> (edit_by_author owned)
+              | <span style="color: #008080;">None</span> -&gt; <span style="color: #008080;">None</span>
+    
+<span style="color: #0000ff;">val</span> editable : <span style="color: #008000;">'a page -&gt; 'b user -&gt; [`Editable] page option</span></pre>
+Another example would be giving another user a token that they can use to edit a page, but do nothing else :
+<pre style="padding-left: 30px;"><span style="color: #0000ff;">let</span> prove_editable page = 
+  hash (secret_key, page.id, <span style="color: #ff0000;">"editable"</span>)
+
+<span style="color: #0000ff;">val</span> prove_editable : <span style="color: #008000;">[`Editable] page -&gt; string</span>
+
+<span style="color: #0000ff;">let</span> check_proof_editable proof page = 
+  <span style="color: #0000ff;">if</span> proof = hash (secret_key, page.id, <span style="color: #ff0000;">"editable"</span>) <span style="color: #0000ff;">then</span> <span style="color: #008080;">Some</span> page <span style="color: #0000ff;">else</span> <span style="color: #008080;">None</span>
+
+<span style="color: #0000ff;">val</span> check_proof_editable : <span style="color: #008000;">string -&gt; 'a page -&gt; [`Editable] page option</span></pre>
+This effectively lets you serialize a proof to a string, and later unserialize it to allow edit access to a user that normally couldn't have edited the page.

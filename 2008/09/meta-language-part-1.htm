@@ -1,0 +1,240 @@
+@title (Meta) language, Part 1
+@draft
+
+<h2>What is this?</h2>
+This article proposes a simple modeling language with a few syntactic and semantic tricks that allow using the language itself as a metalanguage. The language would be used to generate a persistent data model and several queries over that data model (both to read and to write). The underlying system for representing the data is the entity-property-binding architecture from <a href="http://nicollet.net/blog/php/13-sql-gen-1">this article</a>.
+<h2>Definitions and queries</h2>
+The system defines entities, properties, bindings and queries. Queries, in turn, will involve subsets (filtering entity instances based on predicates involving their properties and bindings) and operations performed to all instances in these subsets.
+
+Consider a simple data model for a library: an author has a name, a book has an author, a title and a publication date. Subsets which we would like to manipulate (beyond singletons) are the list of books of an author, the list of books with a certain title, the books published between two dates, and the authors with a certain name. Using the appropriate syntax:
+<blockquote>
+<pre><span style="color: #0000ff;"><strong>entity </strong></span>author
+<span style="color: #0000ff;"><strong>property </strong></span>name[author] : <span style="color: #0000ff;"><strong>string</strong></span>
+
+<span style="color: #0000ff;"><strong>entity </strong></span>book
+<span style="color: #0000ff;"><strong>property </strong></span>title[book] : <span style="color: #0000ff;"><strong>string</strong></span>
+<span style="color: #0000ff;"><strong>property </strong></span>publication[book] : <span style="color: #0000ff;"><strong>date</strong></span><span style="color: #0000ff;"><strong>
+
+binding </strong></span>written_by[book : <span style="color: #0000ff;"><strong>many </strong></span>book ; author : <span style="color: #0000ff;"><strong>one </strong></span>author] 
+
+<span style="color: #0000ff;"><strong>def </strong></span>authorByName n =
+  author |? name[_] = n
+<span style="color: #0000ff;"><strong>end</strong></span>
+
+<span style="color: #0000ff;"><strong>def </strong></span>booksByTitle t =
+  book |? title[_] = n
+<span style="color: #0000ff;"><strong>end</strong></span>
+
+<span style="color: #0000ff;"><strong>def </strong></span>booksBetweenDates f l =
+  book |? publication[_] &gt; f |? publication[_] &lt; l
+<span style="color: #0000ff;"><strong>end 
+
+def </strong></span>booksByAuthor a =
+  book |? written_by[book : _ ; author : a] 
+<span style="color: #0000ff;"><strong>end</strong></span></pre>
+</blockquote>
+The syntax of defining entities, properties and bindings is pretty straightforward : between square brackets, the involved entities are mentioned with the appropriate multiplicity (for bindings) or value type (for properties). Subsets are a little bit more complex: they involve a simplified functional notation.
+
+Every entity, when used in a subset expression, represents the set of all instances of that entity. This set is then filtered using the <span style="font-family: courier new,courier; color: #999999;">|?</span> operator : <span style="font-family: courier new,courier; color: #999999;">list |? predicate</span> is equivalent to the Objective Caml <span style="font-family: courier new,courier; color: #999999;">List.filter predicate list</span>. This involves simplified functional notatioin for making anonymous function definition shorter. Here, <span style="font-family: courier new,courier; color: #999999;">name[_] = n</span> is equivalent to <span style="font-family: courier new,courier; color: #999999;">(fun x -&gt; name[x] = n)</span>. To determine which expressions belong to the anonymous function and which don't, the rule implies only syntactic context. That is, the anonymous function starts as the placeholder argument <span style="font-family: courier new,courier; color: #999999;">_</span> and grows until it reaches a context where a function would be expected (such as the function side of the operator <span style="font-family: courier new,courier; color: #999999;">|?</span> or any other functional operator).
+
+Other functional operators:
+<blockquote><span style="font-family: courier new,courier; color: #999999;">x | f</span> is equivalent to <span style="font-family: courier new,courier; color: #999999;">f x</span>
+
+<span style="font-family: courier new,courier; color: #999999;">x |: f</span> is equivalent to <span style="font-family: courier new,courier; color: #999999;">List.map f x</span>
+
+<span style="font-family: courier new,courier; color: #999999;">x |! f</span> is equivalent to <span style="font-family: courier new,courier; color: #999999;">List.iter f x ; x
+</span>
+
+<span style="font-family: courier new,courier; color: #999999;">exists x: f</span> is equivalent to <span style="font-family: courier new,courier; color: #999999;">List.exists f x </span>
+
+<span style="font-family: courier new,courier; color: #999999;">forall x: f</span> is equivalent to <span style="font-family: courier new,courier; color: #999999;">List.forall f x </span></blockquote>
+In terms of the language, sets of entities are filtered and manipulated this way. The fundamental piece of behavior in this language is therefore chaining a value through several mutators.
+
+A few example of queries (reading the titles and publication dates of books by an author, deleting an author, changing a book title and adding a new author):
+<blockquote>
+<pre><span style="color: #0000ff;"><strong>def </strong></span>titlesOfBooksByAuthor a =
+  booksByAuthor a |: title[_], publication[_]
+<span style="color: #0000ff;"><strong>end</strong></span>
+
+<span style="color: #0000ff;"><strong>def </strong></span>deleteAuthor a =
+  booksByAuthor a |! <span style="color: #0000ff;"><strong>delete </strong></span>; 
+  <span style="color: #0000ff;"><strong>delete </strong></span>a
+<span style="color: #0000ff;"><strong>end</strong></span>
+
+<span style="color: #0000ff;"><strong>def </strong></span>setBookTitle t b =
+  title[b] &lt;- t
+<span style="color: #0000ff;"><strong>end</strong></span>
+
+<span style="color: #0000ff;"><strong>def </strong></span>addNewAuthor n =
+  <span style="color: #0000ff;"><strong>new </strong></span>author | name[_] &lt;- n
+<span style="color: #0000ff;"><strong>end</strong></span></pre>
+</blockquote>
+This introduces three new constructs: <span style="font-family: courier new,courier; color: #999999;">delete </span>merely deletes its argument (an entity instance) from the data model and returns <span style="font-family: courier new,courier; color: #999999;">unit</span>. <span style="font-family: courier new,courier; color: #999999;">property[instance] &lt;- value</span> sets the property of the selected instance to the specified value, then returns the instance (to allow chaining (as in the example of the add-new-author query which returns the author after setting its name). <span style="font-family: courier new,courier; color: #999999;">new entity</span> creates a fresh instance of the entity, for which all properties must be set before they are read. Constraint violations (binding multiplicity, the fact that properties are used before being initialized) are signaled as runtime errors and there are attempts to detect them at compile time. Queries are transactional, meaning that an exception or runtime error rolls back the entire transaction.
+
+Last but not least, let us introduce modules to handle all the namespacing issues, using the same convention that modules start with a capital letter and non-modules don't (this is only a convention, not a lexical constraint). The chosen syntax is:
+<blockquote>
+<pre><strong><span style="color: #0000ff;">def </span></strong>Library = 
+<strong><span style="color: #0000ff;">module</span></strong><span style="color: #0000ff;"><strong>
+  entity </strong></span>author
+<span style="color: #0000ff;"><strong>  property </strong></span>name[$.author] : <span style="color: #0000ff;"><strong>string</strong></span>
+
+<span style="color: #0000ff;"><strong>  entity </strong></span>book
+<span style="color: #0000ff;"><strong>  property </strong></span>title[$.book] : <span style="color: #0000ff;"><strong>string</strong></span>
+<span style="color: #0000ff;"><strong>  property </strong></span>publication[$.book] : <span style="color: #0000ff;"><strong>date</strong></span><span style="color: #0000ff;"><strong>
+
+  binding </strong></span>written_by[book : <span style="color: #0000ff;"><strong>many </strong></span>$.book ; author : <span style="color: #0000ff;"><strong>one </strong></span>$.author] 
+
+  <span style="color: #008000;">(* ... *)</span><strong><span style="color: #0000ff;">
+
+end </span></strong></pre>
+</blockquote>
+By default, the <span style="font-family: courier new,courier; color: #999999;">$</span> variable represents the current module (so I could create a function which takes an argument that has the same name as a module member, and use <span style="font-family: courier new,courier; color: #999999;">name </span>to represent the parameter and <span style="font-family: courier new,courier; color: #999999;">$.name</span> to represent the module member). Of course, this variable is optional, which means that when a variable name cannot be resolved, a '<span style="font-family: courier new,courier; color: #999999;">$.</span>' is appended to see if it exists as a module member (should this fail, an error is launched.
+<h2>Metaprogramming</h2>
+In the current state, all objects are first-class citizens, including modules. This means that functions can be used to manipulate entities, properties, queries, modules, and so on. For instance, assuming that testToken determines if an authorization token is valid:
+<blockquote>
+<pre><span style="color: #0000ff;"><strong>def </strong></span>addRightsControl func token object =
+  <span style="color: #0000ff;"><strong>if </strong></span>! testToken token object <strong><span style="color: #0000ff;">then throw</span> </strong>AccessDenied ; 
+  func object
+<span style="color: #0000ff;"><strong>end</strong></span>
+
+<span style="color: #0000ff;"><strong>def </strong></span>safeSetBookTitle title token book =  
+  addRightsControl (setBookTitle title) token book
+<span style="color: #0000ff;"><strong>end </strong></span></pre>
+</blockquote>
+An interesting addition here is the pattern keyword. First, let's consider its usage and semantics, and let's then examine why it makes sense within the language semantics:
+<blockquote>
+<pre><span style="color: #0000ff;"><strong>pattern </strong></span>UriIdentified decoratedEntity =<span style="color: #0000ff;"><strong>
+
+   </strong><span style="color: #008000;">(* To indicate violation of the uniqueness rule *)</span></span>
+  <span style="color: #0000ff;"><strong>exception </strong></span>UriNotUnique : <span style="color: #0000ff;"><strong>string
+</strong></span>
+  <span style="color: #008000;">(* Associate an URI to every instance of the entity. *)</span>
+  <span style="color: #0000ff;"><strong>property </strong></span>uri[decoratedEntity] : <span style="color: #0000ff;"><strong>string
+</strong></span>
+  <span style="color: #008000;">(* Access an element by its URI. *)</span>
+  <span style="color: #0000ff;"><strong>def </strong></span>byUri uri =
+    decoratedEntity |? $.uri[_] = uri
+  <span style="color: #0000ff;"><strong>end
+</strong></span>
+  <span style="color: #008000;">(* Overload operator 'uri[object] &lt;- uri' to enforce uniqueness. *)</span>
+  <span style="color: #0000ff;"><strong>def write</strong></span>($.uri) val object =
+    <span style="color: #0000ff;"><strong>if </strong></span>! empty ($.getByUri val) <span style="color: #0000ff;"><strong>then throw</strong></span> ($.UriNotUnique val) ;
+    $.uri[object] &lt;- val 
+  <span style="color: #0000ff;"><strong>end</strong></span>
+<span style="color: #0000ff;"><strong>end</strong></span>
+
+<span style="color: #0000ff;"><strong>def </strong></span>Page =
+<span style="color: #0000ff;"><strong>module</strong></span>
+  <span style="color: #008000;">(* Define basic properties of a page *)</span>
+  <span style="color: #0000ff;"><strong>entity </strong></span>page
+  <span style="color: #0000ff;"><strong>property </strong></span>content[$.page] : <span style="color: #0000ff;"><strong>string</strong></span>
+
+<span style="color: #008000;">  (* Associate pages to Unique Resource Identifiers *)</span>
+  <span style="color: #0000ff;"><strong>usepattern </strong></span>UriIdentified $.page
+
+<span style="color: #008000;">  (* Provide an URI-to-content shortcut. *)</span>
+  <span style="color: #0000ff;"><strong>def </strong></span>getContentByUri uri = 
+    $.getByUri uri |: $.content[_]
+  <span style="color: #0000ff;"><strong>end</strong></span>
+<span style="color: #0000ff;"><strong>end</strong></span></pre>
+</blockquote>
+This example creates a pattern : a means of extending the behavior of a module by adding new entities, properties, bindings and other various definitions to that module. The pattern in the example introduces a new exception, a new property (bound to a specified entity that was passed as an argument), a shortcut for accessing the entity (if any) with an identifier and an overloaded version of the write-operator for the property. This pattern can then be used as part of any module using the <span style="font-family: courier new,courier; color: #999999;">usepattern</span> statement.
+<h2>Simple things for simple people</h2>
+The language now has a variety of keywords with seemingly distinct functionality. This is not actually the case: all the functionality above can be explained using the same rules revolving around chaining through a sequence of mutators.This is because, fundamentally, statements such as <span style="font-family: courier new,courier; color: #999999;">entity</span>, <span style="font-family: courier new,courier; color: #999999;">property</span>, <span style="font-family: courier new,courier; color: #999999;">usepattern</span>, <span style="font-family: courier new,courier; color: #999999;">binding</span>, <span style="font-family: courier new,courier; color: #999999;">exception </span>or <span style="font-family: courier new,courier; color: #999999;">def </span>are just that: mutators.The rules for these mutators are:
+<table border="0">
+<tbody>
+<tr>
+<td><strong>The expression...</strong></td>
+<td></td>
+<td><strong>...returns the original module with an additional...
+</strong></td>
+</tr>
+<tr>
+<td><span style="font-family: courier new,courier; color: #999999;">m <span style="color: #0000ff;"><strong>entity </strong></span>e
+</span></td>
+<td></td>
+<td>entity</td>
+</tr>
+<tr>
+<td><span style="font-family: courier new,courier; color: #999999;">m <span style="color: #0000ff;"><strong>def </strong></span>name = expr <span style="color: #0000ff;"><strong>end </strong></span>
+</span></td>
+<td></td>
+<td>field with the expression bound to the name</td>
+</tr>
+<tr>
+<td><span style="font-family: courier new,courier; color: #999999;">m <span style="color: #0000ff;"><strong>property </strong></span>p[...] : ...
+</span></td>
+<td></td>
+<td>property</td>
+</tr>
+<tr>
+<td><span style="font-family: courier new,courier; color: #999999;">m <span style="color: #0000ff;"><strong>binding </strong></span>b[...]
+</span></td>
+<td></td>
+<td>binding</td>
+</tr>
+<tr>
+<td><span style="font-family: courier new,courier; color: #999999;">m <span style="color: #0000ff;"><strong>exception </strong></span>ex : ...
+</span></td>
+<td></td>
+<td>exception</td>
+</tr>
+<tr>
+<td><strong>The expression...
+</strong></td>
+<td></td>
+<td><strong>...returns... </strong></td>
+</tr>
+<tr>
+<td><span style="font-family: courier new,courier; color: #999999;"><span style="color: #0000ff;"><strong>module </strong></span>
+</span></td>
+<td></td>
+<td>an empty module (with no members).</td>
+</tr>
+<tr>
+<td><span style="font-family: courier new,courier; color: #999999;">m <span style="color: #0000ff;"><strong>pattern </strong></span>name args = defs <span style="color: #0000ff;">end </span>
+</span></td>
+<td></td>
+<td>same as <span style="font-family: courier new,courier; color: #999999;">m <span style="color: #0000ff;"><strong>def </strong></span>name args x = x <strong>defs <span style="color: #0000ff;">end </span></strong>
+</span></td>
+</tr>
+<tr>
+<td><span style="font-family: courier new,courier; color: #999999;">m <span style="color: #0000ff;"><strong>usepattern </strong></span>f </span></td>
+<td></td>
+<td>same as <span style="font-family: courier new,courier; color: #999999;">f m
+</span></td>
+</tr>
+</tbody></table>
+In particular, a pattern is nothing more than a function which is applied to a module and returns a module, and <span style="font-family: courier new,courier; color: #999999;">usepattern </span>is just a synonym for the pipe operator <span style="font-family: courier new,courier; color: #999999;">|</span> (except that the lambda argument <span style="font-family: courier new,courier; color: #999999;">_</span> is replaced by <span style="font-family: courier new,courier; color: #999999;">$</span> to the right of an <span style="font-family: courier new,courier; color: #999999;">usepattern </span>statement). In general, to the right of any of the keywords above save pattern, the dollar symbol represents the module being modified.
+
+So, in essence, adding a function to a module is not any more complex than:
+<blockquote>
+<pre><span style="color: #0000ff;"><strong>def </strong></span>addSomeMethod mod f =
+  mod <span style="color: #0000ff;"><strong>def </strong></span>method = f <span style="color: #0000ff;"><strong>end</strong></span>
+<span style="color: #0000ff;"><strong>end </strong></span>
+
+(addSomeMethod <strong><span style="color: #0000ff;">module </span></strong>{ x -&gt; x + 1 }).method 10<span style="color: #008000;"> (* Outputs 11 *)</span></pre>
+</blockquote>
+An additional detail about definitions is that they overwrite previous definitions with the same name (this is also true for built-in operations, such as writing to a property). However, it's also possible to later remove a definition, which restores the last available definition.This allows defining private elements in modules, but also in patterns which don't want to overwrite existing definitions with the same name in other modules.
+<blockquote>
+<pre><span style="color: #0000ff;"><strong>def </strong></span>example = 
+<span style="color: #0000ff;"><strong>module</strong></span>
+  <span style="color: #0000ff;"><strong>def </strong></span>frobnicate x = x + 1 <span style="color: #0000ff;"><strong>end
+  def</strong></span> one x = $.frobnicate x <span style="color: #0000ff;"><strong>end </strong></span><span style="color: #008000;">(* Returns x + 1 *)</span>
+
+  <span style="color: #0000ff;"><strong>def</strong></span> frobnicate x = x / 2 <span style="color: #0000ff;"><strong>end
+  def</strong></span> two x = $.frobnicate x <span style="color: #0000ff;"><strong>end </strong></span><span style="color: #008000;">(* Returns x / 2 *)</span>
+  <span style="color: #0000ff;"><strong>hide </strong></span>frobnicate
+
+  <span style="color: #0000ff;"><strong>def </strong></span>three x = $.frobnicate x <span style="color: #0000ff;"><strong>end </strong></span><span style="color: #008000;">(* Returns x + 1 *)</span>
+<span style="color: #0000ff;"><strong>end</strong></span></pre>
+</blockquote>
+<h2>Other ideas</h2>
+This is just a basic overview. The next articles in the series will deal with:
+<ul>
+	<li>Using names as first-class variables (manipulating names, concatenating names, generating fresh names locally).</li>
+	<li>Some example patterns that can be easily accomplished with the system.</li>
+	<li>Reflection facilities for exploring a module (in addition to merely adding things to it).</li>
+	<li>A type / predicate system for checking and for reflection.</li>
+	<li>Deciding between runtime metaprogramming and compile-time metaprogramming.</li>
+</ul>

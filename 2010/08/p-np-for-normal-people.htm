@@ -1,0 +1,126 @@
+@title P = NP for Normal People
+@draft
+
+A few days ago, an Indian computer scientist working for HP has <a href="http://en.wikinews.org/wiki/Researcher_claims_solution_to_P_vs_NP_math_problem?dpl_id=200299" target="_blank">announced that he has proven that P ? NP</a>, solving the decades-long search for an answer to the P = NP question. A lot of computer scientists, me included, are quite excited over this, and waiting to see whether the proof actually holds (it's long and complex enough that only people with a lot of spare time on their hands can actually determine if it's correct). To us, this is the equivalent of finding life in outer space or learning who killed JFK.
+
+Why are we so excited? Here's a short explanation for normal people:
+<h4>Linear Complexity</h4>
+Suppose you're in the outsourcing business, and all the world's spell-checking algorithms have mysteriously disappeared overnight. Being the clever businessman that you always were, you hire a hundred workers from India, buy them a hundred English dictionaries, and start sending them pieces of text with instructions to reply with a list of words that were not in the dictionary.
+
+Having a minimum-wage offshore worker look up a word in a dictionary costs you $0.01; this means that if your customers pay you $0.02 / word, you're a winner regardless of how large the text is. In essence, spell-checking a text has a <strong>linear</strong> complexity, because the price as a function of the text size is a line:
+
+<img class="aligncenter size-full wp-image-1857" title="linear" src="http://www.nicollet.net/wp-content/uploads/2010/08/linear.png" alt="linear" width="481" height="289" />
+<h4>Polynomial Complexity</h4>
+Not everything is linear. Suppose now that you have a different business: big corporations and political parties give you a list of things, and you sort them by popular preference. For instance, you could determine that Pepsi &gt; Coke Light &gt; Coke. You do this by polling people. A "pick one" poll costs you $100 to set up and execute.
+
+If asked to sort <strong>two items</strong> (Pepsi and Coke), you would need only one poll - $60 per item is a good price (you earn $120 and pay $100).
+
+If asked to sort <strong>three items</strong> (Pepsi, Coke and Coke Light), one "pick one" poll is not enough : what if everyone loves Pepsi, and there's not enough answers to order Coke and Coke Light? You need two polls. Now $60/item runs you into the red (you earn $180 and pay $100). So, you increase your price to $100/item just to be sure you'll never be in the negative. Right?
+
+Well, there are exactly 24 ways of ordering a list of <strong>four items</strong>:
+<table style="width: 100%; text-align: center; border-collapse: collapse;" border="1" cellpadding="2">
+<tbody>
+<tr>
+<td>1 2 3 4</td>
+<td>2 3 4 1</td>
+<td>3 4 1 2</td>
+<td>4 1 2 3</td>
+</tr>
+<tr>
+<td>2 1 3 4</td>
+<td>1 3 4 2</td>
+<td>3 4 2 1</td>
+<td>4 2 1 3</td>
+</tr>
+<tr>
+<td>3 2 1 4</td>
+<td>2 1 4 3</td>
+<td>1 4 3 2</td>
+<td>4 3 2 1</td>
+</tr>
+<tr>
+<td>4 2 3 1</td>
+<td>2 3 1 4</td>
+<td>3 1 4 2</td>
+<td>1 4 2 3</td>
+</tr>
+<tr>
+<td>1 3 2 4</td>
+<td>3 2 4 1</td>
+<td>2 4 1 3</td>
+<td>4 1 3 2</td>
+</tr>
+<tr>
+<td>1 2 4 3</td>
+<td>2 4 3 1</td>
+<td>4 3 1 2</td>
+<td>3 1 2 4</td>
+</tr>
+</tbody></table>
+On the other hand, if you run four "pick A or B" polls, you only get 16 different outcomes:
+<table style="width: 100%; text-align: center; border-collapse: collapse;" border="1" cellpadding="2">
+<tbody>
+<tr>
+<td>A A A A</td>
+<td>A A A B</td>
+<td>A A B A</td>
+<td>A A B B</td>
+</tr>
+<tr>
+<td>A B A A</td>
+<td>A B A B</td>
+<td>A B B A</td>
+<td>A B B B</td>
+</tr>
+<tr>
+<td>B A A A</td>
+<td>B A A B</td>
+<td>B A B A</td>
+<td>B A B B</td>
+</tr>
+<tr>
+<td>B B A A</td>
+<td>B B A B</td>
+<td>B B B A</td>
+<td>B B B B</td>
+</tr>
+</tbody></table>
+So, you have a testing strategy that can give you only 16 different results, and based on those results you have to find which one of 24 situations you are in. This is impossible. You need a fifth test, which will increase the number of results to 32. Now you're earning $400 but paying $500...
+
+Adding an item to the list multiplies the number of permutations by the number of elements in the list: adding a tenth item multiplies it by ten. On the other hand, adding a new poll only multiplies the number of results by two. This means that the number of polls will increase faster than the number of items. <strong>No matter what per-item price you select, you will run out of money sooner or later. </strong>Keep this in mind: it's going to be very important soon.<strong>
+</strong>
+
+This plot represents cost (red) and earnings (blue) as a function of the number of items, for a per-item price of $1,000 :
+
+<img class="aligncenter size-full wp-image-1858" title="nlogn" src="http://www.nicollet.net/wp-content/uploads/2010/08/nlogn.png" alt="nlogn" width="481" height="289" />
+
+The set of all problems that can be solved for a profit, regardless of size, at a per-item price, is the set of problems with linear cost; in computer science lingo, we write this cost as <em>O(n)</em>, meaning that you can find a constant (here, the price) such that the cost will be smaller than <em>n</em> times this constant for a problem of size <em>n</em>. Looking for words in a dictionary is a known <em>O(n)</em> problem. Sorting a list of items by comparing them to each other has been proven not to be an <em>O(n)</em> problem (and the description above is a summary of the proof).
+
+Suppose you go for a different pricing method: to sort a list of <em>n</em> items, you ask for $100 <em>× n × n</em>. Two items is $400 (cost: $100), three items is $900 (cost: $200), four items is $1600 (cost $500). You are guaranteed to make a profit because the worst that could happen is that you compare every item to every other item, which means <em>n²</em> polls, and you would still get enough to pay for all of them.
+
+Sorting a list of <em>n</em> items is hence known to be an <em>O(n</em><em>²</em>) problem.
+
+Remember the definition of linear cost? There exists a constant <em>k</em> such that the cost of working with <em>n</em> items is smaller than than  <em>k × n.</em> There is a similar definition for <strong>polynomial</strong> cost: there exists a constant <em>k</em> such that the cost of working with <em>n</em> items is smaller than <em>n<sup>k</sup></em> — <em>n</em> multiplied by itself <em>k</em> times. All linear-cost problems are, by definition, polynomial-cost problems as well.
+
+In the expression "P = NP", the "P" represents all problems that can be solved at a <strong>P</strong>olynomial cost.
+<h4>Non-Deterministic Polynomial Complexity</h4>
+Let's think of another business idea. Now, you're a tour optimizer: salesmen give you a list of cities they need to travel through to sell their wares, and you provide them with a sequence of visits that has the smallest travel costs and never goes more than once through any given city. This is a common toy problem in computer science for which no polynomial-cost solution is known—<em>The Traveling Salesman Problem</em>.
+
+As a quick comparison:
+<ul>
+	<li>Spell-checking a 10-word text involves 10 dictionary searches - <em>O(n)</em></li>
+	<li>A naive sort of 10 elements takes, at most, 100 comparisons - <em>O(n</em><em>²</em>)</li>
+	<li>The traveling salesman problem with 10 cities involves testing <strong>3,628,800</strong> paths.</li>
+</ul>
+<h2 style="font-size: 138%;"><strong></strong><strong></strong></h2>
+So, you set up a contest: you hand out the problem to a billion minimum wage workers, and you only pay the worker who found the shortest travel path. So, each of them starts computing the length of a certain path, and there are so many workers that every path will be worked on. After a while, they all submit their solutions, and you keep the shortest one.
+
+Each worker spent a polynomial time selecting a travel path and computing its length: they only had to add the distances between consecutive cities in the travel path. So, the cost of solving the problem this way is polynomial. The important thing here is that you did not know what worker you would pay until the answers came in. In computer science, we say that your solving strategy is <strong>non-deterministic</strong>.
+
+In the expression "P = NP", the "NP" represents all problems that can be solved at a polynomial cost using a non-deterministic solving strategy — <strong>N</strong>on-deterministic <strong>P</strong>olynomial.
+<h4>P = NP ?</h4>
+Any P problem is also an NP problem : if you can solve it by paying someone, you can solve it by holding a contest and paying the winner that same amount. The question is whether any NP problem is also a P problem (hence, P = NP) : if you can hold a contest to solve the problem, can you hire someone to do the same while retaining a polynomial cost?
+
+This question is important because our current computing technology (electricity-through-silicon-transistors) does not support non-deterministic computing. So, if we could find efficient deterministic solutions to every problem inside NP, we would be quite happy about it.
+
+Actually... we wouldn't. Many security features in computer science rely on problems such that 1° solving the problem is very complex but 2° checking whether a solution is correct is very simple. For instance, checking that a password is correct is a P problem (your computer does it several times a day), but finding the password is an NP problem (you have to try all passwords). If a P solution could be found to the "find the password" problem, we would be in trouble.

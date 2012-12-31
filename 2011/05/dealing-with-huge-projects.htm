@@ -1,0 +1,45 @@
+@title Dealing With Huge Projects
+@draft
+
+<img class="aligncenter size-full wp-image-2393" title="cake" src="http://www.nicollet.net/wp-content/uploads/2011/05/cake.png" alt="" width="675" height="100" />
+
+Right now, I'm the only developer working on RunOrg, which happens to be a 45k-line project written in OCaml. According to a common terseness observation, this is equivalent to managing a 135k-line project in Java. Alone.
+
+OCaml shares a problem with many dynamic languages : it's very expressive, but there is no general consensus on what architectural best practices should be, so there are literally dozens of different ways a given feature might be implemented that cannot be discriminated on anything but taste. This leads to a variety of unique design choices throughout the application which, despite working well with each other, cause programmers to «discover» new architectures every time.
+
+In the end, I believe that the philosophy of <strong>using the best tool for every job</strong> can easily be taken to painful extremes if you are not careful. You encounter a new problem, pick an unusual but well-adapted solution, <em>and it makes perfect sense to you</em>, so you move on. Months later, you come back and the solution does not make sense anymore because you have forgotten a small detail about how it works or why it was done this way, and you have to hunt that small detail down by reading the code. I've pretty much solved this anti-pattern, so I'll come back to it later.
+
+The main point I'm making here is that for every project, there is an ideal mudball of code that happens to perfectly implement everything without bugs, all in a single gigantic file, and you cannot write this mudball. For a human, there's no way to manage anything mudballish past a few hundred lines because you cannot wrap your mortal mind around the possibility that every line might interact with any other line in the project... so, as an architect, you slice up the mudball into more acceptable bits that you politely call «modules» in order to reduce the number of things any given line might interact with. We reduce the amount of data we need to cope by adding big «you don't need to think about this» signs everywhere (and making sure the signs don't lie, obviously).
+
+And on a small scale, this works, because you only have a dozen modules and it's enough to fit in your short-term memory. RunOrg currently has 260 high-level modules, and several times that amount in sub-modules. No UML design, no matter how comprehensive, can make all those modules fit in my mind at once. I must find some «you don't need to think about this» signs before I can move on.
+
+There are mostly two ways of slicing a given project into modules: horizontal and vertical.
+
+<strong>Vertical</strong> slices happen when there are dependencies, and modules look like layers stacked on top of each other with each layer being allowed to access the layers below. The RunOrg project architecture actually starts with a clean set of vertical slices : the <em>controller</em> layer deals with HTTP actions by using the <em>view</em> layer and the <em>model</em> layer below it, but the <em>view</em> layer cannot access the <em>controller</em> layer, and the <em>model</em> layer cannot access either.
+
+<strong>Horizontal</strong> slices happen when there are absolutely no dependencies, and modules look like books cleanly arranged next to each other on a shelf. This usually happens when those modules represent the same <em>concept</em> for different <em>purposes</em>. In the RunOrg project, the controller layer is divided into many action modules, with each of these modules handling the HTTP requests for a limited part of the application. For instance, there's a <em>Login</em> module in charge of handling HTTP requests related to logging in, and a <em>File</em> module in charge of handling HTTP requests related to uploading files. The <em>concept</em> is the same (handle HTTP requests) but the <em>purpose</em> is different (logging in, uploading files). And there is no need for either module to know about the existence of the other.
+
+Knowing whether slices are vertical or horizontal immediately tells the programmer about what dependencies should be considered for that slice. And it is all recursive : the <em>Login</em> module of the controller layer is further divided into a <em>Login_common</em> bottom layer for common definitions, the root <em>Login</em> top layer for binding everything together, and an intermediary layer of horizontal <em>Login_form</em>, <em>Login_signup</em>, <em>Login_lost</em> slices dedicated to the various independent aspects of logging in. The naming convention helps identify the pattern used.
+
+In practice, the slices do not necessarily map to actual namespaces or modules because, especially at very low levels, the granularity involved to segregate the two would be too verbose. For instance, while it may appear that the <em>controller</em> layer is made up of modules that are all horizontal slices, this is not the case : while the <em>actions</em> (functions that respond to HTTP requests) are indeed independent horizontal slices, the layer also contains <em>helpers</em> (functions that provide common functionality to actions) that follow a vertical layering, and a given module will usually contain both actions and helpers indiscriminately.
+
+What is relevant here is that the <strong>patterns</strong> used will let you determine easily what kind of slice you are dealing with. And a pattern is a named convention (<em>action</em>, <em>action helper</em>, <em>view template</em>, <em>table</em>) that is respected by relevant pieces of code, in terms of :
+<ul>
+	<li>Location : where is it within the module and file hierarchy, and in relation to other constructs within the same module ?</li>
+	<li>Structure : how does the code look like ? What parts of the pattern are expected to be changed and what parts should always be the same ?</li>
+	<li>Type : what is the signature of the module, class or function defined by the code ?</li>
+	<li>Name : is there a common suffix or a way to give a name to entities following the pattern ?</li>
+</ul>
+These are guidelines, a pattern should usually have at least one of these, and the more the better, but you don't have to implement all four if it is counter-productive to do so. Also, a pattern should define a dependency rule : it is generally understood that two pieces of code that follow the same pattern have a dependency dictated by that pattern, and that dependency is usually a horizontal slice.
+
+The important thing about patterns is that they are not an external influence on your project. If you limit yourself only to those patterns that are dictated by the Gang of Four book, or by the framework you are using, then you will miss out on the many patterns that will emerge naturally within your application. Quite to the contrary, it is essential to identify as often as possible the patterns that appear in your code, clean them up by providing both a name and conventions of location/structure/type/name, and apply them wherever necessary. This will make your code more easily recognized by the programmer, because there are only a handful of fairly generic concepts to learn (the patterns) and everything else can be understood by finding out what patterns are used. Even better, familiarity with patterns places a  «you don't need to think about this» sign on the parts of the pattern structure that stay the same, because they never change.
+
+And now, I have cleverly returned to my previous point : the inevitable conflict between the <strong>use the best tool</strong> rule and the <strong>use the same pattern</strong> rule.
+
+Using the best tool creates the risk of writing code that is very difficult to understand later on, because there are too many special cases. Using the same pattern everywhere causes problems when the pattern is ill suited to the problem being solved, such that it creates code that is too long, too repetitive, or too unsafe.
+
+In my day-to-day routine, I follow the <strong>use the same pattern</strong> rule until it becomes too painful. Then, I just <strong>change the pattern</strong> to make it less painful to use, and propagate the changes to all the places where it is used, which in turn was made possible by the fact that I did use the same pattern everywhere.
+
+Obviously, I don't have a pattern for everything. So, whenever I encounter a problem for the first time, I go with the best tool instead. Once that kind of problem is solved several times, a pattern will emerge and some refactoring will happen.
+
+<small>Article image © holycalamity — <a href="http://www.flickr.com/photos/toyochin/1382531438/">Flickr</a></small>

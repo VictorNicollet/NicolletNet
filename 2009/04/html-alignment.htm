@@ -1,0 +1,29 @@
+@title HTML Alignment
+@draft
+
+<blockquote>LE PORTIER (<em>le poursuivant</em>):
+<span style="margin-left: 4em;">Holà ! vos quinze sols !</span>
+
+LE CAVALIER:
+<span style="margin-left: 4em;"><span style="visibility:hidden">Holà ! vos quinze sols !</span>J'entre gratis !</span>
+
+LE PORTIER:
+<span style="margin-left: 4em;"><span style="visibility:hidden">Holà ! vos quinze sols ! J'entre gratis !</span> Pourquoi ?</span>
+
+LE CAVALIER:
+<span style="margin-left: 4em;">Je suis chevau-léger de la maison du Roi !</span></blockquote>
+I can guarantee that, regardless of your font size or face, "J'entre gratis!" will be aligned horizontally in-between "Holà ! vos quinze sols !" and "Pourquoi?", as it is expected to be (this is an excerpt of Cyrano de Bergerac, written in verse, and since the three sentences are part of the same verse they have to be written this way for better understanding).
+
+How and why do I guarantee this? What I wrote is actually:
+<blockquote>LE PORTIER (<em>le poursuivant</em>):
+<span style="margin-left: 4em;">Holà ! vos quinze sols !</span>
+
+LE CAVALIER:
+<span style="margin-left: 4em;">Holà ! vos quinze sols ! J'entre gratis !</span>
+
+LE PORTIER:
+<span style="margin-left: 4em;">Holà ! vos quinze sols ! J'entre gratis ! Pourquoi ?</span>
+
+LE CAVALIER:
+<span style="margin-left: 4em;">Je suis chevau-léger de la maison du Roi !</span></blockquote>
+Then, I simply set the style to "visibility:hidden" on the redundant parts. They are invisible, but still taken into account for the page layout. So, the horizontal offset of "J'entre gratis!" will be the width of the "Holà! vos quinze sols!" sentence repeated above.

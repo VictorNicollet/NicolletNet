@@ -1,0 +1,48 @@
+@title The Window Tax
+@draft
+
+In 1798, the French <em>Directoire </em>instituted a new tax, called "<em>la taxe sur les portes et fenêtres</em>" (quite literally, the tax on doors and windows). Back then, the young republic did not yet have the means to closely examine the income and possessions of all taxpayers in order to determine how much each of them should pay, yet it wanted those who could afford to pay more to actually pay more. Doors and windows were an obvious sign of wealth that could be easily evaluated by the tax collector without having to enter the house, and since the taxpayers often did not have access to estate ownership titles having the tax be paid by the occupant helped things significantly.
+
+<img class="alignright" style="border: 0pt none; margin: 5px;" title="Neon sign tax?" src="/images/the-window-tax.jpg" border="0" alt="Neon sign tax?" width="425" height="640" align="right" />Of course, soon after the tax appeared, people reduced the number of windows and doors, sometimes going as far as wall every doors but one, and brick-up all the windows.
+
+A similar thing happened in France in the 1990s: until then, insurance for work accidents was provided equally to all companies, and all companies paid the same flat rate based on the national accident rate. In an effort to make large companies pay for improved safety measures (because they had the funds for it), the insurance rate became deregulated for companies above a certain size, so that a large unsafe company paid more than if it was safe. Small companies still paid a national rate.
+
+Unlike what was expected, most large companies spent no money on safety and instead outsourced dangerous jobs to small companies, thereby improving their own rates. And since small companies often had worse safety than large companies, the overall workplace safety slightly decreased as a consequence of this deregulation.
+
+The same happens in the computer world. When your log software advertises a thousand visitors per day, it simply hides the fact that HTTP has no notion of visitor:
+<ul>
+	<li>A given person may use several computers and IP addresses to visit the same site.</li>
+	<li>A given person may use a proxy cache to read the website without having to connect to it.</li>
+	<li>The same IP address may be shared by several people (by ISP shuffling, on public computers and on LANs).</li>
+</ul>
+Similarly, when your download client displays a download speed, it's quite probably an average over the last few seconds, meaning that if you are suddenly disconnected from the network, the download speed will remain above zero for a short while.
+
+Of course, every user of the HTTP protocol knows, deep down, that HTTP has no notion of visitor and therefore a visitor is just a set of requests from the same IP over a given duration, just like every user of a download client can understand that download speed is an approximation and isn't really above zero when there is no network connection.
+
+Yet, it's quite easy to forget.
+
+An example upon which I've stumbled recently was a paying web site. Paying users were allowed access to some functionalities of the website, so there was a test performed on every of these pages to see if the user account was associated to valid payment information before displaying the page. Nothing too fancy, a mere <span style="font-family: courier new,courier;">if(user.Subscribed)</span> test that didn't deserve factoring out. Then, one day, marketing suggested adding a temporary test account that could be used for a limited duration to allow using those functionalities.
+
+The obvious problem is that the previous assumption "only paying users can read this page" that was spread all over the system became incorrect. Cheating by changing the definition of <span style="font-family: courier new,courier;">user.Subscribed</span> was impossible, because subscribed users have valid payment information but test accounts don't. So, a new test had to be added to every page: <span style="font-family: courier new,courier;">if(user.Subscribed || user.TestAccount)</span>. Over a few months, the test became increasingly large as new properties were added for access.
+
+Luckily enough, a sane developer came around and refactored the thing as an <span style="font-family: courier new,courier;">if(Functionality.IsAllowed(user))</span> function which allowed changing the access restrictions for these pages in a single place, and developers from that team learned not to make explicit assumptions within the code, not even on extremely simple tests.
+<h2>The Window Tax Antipattern</h2>
+The Window Tax Antipattern can appear when:
+<ul>
+	<li>A given module provides a piece of information, <strong>Provided</strong>.</li>
+	<li>A rule (that is neither a consequence of the definition of that module nor an absolute truth) describes how another piece of information, <strong>Deduced</strong>, can be deduced from <strong>Provided</strong>.</li>
+	<li>Other modules use <strong>Deduced</strong> by manually deducing it from <strong>Provided</strong>.</li>
+</ul>
+In such a situation, if the rule changes, the deduction becomes incorrect and every module which uses the deduced information will have to be changed as well. As an additional issue, since the deduction is not explicit, finding every module that makes that deduction is often difficult. The solution is to identify the rule, and wrap it in a function that constructs Deduced from Provided (thereby allowing easier refactoring should the rule change).
+
+In our above examples:
+<ul>
+	<li>The provided information is the number of doors and windows, and the rule states that wealth can be deduced from that number.</li>
+	<li>The provided information is the accident rate, and the rule states that the safety of workers can be deduced from that rate.</li>
+	<li>The provided information is whether the user has a paying account, and the rule states that the page can be viewed only by users with paying accounts.</li>
+</ul>
+In some cases, the antipattern does not apply. For instance, if the rule is a consequence of the definition of the original module, then the rule cannot change unless the underlying module also changes (which is an acceptable reason for refactoring). So, if the rule is "when you push an element onto a stack, the stack is not empty until you pop it", then assuming that a stack onto which you just pushed an element is not empty is not a problem (until, of course, either you or another part of the program pops that element).
+
+However, every single business rule (those that can be changed by management, marketing, clients or even laws) is potentially subject to this antipattern unless cleanly wrapped.
+
+In an environment that is heavy on business rules, the Adapter pattern becomes of particular interest. Since every object usually cares about information that is not directly contained in another object business rules crystallize as adapters around objects, providing the information that the current object requires (for instance, "can this user view this page?") based on the information that the other object and its environment provides (for instance, "is this a test or paying account?"). View with suspicion every direct interaction between two business objects, and never hesitate to insert adapters or explicit rules whenever the used information is not a direct, obvious and inevitable consequence the provided information.

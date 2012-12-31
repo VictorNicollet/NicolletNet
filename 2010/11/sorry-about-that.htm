@@ -1,0 +1,16 @@
+@title Sorry About That
+@draft
+
+Welcome to a geek's worst nightmare: the server just went down. There's no more blog, no more web site, no more safe online backup of your family pictures, and your victor@nicollet.net e-mail is deader than a wooden piece of... wood. Turns out, my hosting company had a little accident where hard drives suddenly couldn't be written to anymore.
+
+<img class="aligncenter size-full wp-image-2125" title="fail" src="http://www.nicollet.net/wp-content/uploads/2010/11/fail1.png" alt="" width="617" height="293" />Now, of course, <em>nicollet.net</em> is not what I would call a production server. On a real-life production server where the disk cannot be written to, sirens would start wailing, system administrators would be paged in the middle of the night (on a week-end), monitoring software would send cryptic apocalypse prophecies in their summary e-mails, and statues would cry blood. For my blog, everything continued to work in read-only mode for what appears to be half a day, until I decided to log in to the server and found out I couldn't.
+
+So, I rebooted it (from my hosting company's online administration tool) and waited for it to come back up so I could investigate.
+
+It didn't. For half an hour. I kept refreshing <a href="http://travaux.ovh.net/vms/index_rbx.html" target="_blank">the web page that shows the server status</a> in my hosting company's server rooms (mine is in 08H06) until I found out the page refreshed itself automatically.
+
+And when it came back online, I stumbled upon the geek's second worst nightmare: the private key of my server had been changed. In non-geek terms, this means that the server had been replaced by another server, possibly as a consequence of a hostile take-over by a random hacker (I've had this happen, and it's very annoying) or an unexpected hard drive re-format.
+
+After a few minutes of frantic searching, it appeared that my server had been replaced by a special rescue server that I was allowed to use to salvage whatever I could from the smoldering heap of its former self. That server, of course, had a special password that was sent to me on my e-mail address. All of you who guessed victor@nicollet.net, you get a cookie. All my attempts to have that password sent to another address failed miserably, until I finally gave up (because I have, you know, a <a href="http://www.nicollet.net/2010/10/runorg-aka-muahahaha/" target="_blank">Start-Up</a> to start up).
+
+It took about 12 hours for my hosting company to find out what happened, revert the changes and reboot my server. No data was lost (except for that e-mail that Steve Jobs sent me about our secret project together, which I guess I'll never get), and everything works like a charm.

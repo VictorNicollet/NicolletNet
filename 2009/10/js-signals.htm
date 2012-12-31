@@ -1,0 +1,86 @@
+@title Javascript signals
+@draft
+
+Signals operate as a simple way of decoupling dependencies within a project, by allowing caller-callee relationships through an interface that makes both parties anonymous. Assuming a shared <code>signals</code> object is provided, the receiver registers itself on that object:
+<pre style="padding-left: 30px;">signals.output = function(text){ alert(text) };</pre>
+And the sender uses the registered channel to remotely execute that function:
+<pre style="padding-left: 30px;">signals.output('Hello');</pre>
+Signals are the functional equivalent of object-oriented <em>inversion of control</em>, a technique that allows users to configure the behavior of third party code without having to modify it. This is done by removing any explicit dependencies of the third party code on specific behavior units, such as "output a piece of text", and injecting those dependencies back from the outside as an object or set of objects which hide the actual implementation of those behavior units. Basically, we're replacing:
+<pre style="padding-left: 30px;">function frobnicate(a,b) {
+  foo(a);
+  bar(b);
+  alert('Success');
+}
+
+frobnicate(1,2); // Can't prevent the alert box from appearing!</pre>
+With the slightly longer but easily configured:
+<pre style="padding-left: 30px;">function frobnicate(a,b,output) {
+  foo(a);
+  bar(b);
+  output('Success');
+}
+
+frobnicate(1,2,function(t){alert(t)}); // Original behavior
+frobnicate(1,2,function(){}); // Muted function
+frobnicate(1,2,function(t){console.debug(t)}); // To firebug console</pre>
+Since a given piece of code might depend on several distinct behavior units, I use a record to transmit all that behavior as a single argument. This results in the classic "configure my library with your options object" that can be found, among other places, in jQuery.
+
+This simple approach causes a small number of difficulties:
+<ul>
+	<li>If I want to use a slightly different version of a signals object for another part of the program, I have to manually create a copy of the object and change the copy (basically the equivalent of a pure functional object mutation).</li>
+	<li>In some situations, I might want to handle several callbacks for a single signal. The current approach only lets me define a single function for a given signal.</li>
+	<li>Some functions of the signal set (such as sending a form through AJAX) might rely on other functions of the signal set (display an error message) to handle their own behavior unit dependencies, and I would like those functions to automatically have access to the signal set they belong to, dynamically.</li>
+</ul>
+This leads me to a subtly different implementation of signals:
+<pre style="background: #ffffff none repeat scroll 0% 0%; color: #000000; padding-left: 30px;"><strong><span style="color: #ff0000;">signals</span></strong> = (<span style="color: #000080;"><span style="font-weight: bold;">function</span></span>(){
+  s = <span style="color:#000084; font-weight:bold; ">function</span>() { <span style="color:#000084; font-weight:bold; ">this</span>._c = s; };
+  s.<strong><span style="color: #000080;">prototype</span></strong>.<span style="color: #ff0000;"><strong>channel</strong></span> = <span style="color:#000084; font-weight:bold; ">function</span>(c) {
+    <span style="color:#000084; font-weight:bold; ">var</span> h = [],
+        s = <span style="color:#000084; font-weight:bold; ">function</span>() { <span style="color:#000084; font-weight:bold; ">for</span> (<span style="color:#000084; font-weight:bold; ">var</span> k <span style="color:#000084; font-weight:bold; ">in</span> h) <span style="color:#000084; font-weight:bold; ">if</span> (h[k]) h[k].apply(<span style="color:#000084; font-weight:bold; ">this</span>,arguments); };
+    s.<strong><span style="color: #ff0000;">bind</span></strong> = <span style="color:#000084; font-weight:bold; ">function</span>(f) { h.push(f); <span style="color:#000084; font-weight:bold; ">return</span> h.length-1; };
+    s.<strong><span style="color: #ff0000;">unbind</span></strong> = <span style="color:#000084; font-weight:bold; ">function</span>(f) { h[k] = <span style="color:#000084; font-weight:bold; ">null</span>; };
+    <span style="color:#000084; font-weight:bold; ">return</span> <span style="color:#000084; font-weight:bold; ">this</span>.set(c,s);
+  };
+  s.<strong><span style="color: #000080;">prototype</span></strong>.<strong><span style="color: #ff0000;">set</span></strong> = <span style="color:#000084; font-weight:bold; ">function</span>(n,v){
+    <span style="color:#000084; font-weight:bold; ">var</span> i = <span style="color:#000084; font-weight:bold; ">function</span>(){ <span style="color:#000084; font-weight:bold; ">this</span>._c = i; };
+    i.<span style="color: #000080;"><strong>prototype</strong></span> = <span style="color:#000084; font-weight:bold; ">new</span> <span style="color:#000084; font-weight:bold; ">this</span>._c();
+    i.<span style="color: #000080;"><strong>prototype</strong></span>[n] = v;
+    <span style="color:#000084; font-weight:bold; ">return</span> <span style="color:#000084; font-weight:bold; ">new</span> i();
+  };
+  <span style="color:#000084; font-weight:bold; ">return</span> s;
+})();</pre>
+This small class encapsulates pure functional mutation semantics by means of its <code>set</code> function:
+<pre style="padding-left: 30px;">var signals = new signals();
+var initial = signals.set('<strong><span style="color: #ff6600;">xxx</span></strong>',100);
+var final = initial.set('<strong><span style="color: #ff6600;">xxx</span></strong>',200);
+console.log(initial.<strong><span style="color: #ff6600;">xxx</span></strong> + ' ' + final.<strong><span style="color: #ff6600;">xxx</span></strong>); // Outputs '100 200'</pre>
+This small piece of behavior is in itself quite helpful, but it gets better: if a function is added to the object, it remains there but is always executed within the context of the current object and therefore has access to its actual values.
+<pre style="padding-left: 30px;">var signals = (new signals()).set('<strong><span style="color: #ff6600;">show</span></strong>',function(){console.log(this.<strong><span style="color: #ff6600;">xxx</span></strong>)});
+var initial = signals.set('<strong><span style="color: #ff6600;">xxx</span></strong>',100);
+var final = initial.set('<strong><span style="color: #ff6600;">xxx</span></strong>',200);
+initial.<strong><span style="color: #ff6600;">show</span></strong>(); // Displays 100
+final.<strong><span style="color: #ff6600;">show</span></strong>(); // Displays 200</pre>
+Last but not least, it's possible to create a full communication channel that can be connected to several receivers and forwards its arguments to all receivers.All receivers are called with the signals object as their context, which lets them access it and behave accordingly.
+<pre style="padding-left: 30px;">var unreadMessages = 0;
+var signals = (new signals()).channel('<strong><span style="color: #ff6600;">setUnread</span></strong>');
+
+// Update the number of unread messages, notify user if they have
+// new messages.
+signals.<strong><span style="color: #ff6600;">setUnread</span></strong>.bind(function(unread){
+  if(unreadMessages &lt; unread) this.notice('You have new messages!');
+  unreadMessages = unread;
+});
+
+// Update all places that display the number of unread messages
+signals.<strong><span style="color: #ff6600;">setUnread</span></strong>.bind(function(unread){
+  $('.unread').html('Messages'+(unread &gt; 0 ? ' ('+unread+')' : ''));
+});
+
+// When at page scope, notices are printed by growling
+var global = signals.set('notice',growl);
+global.<span style="color: #ff6600;"><strong>setUnread</strong></span>(10);
+
+// When inside a smaller scope, such as a component, display notices in
+// a dedicated location
+var local = signals.set('notice',function(arg){$display.html(arg)});
+local.<span style="color: #ff6600;"><strong>setUnread</strong></span>(15);</pre>

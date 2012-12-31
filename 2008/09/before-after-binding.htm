@@ -1,0 +1,54 @@
+@title Before-After Binding
+@draft
+
+<h2>Decorating method calls</h2>
+A common feature of aspect-oriented programming is the ability to respond to the occurrence of a certain event by performing an action. A typical application of this is, for instance, to respond to the deletion of a user (something which is handled by a user-management module) by also removing that user's access rights (this is done by the rights-management module, of which the user-management module is unaware) and that user's personal documents (done by yet another independent module).
+
+This particular pattern also exists in graphical user interfaces, when certain user input operations trigger events that may be forwarded to any number of listeners.
+
+In this proposed implementation, every decorated method comes in four pieces : a call-binder object which is used to store listeners and forward function calls, a front-office function which is publically available for calling (and which is the one being decorated), a function for accessing the binding object, and a function for actually implementing the function being decorated. For instance:
+<blockquote>
+<pre style="background: #ffffff none repeat scroll 0% 50%; color: #000000;"><span style="color: #000084; font-weight: bold;">class</span> example = 
+<span style="color: #000084; font-weight: bold;">object</span> 
+  <span style="color: #000084; font-weight: bold;">val</span> act_bind = <span style="color: #000084; font-weight: bold;">new</span> callbind 
+  <span style="color: #000084; font-weight: bold;">method</span> act = act_bind # call () (self # act_impl) 
+  <span style="color: #000084; font-weight: bold;">method</span> act_bind = act_bind 
+  <span style="color: #000084; font-weight: bold;">method private</span> act_impl () = print_endline <span style="color: #0000ff;">"Call!"</span> <span style="color: #000084; font-weight: bold;">
+end</span> 
+
+<span style="color: #000084; font-weight: bold;">let</span> _ = 
+  <span style="color: #000084; font-weight: bold;">let</span> ex = <span style="color: #000084; font-weight: bold;">new</span> example <span style="color: #000084; font-weight: bold;">in</span> 
+  ignore (ex # act_bind # before (<span style="color: #000084; font-weight: bold;">fun</span> () -&gt; print_endline <span style="color: #0000ff;">"Before!"</span>)) ; 
+  ignore (ex # act_bind # after (<span style="color: #000084; font-weight: bold;">fun</span> () -&gt; print_endline <span style="color: #0000ff;">"After!"</span>)) ; 
+  ex # act</pre>
+</blockquote>
+<h2>Implementation</h2>
+The implementation consists in storing a list of functions to be called for both events (before the call and after the call), with the appropriate removal semantics (adding an element returns a unique identifier which can be used to remove the function).
+<blockquote>
+<pre style="background: #ffffff none repeat scroll 0% 50%; color: #000000;"><span style="color: #000084; font-weight: bold;">type</span> binding = <span style="color: #000084; font-weight: bold;">int</span> 
+
+<span style="color: #000084; font-weight: bold;">let</span> add e = <span style="color: #000084; font-weight: bold;">function</span> 
+  | [] -&gt; (0:binding), [0,e] 
+  | ((n,_)::_) <span style="color: #000084; font-weight: bold;">as</span> l -&gt; (n+1), (n+1,e)::l 
+
+<span style="color: #000084; font-weight: bold;">let</span> <span style="color: #000084; font-weight: bold;">rec</span> rm (i:binding) = <span style="color: #000084; font-weight: bold;">function</span> 
+  | [] -&gt; [] 
+  | (j,f)::t -&gt; <span style="color: #000084; font-weight: bold;">if</span> i = j <span style="color: #000084; font-weight: bold;">then</span> t <span style="color: #000084; font-weight: bold;">else</span> (j,f)::(rm i t) 
+
+<span style="color: #000084; font-weight: bold;">class</span> ['a,'b] callbind = 
+<span style="color: #000084; font-weight: bold;">object</span> 
+  <span style="color: #000084; font-weight: bold;">val</span> <span style="color: #000084; font-weight: bold;">mutable</span> before = [] 
+  <span style="color: #000084; font-weight: bold;">val</span> <span style="color: #000084; font-weight: bold;">mutable</span> after = [] 
+
+  <span style="color: #000084; font-weight: bold;">method</span> call (arg:'a) (f:'b) = 
+    List.iter (<span style="color: #000084; font-weight: bold;">fun</span> (_,x) -&gt; x arg) before ; 
+    <span style="color: #000084; font-weight: bold;">let</span> result = f () <span style="color: #000084; font-weight: bold;">in</span> 
+    List.iter (<span style="color: #000084; font-weight: bold;">fun</span> (_,x) -&gt; x arg) after ; 
+    result 
+
+  <span style="color: #000084; font-weight: bold;">method</span> before f    = <span style="color: #000084; font-weight: bold;">let</span> (i,l) = add f before <span style="color: #000084; font-weight: bold;">in</span> before &lt;- l ; i  
+  <span style="color: #000084; font-weight: bold;">method</span> after f     = <span style="color: #000084; font-weight: bold;">let</span> (i,l) = add f after <span style="color: #000084; font-weight: bold;">in</span> after &lt;- l ; i 
+  <span style="color: #000084; font-weight: bold;">method</span> rm_before i = before &lt;- rm i before 
+  <span style="color: #000084; font-weight: bold;">method</span> rm_after i  =  after &lt;- rm i after 
+<span style="color: #000084; font-weight: bold;">end</span></pre>
+</blockquote>

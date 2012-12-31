@@ -1,0 +1,75 @@
+@title You're Not My Type
+@draft
+
+Consider an extremely simple language. For instance, a language that only has boolean and integer values. You could write, say, <a href="http://en.wikipedia.org/wiki/McCarthy_91_function" target="_blank">MacCarthy's 91</a> function with it:
+<pre style="padding-left: 30px;">def maccarthy(n):
+  if n &lt;= 100
+    maccarthy(maccarthy(n+11))
+  else
+    n - 10</pre>
+Type-checking this language would be trivially easy, even if you don't have any type annotations. You'd just have to check whether a given expression is used as an integer, a boolean, neither, or both (and throw an exception in the "both" case). Here, for instance, the operation "n &lt;= 100" would constrain "n" as an integer and the operation "n-10" would constrain the return type as an integer, then the various type constraints would be verified for all other expressions.
+<h2>Requirements and Properties</h2>
+Static verification involves determining, for every static piece of code (usually, at the expression level):
+<ul>
+	<li>The <strong>requirements</strong> that allow the code to run correctly. For instance, the fact that a certain value needs to be comparable, that a certain value must be of the same type as another, or that a certain value must be an object with a certain member.</li>
+	<li>The <strong>properties</strong> that are provided by that code. For instance, the fact that a certain expression always evaluates to an integer, that it always evaluates to an object with a certain member, or that it's always equal to 91.</li>
+</ul>
+In its simplest form, the algorithm would determine the entire set of requirements and properties, and then determine whether the properties satisfy the requirements. For instance, if a variable does not have the "<em>is an integer</em>" property but is subject to a "<em>must be an integer</em>" requirement, the verification fails and indicates the error.
+
+This is the approach used in languages with explicit type annotations, such as C. There, whenever a value is created, its properties are known (whether by the type annotation in its definition or because of the return type of the function that returned it), and whenever it is used its requirements are known (whether by the type annotations of the called function parameters, of the current function's returned value, or because of a syntactic requirement such as the condition in an 'if' statement). And so, starting with the parameters and ending with the return value, the properties for every sub-expression in every function's body are deduced and then verified.
+
+Of course, the version used in C++ is more complex than that. For instance, the "property satisfies requirement" rule is not a simple yes-no question, but instead has several levels of priority involving implicit conversions, built-in conversions and user-defined conversions (for instance, the property "<em>is an integer</em>" satisfies the "<em>must be a floating-point number</em>", but with a lower priority than "<em>must be an integer</em>") in order to resolve overloading and template functions. But the general idea remains the same.
+<h2>Type Inference</h2>
+The issue with this simple approach is that it requires annotations—the code deduces properties from type annotations, so the types of all function parameters must be specified. The return type specification can be deduced in some cases (for instance, if there is only one return statement, or if all return statements return the exact same type), and the type of local variables can be deduces from the function or expression used to initialize them. So, you would be left with a "type-inferred" language where the only type annotations ever required (outside of type definitions themselves) would be for function parameters.
+
+It's also possible to get rid of these type annotations, but it requires an entirely different algorithm : since you don't know what are the properties of your function parameters, how can you determine whether they satisfy the requirements within your function?
+
+This could be done by allowing the static checker to generate properties based on the requirements that must be satisfied. Of course, that doesn't tell us <em>how </em>this could be done and, in the general case, it cannot be done. Consider C++ overloading: if a function is overloaded for both integer and vector arguments, then should its argument be an integer or a vector? Introducing an "is an integer or a vector" property is impractical in most cases, and it doesn't tell the code generator whether that variable is a one-register integer or an SSE-friendly vector—a fatal flaw.
+
+So, full type-inference algorithms only apply in languages with type systems that allow deducing properties from requirements. One example would be the ML type system, which merges properties and requirements together in a single concept of "type". Since in that system a requirement is a property, there's no difficulty determining what property a requirement corresponds to.
+
+This means that every operation is not a top-down "I deduce the result from the arguments" process, but rather a two-way "I connect the types of the result and the arguments". The connection can be, for instance, a type equality (being equal to a certain type, or to the type of another expression), as is the case for the equality operator: if you compare two expressions, then their types are constrained to be equal to each other, which means that in the example below the type of x would be properly inferred as being an integer:
+<pre style="padding-left: 30px;">let is_zero x = 
+  x = 0
+;;</pre>
+This system works pretty well as long as you don't have types that are too complex. However, any serious language has to handle containers (quite often, functions and objects as well), and these can cause some issues with what has been done so far.
+<h2>Parametric Types</h2>
+PHP's approach to types is pretty straightforward. You have a short list of possible types:
+<p style="padding-left: 30px;">Integer, Floating-Point, Boolean, String, Object, Array, Resource and NULL.</p>
+
+Every single value manipulated inside a PHP program has exactly one type among the above. This makes the language quite simple to grasp, but makes compile-time type-safety impossible to achieve: even if you know the compile-time types of a handful of objects (such as function parameters and return values), you still have no guarantees about what type of objects an array holds, or whether an object has a certain member (and if it does, what its type is), because that information is not part of the extremely simple type system in PHP.
+
+The array problem is usually solved by adding parametric types to the language: instead of an object being an "<em>Array</em>", the object instead becomes an "<em>Array of X</em>". This allows the compiler to determine the type of the objects inside the array (if it's an "<em>Array of X</em>", then the type of the element is X). Most languages with a static type system (C, C++, Java, C#, OCaml, Haskell to name a few) implement arrays as parametric types.
+
+Some languages stop there: they add only a handful of built-in parametric types (C pointers and arrays) and rely on user-defined types for handling everything else. Other languages push it a step forward and introduce generics or generic-like constructs (C++ templates, Java and C# generics). And yet other languages use parametric types to their full extent to deduce one type from another both ways (OCaml, Haskell).
+
+The ML type system supports parametric types. In fact, because of the way it's defined, it works <em>because</em> of parametric types. Every final ML type (that is, those types of values that actually end up appearing in the running program) is a formal construct, a tree where every node is a type name and the children of that node represent the value of the type parameters (types with no type parameters are leaves). For instance, an array of integer pairs is described as:
+<pre style="padding-left: 30px;">(int * int) array</pre>
+Or, as a tree-like structure:
+<pre style="padding-left: 30px;">[ int ]--
+         |--[ * ]---[ array ]
+[ int ]--/</pre>
+The type-checking system allows "unknown" types: these are types which have no constraints and are therefore universal. They are usually represented as quoted type names. For instance, an array of pairs of unknown types:
+<pre style="padding-left: 30px;">[ 'a ]--
+        |--[ * ]---[ array ]
+[ 'b ]--/</pre>
+Or, in linear form:
+<pre style="padding-left: 30px;">('a * 'b) array</pre>
+This type represents an array of pairs, but the types of the first and second elements are not constrained, so they show up as "anything".
+<h2>Type Unification</h2>
+ML types work through unification. As explained above, every expression applies constraints to types. These are almost always equality constraints (explaining that two types are equal). For instance, I could decide that types <em>('a * int) array</em> and <em>(int * 'b) array</em> are equal, and the algorithm would determine that both types are in fact <em>(int * int) array</em> by noticing the <em>'a = int</em> and <em>int = 'b</em> equality constraints. This is known as <strong>unification</strong>.
+
+The unification process is a simple tree traversal process.
+<ol>
+	<li>Unification of two trees with different roots (that is, roots that have different names) is always an error. This is why you can't unify an <em>'a list</em> with an <em>'a array</em>: the "list" root is incompatible with the "array" root.</li>
+	<li>Unification of any tree with an unknown tree replaces the unknown tree with the other. This replacement happens everywhere within the program. This also happens if both trees are unknown, of course.</li>
+	<li>Unification of two known trees with the same root resolves to recursive unification of children (so child N of the first tree is unified with child N of the second tree).</li>
+</ol>
+In practice, this means that the unification algorithm determines if there's a tree that's compatible with both unified trees (otherwise, there's an error because you have two incompatible uses of a given value) and if there is one it selects the smallest (so that there are no additional assumptions made on the type beyond those of the two original ones).
+
+Certain expressions perform unification between two existing types. Most expressions actually construct a new intermediary type and perform unification between that new type and other types. For instance:
+<ul>
+	<li>"<em>if A then B else C</em>" unifies A and <em>bool</em>, then unifies B and C, then unifies the expression's type with B.</li>
+	<li>"<em>F A</em>" unifies F with <em>'a -&gt; 'b</em>, unifies <em>'a</em> with A, and unifies the expression's type with <em>'b</em>.</li>
+	<li>"<em>A.(I)</em>" unifies A with <em>'a array</em>, unifies I with <em>int</em>, and unifies the expression's type with <em>'a</em>.</li>
+</ul>

@@ -1,0 +1,21 @@
+@title Gradual Response
+@draft
+
+When designing an online server, some high-overhead operations (such as search) tend to decrease performance a lot.
+
+One possibility is to ignore the issue. After all, you can only optimize search so much, and you only have so much money to go around for installing slave databases and extending web farms. The vast majority of small websites developed on a tight budget will tend to use this approach.
+
+This opens the website to denial of service (DoS) attacks where an attacker can hit the server by sending large amounts of requests that take a lot of time to process. Imagine your one-database, one-server web site being hit by a hundred search requests per second—unless you have no content, the search operation will clog the tubes for every other visitor.
+
+The solution is, of course, to limit repeat requests. No legitimate human user will submit ten search queries in ten seconds, so you may choose to detect such requests and prevent them from being executed. This can be done using the session data (very fast) if it's available, and by persisting IP and timestamp data to the database for session-less visitors.
+
+This creates a different issue: if you trigger the defense mechanism too easily, you can frustrate normal users. But making the trigger less sensitive is harder, because it cannot use the simple "if last request happened less than X seconds ago" approach. Case in point: go to <a href="http://www.magentocommerce.com/" target="_blank">www.magentocommerce.com</a> and use the search box:
+<ul>
+	<li>Enter a first search query, with a small typo.</li>
+	<li>Quickly correct the typo and re-submit the query.</li>
+</ul>
+If you did that in less than fifteen seconds (as most programmers certainly can) you will end up with a denial page.
+
+A gradual response is always a good idea. If you get two queries in a row, it can still be a legitimate user. It might be a good idea to choose higher values of N in the "allow only N requests in T seconds" rule, so that it takes N requests to execute.
+
+Another way is to delay the requests instead of simply refusing them. So that the second request in 15 seconds redirects to a "waiting page" for 15 seconds before resolving—it also helps the legitimate user determine when the query is available again, so that they do not search again one second too early and reset the 15-second timer again.

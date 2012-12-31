@@ -1,0 +1,168 @@
+@title Using OCaml from CouchDB views
+@draft
+
+<img class="aligncenter size-full wp-image-2489" title="plug" src="http://www.nicollet.net/wp-content/uploads/2011/08/plug.png" alt="" width="675" height="100" />
+
+What follows is directly taken from <a href="https://github.com/VictorNicollet/CouchDB-OCaml-Adapter" target="_blank">my latest GitHub project</a>, which provides an  adapter for transforming OCaml applications into CouchDB view servers.  The programmer writes an OCaml application that exports one or more map  and reduce functions using the API found in module <code>CouchAdapter</code>,  and creates a CouchDB design document that specifies the application  path and the name of the exported functions. The adapter server then  receives evaluation requests from CouchDB and passes them to the  application, and returns the result back to CouchDB.
+
+The objective of this project is <em>not</em> to support writing OCaml code directly into views! The OCaml code <em>should</em> follow the standard build procedure, the only exception being that the <code>CouchAdapter</code> API is used to export that code and make it available to the adapter server.
+<h3>Requirements and setup</h3>
+This adapter uses <a href="http://martin.jambon.free.fr/json-wheel.html"><strong>json-wheel</strong></a> for representing JSON values, and the build process requires <a href="http://brion.inria.fr/gallium/index.php/Ocamlbuild">OCamlBuild</a>. There are no other direct dependencies.  Building the adapter server <code>runServer</code> is fairly straightforward: <code>make byte</code> or <code>make native</code> generates <code>runServer.byte</code> or <code>runServer.native</code> respectively. Move the resulting application to an appropriate location  on your system and allow CouchDB to execute it. My suggestion is:
+<pre style="padding-left: 30px;"><code>cp runServer.native /usr/bin/couch-ml-adapter
+chmod a+x /usr/bin/couch-ml-adapter
+</code></pre>
+I will be assuming this convention for the rest of this manual. Once  the server is built and installed, you need to configure CouchDB to  actually use that adapter to execute OCaml views. Edit the <code>local.ini</code> configuration file of your CouchDB server (usually found in <code>/etc/couchdb/local.ini</code>) and add the following lines:
+<pre style="padding-left: 30px;"><code>[query_servers]
+ocaml=/usr/bin/couch-ml-adapter
+</code></pre>
+Depending on your configuration, there might already be a <code>[query_servers]</code> section. If that is the case, add the second line to that section. If you have trouble configuring your query servers, <a href="http://wiki.apache.org/couchdb/View_server#The_View_Server">read the CouchDB documentation</a>.
+
+Errors that happen while executing the adapter will appear in the CouchDB logs (usually found in <code>/var/log/couchdb/couch.log</code>).
+<h3>Architecture</h3>
+<h4>Query Servers</h4>
+The CouchDB server usually evaluates map and reduce functions only  when a design document containing those functions is queried by a  client, by following this process:
+<ul>
+	<li>If the query server configured in <code>local.ini</code> is not already running, start it.</li>
+	<li>Send various instructions on the query server's STDIN, such as "apply the map function F to document D"</li>
+	<li>Read the results on the query server's STDOUT.</li>
+</ul>
+<h4>The Adapter Server</h4>
+The adapter server provided by this project is one such query server.  When it must apply a function to a document, it does the following:
+<ul>
+	<li>Determine which application provides the function.</li>
+	<li>If the application is not already running, start it.</li>
+	<li>Send the request to the application's STDIN, read the answer on its STDOUT.</li>
+	<li>If the application responds with results, send these back to CouchDB.</li>
+</ul>
+In short, the overall architecture looks like this:
+<pre><code>+---------+         +------------------------+
+|         | &lt;-----&gt; |  Haskell Query Server  |
+|         |         +------------------------+
+|         |
+|         |         +------------------------+
+| CouchDB | &lt;-----&gt; | Brainfuck Query Server |
+|         |         +------------------------+
+|         |
+|         |         +------------------------+
+|         | &lt;-----&gt; |                        | &lt;-----&gt; [ Application /home/nicollet/test ]
++---------+         |  OCaml Adapter Server  |
+                    |                        | &lt;-----&gt; [ Application /usr/bin/foo ]
+                    +------------------------+
+</code></pre>
+The programmer should therefore write an application which reads the  adapter requests on STDIN, runs the requested functions on the provided  documents, and sends the results back on STDOUT. All the boilerplate  involved is handled by the <code>CouchAdapter</code> module, so that the actual development process you will be following is:
+<ul>
+	<li>Include any modules you might need to use in your view.</li>
+	<li>Define the map or reduce function as an OCaml function.</li>
+	<li>Register that function as being exported with <code>CouchAdapter.export_map</code> and <code>CouchAdapter.export_reduce</code>.</li>
+	<li>Call <code>CouchAdapter.export()</code></li>
+</ul>
+<h4>Importing From CouchDB</h4>
+CouchDB references map and reduce functions in design documents, using the following syntax:
+<pre style="padding-left: 30px;"><code>{ "_id" : "_design/..."  ,
+  "language" : "...",
+  "views" : {
+    "foobar" : { "map" : ... }
+    "quxbaz" : { "map" : ... , "reduce" : ... }
+  }
+}
+</code></pre>
+In order to use the OCaml adapter, one must first set the language property to <code>"ocaml"</code>. Then, to reference the function <code>"extract_foo"</code> defined in application <code>/usr/bin/foo</code>, one would write:
+<pre style="padding-left: 30px;"><code>"views" : {
+  "foobar" : { "map" : ["/usr/bin/foo", 1, "extract_foo"] }
+}
+</code></pre>
+The same syntax applies for reduce functions as well. The three components of the definition are <strong>1-</strong> the absolute path to the application that exports the function (this is how the adapter server knows what application to run), <strong>2-</strong> a version number discussed in the next section and <strong>3-</strong> the name under which the function is exported from that application.
+<h4>Function versions</h4>
+For performance reasons, once an application or query server has been  started, it is never shut down. This only causes problems when there's a  new version of the code that needs to be deployed. The adapter server  provides a versioning system which automatically detects that a  function.
+
+A CouchDB design document requests a function that is <em>at least</em> a certain version. For instance, <code>["/usr/bin/foo", 42, "extract_foo"]</code> indicates that the adapter server should find version 42 <em>or greater</em> of the function <code>"extract_foo"</code> exported by application <code>usr/bin/foo</code>. If that application is currently running <em>and the function is either missing or older than version 42</em> then the application is shut down and started anew in a completely transparent fashion.
+
+Note that if rebooting the application <em>still</em> fails to  provide an appropriate version of the function, the adapter server will  report an error, which CouchDB will propagate to the client. This makes  all the views inside the design document unavailable until an  appropriate version of the application is deployed.
+
+Failing to manage function versions <em>both in CouchDB and in the application</em> can lead to data inconsistencies, as different documents are processed  by different versions of the same function. Only a global version change  which prompts a full refresh of the view and reloads the application  can ensure data consistency in the face of code changes.
+<h3>Creating a map function</h3>
+A map function must follow the signature <code>json -&gt; (json * json) list</code>: the argument is the entire document being processed, and the output is a list of <code>key, value</code> pairs being output by the map function.
+
+For example, suppose you already have an <code>User</code> module in your application, which is used among other things for reading and writing users to the CouchDB database:
+<pre style="padding-left: 30px;"><code>type t = {
+  active  : bool ;
+  name    : string ;
+  email   : string ;
+  picture : string
+}
+
+let of_json = (* ... *)
+let to_json = (* ... *)
+</code></pre>
+Then you can rely on that module to define a map function with the above signature, and export it using the <code>CouchAdapter</code> module:
+<pre style="padding-left: 30px;"><code>open Json_type
+
+let user_by_email json =
+  try let user = User.of_json json in
+      [ String user.User.email , Null ]
+  with _ -&gt; []
+
+let () =             
+
+  CouchAdapter.export_map
+    ~name:"user_by_email"
+    ~version:1
+    ~body:user_by_email ;
+
+  CouchAdapter.export ()
+</code></pre>
+Should you decide to update the view code, make sure that you also increment the version number:
+<pre style="padding-left: 30px;"><code>open Json_type
+
+let user_by_email json =
+  try let user = User.of_json json in
+      if user.User.active then [ String user.User.email , Null ]
+  else []
+  with _ -&gt; []
+
+let () =             
+
+  CouchAdapter.export_map
+    ~name:"user_by_email"
+    ~version:2
+    ~body:user_by_email ;
+
+  CouchAdapter.export ()
+</code></pre>
+<h3>Creating a reduce function</h3>
+There is no distinction made between reduce and rereduce. While this  causes a slight loss in functionality it also makes writing reduce  functions less arduous given the OCaml type system. The signature of  reduce functions is simply <code>json list -&gt; json</code>.
+
+For example, let's assume that an <code>Article</code> module is already defined in your main application:
+<pre style="padding-left: 30px;"><code>type t = {
+  title : string ;
+  html  : string ;
+  tags  : string list
+}
+
+let of_json = (* ... *)
+let to_json = (* ... *)
+</code></pre>
+We now define a map function and a reduce function that counts how many articles are published for every tag.
+<pre style="padding-left: 30px;"><code>let by_tag_map json =
+  try let article = Article.of_json json in
+      List.map (fun tag -&gt; String tag , Int 1) article.Article.tags
+  with _ -&gt; []
+
+let by_tag_reduce json =
+  Int (List.fold_left (fun acc -&gt; function Int i -&gt; acc + i | _ -&gt; acc) 0 json)
+
+let () =
+  CouchAdapter.export_map "by_tag-map" 1 by_tag_map ;
+  CouchAdapter.export_reduce "by_tag-reduce" 1 by_tag_reduce ;
+  CouchAdapter.export ()
+</code></pre>
+And the CouchDB design document is as follows:
+<pre style="padding-left: 30px;"><code>{ "_id" : "_design/article",
+  "language" : "ocaml",
+  "views" : {
+    "by_tag" : { "map"    : ["/path/to/app", 1, "by_tag-map"    ],
+                 "reduce" : ["/path/to/app", 1, "by_tag-reduce" ] }
+  }
+}
+</code></pre>
+<small>Article image © Miriam Rossignoli — <a href="http://www.flickr.com/photos/bgo1/3301647540/">Flickr</a></small>

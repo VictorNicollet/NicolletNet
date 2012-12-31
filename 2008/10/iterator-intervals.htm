@@ -1,0 +1,332 @@
+@title Iterator Intervals
+@draft
+
+<h2>Implicit Iterator Intervals</h2>
+The Standard C++ Library is built around the concept of iterators. On the one hand, output iterators can be incremented and assigned values, and on the other hand input iterators traverse a range between a start iterator (usually referred to as the <span style="font-family: courier new,courier;">begin</span> iterator) and a past-the-end iterator (the <span style="font-family: courier new,courier;">end</span> iterator). All containers follow this convention, either through member functions <span style="font-family: courier new,courier;">begin()</span> and <span style="font-family: courier new,courier;">end()</span> or through pointer arithmetics based on base pointer and size. Also, several other range concepts (for instance, input from an <span style="font-family: courier new,courier;">istream</span>)  also follow this convention.
+
+On the other hand, all standard library algorithms work on iterator ranges, which are passed implicitly by providing the two iterators independently.
+
+The problem with implicit iterator intervals is that they don't play nice with functions that transform intervals: for instance, a filter function would turn an interval into the elements of that interval which satisfy a certain predicate, or a sub-interval function would restrict iteration to a fixed contiguous sub-interval. In the current situation, since it's not possible to dispatch the result of a single function call to two arguments (the expected begin and end iterators), the result of filter or sub-interval functions has to be stored as a variable, which implies that the type has to be explicitly spelled out (and it's often too complex to write down).
+<h2>Explicit Iterator Intervals</h2>
+Instead of having algorithms operate on two argument iterators, I propose to combine the two iterators into a single object, called an iterator interval. The type of this iterator interval is unspecified: expression templates are used to avoid unnecessary recourse to runtime polymorphism. The only constraint is that an iterator interval must specify at least the following expressions
+<blockquote>
+<pre><strong>T::iterator</strong> is an input iterator. Then, given <strong>const T t</strong> :<strong>
+t.begin()</strong> is the first iterator in the interval.
+<strong>t.end()</strong> is the past-the-end iterator in the interval.</pre>
+</blockquote>
+Note that this rules out the standard library containers as intervals: these will return a const_iterator instead of a normal iterator. This is because a container is not an interval, it merely has an interval that represents all its content. The mutability of a container determines the mutability of its members, whereas the mutability of an interval does not affect the mutability of the elements of the represented sequence.
+
+For starters, a few helper functions that create intervals from most things which can have intervals:
+<blockquote>
+<pre style="background: #ffffff none repeat scroll 0% 50%; color: #000000;"><span style="color: #000084; font-weight: bold;">namespace</span> interval 
+{  
+  <span style="color: #000084; font-weight: bold;">namespace</span> detail 
+  { 
+    <span style="color: #000084; font-weight: bold;">template</span>&lt;<span style="color: #000084; font-weight: bold;">typename</span> It&gt; 
+    <span style="color: #000084; font-weight: bold;">class</span> interval_type 
+    { 
+      It begin_iterator, end_iterator; 
+    <span style="color: #000084; font-weight: bold;">public</span>: 
+      interval_type(It begin, It end) 
+        : begin_iterator(begin), end_iterator(end) {} 
+
+      <span style="color: #000084; font-weight: bold;">typedef</span> It <span style="color: #000084; font-weight: bold;">iterator</span>; 
+
+      <span style="color: #000084; font-weight: bold;">iterator</span> begin() <span style="color: #000084; font-weight: bold;">const</span> { <span style="color: #000084; font-weight: bold;">return</span> <span style="color: #000084; font-weight: bold;">this</span> -&gt; begin_iterator; } 
+      <span style="color: #000084; font-weight: bold;">iterator</span> end() <span style="color: #000084; font-weight: bold;">const</span> { <span style="color: #000084; font-weight: bold;">return</span> <span style="color: #000084; font-weight: bold;">this</span> -&gt; end_iterator; } 
+    }; 
+  } 
+
+  <span style="color: #000084; font-weight: bold;">template</span>&lt;<span style="color: #000084; font-weight: bold;">typename</span> T, std::<span style="color: #000084; font-weight: bold;">size_t</span> N&gt; 
+  detail::interval_type&lt;T&gt; of(T (&amp;<span style="color: #000084; font-weight: bold;">array</span>)[N]) 
+  { 
+    <span style="color: #000084; font-weight: bold;">return</span> detail::interval_type&lt;T*&gt;(<span style="color: #000084; font-weight: bold;">array</span>, <span style="color: #000084; font-weight: bold;">array</span> + N); 
+  } 
+
+  <span style="color: #000084; font-weight: bold;">template</span>&lt;<span style="color: #000084; font-weight: bold;">typename</span> It&gt; 
+  detail::interval_type&lt;It&gt; of(It begin, It end) 
+  { 
+    <span style="color: #000084; font-weight: bold;">return</span> detail::interval_type&lt;It&gt;(begin,end); 
+  } 
+
+  <span style="color: #000084; font-weight: bold;">template</span>&lt;<span style="color: #000084; font-weight: bold;">typename</span> T&gt; 
+  detail::interval_type&lt; std::<span style="color: #000084; font-weight: bold;">istream_iterator</span>&lt;T&gt; &gt; of(std::<span style="color: #000084; font-weight: bold;">istream</span> &amp;in) 
+  { 
+    <span style="color: #000084; font-weight: bold;">return</span> detail::interval_type&lt; std::<span style="color: #000084; font-weight: bold;">istream_iterator</span>&lt;T&gt; &gt; 
+      (std::<span style="color: #000084; font-weight: bold;">istream_iterator</span>&lt;T&gt;(in), 
+       std::<span style="color: #000084; font-weight: bold;">istream_iterator</span>&lt;T&gt;()); 
+  } 
+
+  <span style="color: #000084; font-weight: bold;">template</span>&lt;<span style="color: #000084; font-weight: bold;">typename</span> T&gt; 
+  detail::interval_type&lt; <span style="color: #000084; font-weight: bold;">typename</span> T::<span style="color: #000084; font-weight: bold;">const_iterator</span> &gt; of(<span style="color: #000084; font-weight: bold;">const</span> T &amp;t) 
+  { 
+    <span style="color: #000084; font-weight: bold;">return</span> detail::interval_type&lt; <span style="color: #000084; font-weight: bold;">typename</span> T::<span style="color: #000084; font-weight: bold;">const_iterator</span> &gt; 
+      (t.begin(), t.end()); 
+  } 
+
+  <span style="color: #000084; font-weight: bold;">template</span>&lt;<span style="color: #000084; font-weight: bold;">typename</span> T&gt; 
+  detail::interval_type&lt; <span style="color: #000084; font-weight: bold;">typename</span> T::<span style="color: #000084; font-weight: bold;">iterator</span> &gt; of(T &amp;t) 
+  { 
+    <span style="color: #000084; font-weight: bold;">return</span> detail::interval_type&lt; <span style="color: #000084; font-weight: bold;">typename</span> T::<span style="color: #000084; font-weight: bold;">iterator</span> &gt; 
+      (t.begin(), t.end()); 
+  } 
+}</pre>
+</blockquote>
+So, to create an interval from a container, you can write <span style="font-family: courier new,courier;">interval::of(my_vector)</span>, to create one from an array you can write <span style="font-family: courier new,courier;">interval::of(my_array)</span>, and to create one from an input stream you can write <span style="font-family: courier new,courier;">interval::of&lt;Type&gt;(my_stream)</span>. Once you have obtained an interval, you can start using it.
+<h2>Algorithms</h2>
+For the purposes of this article, only two elementary algorithms have been rewritten. One could consider rewriting others as well, using the same principle. The key of rewriting algorithms is to have them take a single iterator interval instead of two iterators.
+<blockquote>
+<pre style="background: #ffffff none repeat scroll 0% 50%; color: #000000;"><span style="color: #000084; font-weight: bold;">namespace</span> interval 
+{ 
+  <span style="color: #000084; font-weight: bold;">template</span>&lt;<span style="color: #000084; font-weight: bold;">typename</span> I, <span style="color: #000084; font-weight: bold;">typename</span> It&gt; 
+  <span style="color: #000084; font-weight: bold;">void</span> <span style="color: #000084; font-weight: bold;">copy</span>(<span style="color: #000084; font-weight: bold;">const</span> I &amp;i, <span style="color: #000084; font-weight: bold;">const</span> It &amp;o) 
+  { 
+    std::<span style="color: #000084; font-weight: bold;">copy</span>(i.begin(), i.end(), o); 
+  } 
+
+  <span style="color: #000084; font-weight: bold;">template</span>&lt;<span style="color: #000084; font-weight: bold;">typename</span> I, <span style="color: #000084; font-weight: bold;">typename</span> F&gt; 
+  <span style="color: #000084; font-weight: bold;">void</span> <span style="color: #000084; font-weight: bold;">for_each</span>(<span style="color: #000084; font-weight: bold;">const</span> I &amp;i, <span style="color: #000084; font-weight: bold;">const</span> F &amp;f) 
+  { 
+    std::<span style="color: #000084; font-weight: bold;">for_each</span>(i.begin(), i.end(), f); 
+  } 
+}</pre>
+</blockquote>
+So, now, it's possible to write code such as:
+<blockquote>
+<pre>interval::copy(interval::of&lt;int&gt;(std::cin), std::back_inserter(my_vector));</pre>
+</blockquote>
+<h2>Filtering</h2>
+The real benefit of using intervals is that now intervals can be transformed. An example transformation is to eliminate the elements in an interval which do not satisfy a certain predicate. This involves defining a new iterator type which wraps around the old one, but which will advance internally so that it always references a value which satisfies the predicate. The obvious limitation is that all iterators become forward iterators (the random access property, if present, cannot be kept).
+<blockquote>
+<pre style="background: #ffffff none repeat scroll 0% 50%; color: #000000;"><span style="color: #000084; font-weight: bold;">namespace</span> interval 
+{ 
+  <span style="color: #000084; font-weight: bold;">namespace</span> detail 
+  { 
+    <span style="color: #000084; font-weight: bold;">template</span>&lt;<span style="color: #000084; font-weight: bold;">typename</span> It, <span style="color: #000084; font-weight: bold;">typename</span> T&gt; 
+    <span style="color: #000084; font-weight: bold;">class</span> filtered_interval_iterator 
+    { 
+      It internal; 
+      <span style="color: #000084; font-weight: bold;">const</span> T *owner; 
+
+      <span style="color: #000084; font-weight: bold;">void</span> advance() 
+      { 
+        <span style="color: #000084; font-weight: bold;">while</span> (<span style="color: #000084; font-weight: bold;">this</span> -&gt; internal != <span style="color: #000084; font-weight: bold;">this</span> -&gt; owner -&gt; end_iterator 
+               &amp;&amp; ! <span style="color: #000084; font-weight: bold;">this</span> -&gt; owner -&gt; filter(* <span style="color: #000084; font-weight: bold;">this</span> -&gt; internal)) 
+          ++ <span style="color: #000084; font-weight: bold;">this</span> -&gt; internal; 
+      } 
+
+    <span style="color: #000084; font-weight: bold;">public</span>: 
+
+      <span style="color: #000084; font-weight: bold;">typedef</span> <span style="color: #000084; font-weight: bold;">typename</span> std::iterator_traits&lt;It&gt;::value_type value_type; 
+      <span style="color: #000084; font-weight: bold;">typedef</span> <span style="color: #000084; font-weight: bold;">typename</span> std::iterator_traits&lt;It&gt;::reference reference; 
+      <span style="color: #000084; font-weight: bold;">typedef</span> <span style="color: #000084; font-weight: bold;">typename</span> std::iterator_traits&lt;It&gt;::<span style="color: #000084; font-weight: bold;">pointer</span> <span style="color: #000084; font-weight: bold;">pointer</span>; 
+      <span style="color: #000084; font-weight: bold;">typedef</span> <span style="color: #000084; font-weight: bold;">typename</span> std::iterator_traits&lt;It&gt;::difference_type difference_type; 
+      <span style="color: #000084; font-weight: bold;">typedef</span> std::input_iterator_tag iterator_category; 
+
+      filtered_interval_iterator(It internal, <span style="color: #000084; font-weight: bold;">const</span> T &amp;owner) 
+        : internal(internal), owner(&amp;owner) 
+      { <span style="color: #000084; font-weight: bold;">this</span> -&gt; advance(); } 
+
+      filtered_interval_iterator &amp;<span style="color: #000084; font-weight: bold;">operator</span>++() 
+      { 
+        ++ <span style="color: #000084; font-weight: bold;">this</span> -&gt; internal; 
+        <span style="color: #000084; font-weight: bold;">this</span> -&gt; advance(); 
+        <span style="color: #000084; font-weight: bold;">return</span> *<span style="color: #000084; font-weight: bold;">this</span>; 
+      } 
+
+      filtered_interval_iterator <span style="color: #000084; font-weight: bold;">operator</span>++(<span style="color: #000084; font-weight: bold;">int</span>) 
+      { 
+        filtered_interval_iterator temp(*<span style="color: #000084; font-weight: bold;">this</span>); 
+        ++ *<span style="color: #000084; font-weight: bold;">this</span>; 
+        <span style="color: #000084; font-weight: bold;">return</span> temp; 
+      } 
+
+      reference <span style="color: #000084; font-weight: bold;">operator</span>*() <span style="color: #000084; font-weight: bold;">const</span> { <span style="color: #000084; font-weight: bold;">return</span> *<span style="color: #000084; font-weight: bold;">this</span>-&gt;internal; } 
+
+      <span style="color: #000084; font-weight: bold;">bool</span> <span style="color: #000084; font-weight: bold;">operator</span> == (<span style="color: #000084; font-weight: bold;">const</span> filtered_interval_iterator &amp;o) 
+      { 
+        <span style="color: #000084; font-weight: bold;">return</span> <span style="color: #000084; font-weight: bold;">this</span> -&gt; internal == o.internal; 
+      } 
+
+      <span style="color: #000084; font-weight: bold;">bool</span> <span style="color: #000084; font-weight: bold;">operator</span> != (<span style="color: #000084; font-weight: bold;">const</span> filtered_interval_iterator &amp;o) 
+      { 
+        <span style="color: #000084; font-weight: bold;">return</span> <span style="color: #000084; font-weight: bold;">this</span> -&gt; internal != o.internal; 
+      } 
+    }; 
+
+    <span style="color: #000084; font-weight: bold;">template</span>&lt;<span style="color: #000084; font-weight: bold;">typename</span> It, <span style="color: #000084; font-weight: bold;">typename</span> F&gt; 
+    <span style="color: #000084; font-weight: bold;">class</span> filtered_interval_type 
+    { 
+      F filter; 
+      It begin_iterator, end_iterator; 
+
+      <span style="color: #000084; font-weight: bold;">friend</span> <span style="color: #000084; font-weight: bold;">class</span> filtered_interval_iterator&lt;It,filtered_interval_type&gt;; 
+
+    <span style="color: #000084; font-weight: bold;">public</span>: 
+
+      filtered_interval_type(It begin, It end, F filter) 
+        : filter(filter), begin_iterator(begin), end_iterator(end) {} 
+
+      <span style="color: #000084; font-weight: bold;">typedef</span> filtered_interval_iterator&lt;It,filtered_interval_type&gt; <span style="color: #000084; font-weight: bold;">iterator</span>; 
+
+      <span style="color: #000084; font-weight: bold;">iterator</span> begin() <span style="color: #000084; font-weight: bold;">const</span> 
+      { 
+        <span style="color: #000084; font-weight: bold;">return</span> <span style="color: #000084; font-weight: bold;">iterator</span>(<span style="color: #000084; font-weight: bold;">this</span> -&gt; begin_iterator, *<span style="color: #000084; font-weight: bold;">this</span>); 
+      } 
+
+      <span style="color: #000084; font-weight: bold;">iterator</span> end() <span style="color: #000084; font-weight: bold;">const</span> 
+      { 
+        <span style="color: #000084; font-weight: bold;">return</span> <span style="color: #000084; font-weight: bold;">iterator</span>(<span style="color: #000084; font-weight: bold;">this</span> -&gt; end_iterator, *<span style="color: #000084; font-weight: bold;">this</span>); 
+      } 
+    }; 
+  } 
+
+  <span style="color: #000084; font-weight: bold;">template</span>&lt;<span style="color: #000084; font-weight: bold;">typename</span> I, <span style="color: #000084; font-weight: bold;">typename</span> F&gt; 
+  detail::filtered_interval_type&lt;<span style="color: #000084; font-weight: bold;">typename</span> I::<span style="color: #000084; font-weight: bold;">iterator</span>,F&gt; filter(<span style="color: #000084; font-weight: bold;">const</span> I &amp;interval, F flt) 
+  { 
+    <span style="color: #000084; font-weight: bold;">return</span> detail::filtered_interval_type&lt;<span style="color: #000084; font-weight: bold;">typename</span> I::<span style="color: #000084; font-weight: bold;">iterator</span>,F&gt; 
+      (interval.begin(), interval.end(), flt); 
+  } 
+}</pre>
+</blockquote>
+Filtering takes an interval and a predicate, and filters the interval with the predicate, resulting in a new interval. So, to print to standard output all even numbers read from standard input:
+<blockquote>
+<pre>bool even(int x) { return x%2==0; } 
+
+interval::copy( interval::filter( interval::of&lt;int&gt;(std::cin), even ),
+                std::ostream_iterator&lt;int&gt;(std::cout, "\n"));</pre>
+</blockquote>
+<h2>Sub-intervals</h2>
+Another functionality that can be easily implemented is the ability to select only a subset of an interval. The implementation increments the begin-iterator until it reaches the start distance, then forces any iterator which has moved the total length to equal the past-the-end iterator to mark the end of the interval.
+<blockquote>
+<pre style="background: #ffffff none repeat scroll 0% 50%; color: #000000;"><span style="color: #000084; font-weight: bold;">namespace</span> interval 
+{ 
+  <span style="color: #000084; font-weight: bold;">namespace</span> detail 
+  { 
+    <span style="color: #000084; font-weight: bold;">template</span>&lt;<span style="color: #000084; font-weight: bold;">typename</span> It&gt; 
+    <span style="color: #000084; font-weight: bold;">class</span> sub_interval_iterator 
+    { 
+      It internal; 
+      <span style="color: #000084; font-weight: bold;">typename</span> std::iterator_traits&lt;It&gt;::difference_type left; 
+
+    <span style="color: #000084; font-weight: bold;">public</span>: 
+
+      <span style="color: #000084; font-weight: bold;">typedef</span> <span style="color: #000084; font-weight: bold;">typename</span> std::iterator_traits&lt;It&gt;::value_type value_type; 
+      <span style="color: #000084; font-weight: bold;">typedef</span> <span style="color: #000084; font-weight: bold;">typename</span> std::iterator_traits&lt;It&gt;::reference reference; 
+      <span style="color: #000084; font-weight: bold;">typedef</span> <span style="color: #000084; font-weight: bold;">typename</span> std::iterator_traits&lt;It&gt;::<span style="color: #000084; font-weight: bold;">pointer</span> <span style="color: #000084; font-weight: bold;">pointer</span>; 
+      <span style="color: #000084; font-weight: bold;">typedef</span> <span style="color: #000084; font-weight: bold;">typename</span> std::iterator_traits&lt;It&gt;::difference_type difference_type; 
+      <span style="color: #000084; font-weight: bold;">typedef</span> std::input_iterator_tag iterator_category; 
+
+      sub_interval_iterator(It internal, difference_type left) 
+        : internal(internal), left(left) 
+      { } 
+
+      sub_interval_iterator &amp;<span style="color: #000084; font-weight: bold;">operator</span>++() 
+      { 
+        -- <span style="color: #000084; font-weight: bold;">this</span> -&gt; left; 
+        ++ <span style="color: #000084; font-weight: bold;">this</span> -&gt; internal; 
+        <span style="color: #000084; font-weight: bold;">return</span> *<span style="color: #000084; font-weight: bold;">this</span>; 
+      } 
+
+      sub_interval_iterator <span style="color: #000084; font-weight: bold;">operator</span>++(<span style="color: #000084; font-weight: bold;">int</span>) 
+      { 
+        sub_interval_iterator temp(*<span style="color: #000084; font-weight: bold;">this</span>); 
+        ++ *<span style="color: #000084; font-weight: bold;">this</span>; 
+        <span style="color: #000084; font-weight: bold;">return</span> temp; 
+      } 
+
+      reference <span style="color: #000084; font-weight: bold;">operator</span>*() <span style="color: #000084; font-weight: bold;">const</span> { <span style="color: #000084; font-weight: bold;">return</span> *<span style="color: #000084; font-weight: bold;">this</span>-&gt;internal; } 
+
+      <span style="color: #000084; font-weight: bold;">bool</span> <span style="color: #000084; font-weight: bold;">operator</span> == (<span style="color: #000084; font-weight: bold;">const</span> sub_interval_iterator &amp;o) 
+      { 
+        <span style="color: #000084; font-weight: bold;">return</span> <span style="color: #000084; font-weight: bold;">this</span> -&gt; left == 0 &amp;&amp; o.left == 0 
+          || <span style="color: #000084; font-weight: bold;">this</span> -&gt; internal == o.internal; 
+      } 
+
+      <span style="color: #000084; font-weight: bold;">bool</span> <span style="color: #000084; font-weight: bold;">operator</span> != (<span style="color: #000084; font-weight: bold;">const</span> sub_interval_iterator &amp;o) 
+      { 
+        <span style="color: #000084; font-weight: bold;">return</span> <span style="color: #000084; font-weight: bold;">this</span> -&gt; internal != o.internal 
+          &amp;&amp; <span style="color: #000084; font-weight: bold;">this</span> -&gt; left != o.left;; 
+      } 
+    }; 
+
+    <span style="color: #000084; font-weight: bold;">template</span>&lt;<span style="color: #000084; font-weight: bold;">typename</span> It&gt; 
+    <span style="color: #000084; font-weight: bold;">class</span> sub_interval_type 
+    { 
+    <span style="color: #000084; font-weight: bold;">public</span>: 
+      <span style="color: #000084; font-weight: bold;">typedef</span> <span style="color: #000084; font-weight: bold;">typename</span> std::iterator_traits&lt;It&gt;::difference_type distance; 
+    <span style="color: #000084; font-weight: bold;">private</span>: 
+      distance length; 
+      It begin_iterator, end_iterator; 
+    <span style="color: #000084; font-weight: bold;">public</span>: 
+      sub_interval_type(It begin, It end, distance start, distance length) 
+        : length(length), begin_iterator(begin), end_iterator(end) 
+      { 
+        <span style="color: #000084; font-weight: bold;">while</span> (start &gt; 0 &amp;&amp; begin != end) { --start; ++begin; } 
+        begin_iterator = begin; 
+      } 
+
+      <span style="color: #000084; font-weight: bold;">typedef</span> sub_interval_iterator&lt;It&gt; <span style="color: #000084; font-weight: bold;">iterator</span>; 
+
+      <span style="color: #000084; font-weight: bold;">iterator</span> begin() <span style="color: #000084; font-weight: bold;">const</span> 
+      { 
+        <span style="color: #000084; font-weight: bold;">return</span> <span style="color: #000084; font-weight: bold;">iterator</span>(<span style="color: #000084; font-weight: bold;">this</span> -&gt; begin_iterator, <span style="color: #000084; font-weight: bold;">this</span> -&gt; length); 
+      } 
+
+      <span style="color: #000084; font-weight: bold;">iterator</span> end() <span style="color: #000084; font-weight: bold;">const</span> 
+      { 
+        <span style="color: #000084; font-weight: bold;">return</span> <span style="color: #000084; font-weight: bold;">iterator</span>(<span style="color: #000084; font-weight: bold;">this</span> -&gt; end_iterator, 0); 
+      } 
+    }; 
+  } 
+
+  <span style="color: #000084; font-weight: bold;">template</span>&lt;<span style="color: #000084; font-weight: bold;">typename</span> I&gt; 
+  detail::sub_interval_type&lt;<span style="color: #000084; font-weight: bold;">typename</span> I::<span style="color: #000084; font-weight: bold;">iterator</span>&gt; 
+  sub(<span style="color: #000084; font-weight: bold;">const</span> I&amp; i, <span style="color: #000084; font-weight: bold;">typename</span> I::<span style="color: #000084; font-weight: bold;">iterator</span>::difference_type start, <span style="color: #000084; font-weight: bold;">typename</span> I::<span style="color: #000084; font-weight: bold;">iterator</span>::difference_type length) 
+  { 
+    <span style="color: #000084; font-weight: bold;">return</span> detail::sub_interval_type&lt;<span style="color: #000084; font-weight: bold;">typename</span> I::<span style="color: #000084; font-weight: bold;">iterator</span>&gt;(i.begin(), i.end(), start, length); 
+  } 
+}</pre>
+</blockquote>
+With this function, one can specify the start and length of the sub-interval, just like with a typical sub-string function.
+<h2>Assignment</h2>
+How to assign an interval to a container? Containers have constructors and assignment functions that work on two iterators, not a single interval. However, it's possible to work around this, in part, by using a cast function:
+<blockquote>
+<pre style="background: #ffffff none repeat scroll 0% 50%; color: #000000;"><span style="color: #000084; font-weight: bold;">namespace</span> interval 
+{ 
+  <span style="color: #000084; font-weight: bold;">namespace</span> detail 
+  { 
+    <span style="color: #000084; font-weight: bold;">template</span>&lt;<span style="color: #000084; font-weight: bold;">typename</span> I, <span style="color: #000084; font-weight: bold;">typename</span> C&gt; 
+    <span style="color: #000084; font-weight: bold;">struct</span> assign_type 
+    { 
+      I i; 
+      assign_type(<span style="color: #000084; font-weight: bold;">const</span> I &amp;i) : i(i) {} 
+      <span style="color: #000084; font-weight: bold;">operator</span> C() <span style="color: #000084; font-weight: bold;">const</span> { <span style="color: #000084; font-weight: bold;">return</span> C(i.begin(), i.end()); } 
+    }; 
+  } 
+
+  <span style="color: #000084; font-weight: bold;">template</span>&lt;<span style="color: #000084; font-weight: bold;">typename</span> C, <span style="color: #000084; font-weight: bold;">typename</span> I&gt; 
+  detail::assign_type&lt;I,C&gt; assign(<span style="color: #000084; font-weight: bold;">const</span> I &amp;i) 
+  { 
+    <span style="color: #000084; font-weight: bold;">return</span> detail::assign_type&lt;I,C&gt;(i); 
+  } 
+}</pre>
+</blockquote>
+The return value of the assignment function above can now be assigned to the appropriate container.
+
+The final example reads even integers from standard input, stores them in a vector, then outputs all the contents of the vector between index 2 and index 12:
+<blockquote>
+<pre style="background: #ffffff none repeat scroll 0% 50%; color: #000000;"><span style="color: #000084; font-weight: bold;">bool</span> even(<span style="color: #000084; font-weight: bold;">int</span> i) { <span style="color: #000084; font-weight: bold;">return</span> i % 2 == 0; } 
+
+<span style="color: #000084; font-weight: bold;">int</span> <span style="color: #000084; font-weight: bold;">main</span>() 
+{ 
+  std::<span style="color: #000084; font-weight: bold;">vector</span>&lt;<span style="color: #000084; font-weight: bold;">int</span>&gt; values = interval::assign&lt; std::<span style="color: #000084; font-weight: bold;">vector</span>&lt;<span style="color: #000084; font-weight: bold;">int</span>&gt; &gt;  
+   ( interval::filter ( interval::of&lt;<span style="color: #000084; font-weight: bold;">int</span>&gt;(std::<span style="color: #000084; font-weight: bold;">cin</span>), even )); 
+
+  interval::<span style="color: #000084; font-weight: bold;">copy</span>  
+   ( interval::sub( interval::of(values), 2, 10 ), 
+     std::<span style="color: #000084; font-weight: bold;">ostream_iterator</span>&lt;<span style="color: #000084; font-weight: bold;">int</span>&gt;(std::<span style="color: #000084; font-weight: bold;">cout</span>, <span style="color: #0000ff;">"</span><span style="color: #0000ff;">\n</span><span style="color: #0000ff;">"</span>) ); 
+}</pre>
+</blockquote>
+<h2>Possible extensions</h2>
+It is currently not possible to retrieve the original iterator, but this could be done easily (just extend the interval type to handle this) and would be useful (for instance when using <span style="font-family: courier new,courier;">std::find</span> across an interval).  Also, iterator types are not conserved: filtering conserves bidirectional iterators and sub-interval extraction conserves random access iterators (plus, on random access iterators, sub-interval extraction is much easier than the above version, which has to handle forward iterators).

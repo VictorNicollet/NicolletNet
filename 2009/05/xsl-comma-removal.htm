@@ -1,0 +1,15 @@
+@title XSL comma removal
+@draft
+
+Since I wrote my <a href="http://www.nicollet.net/2009/04/arrays-commas/" target="_blank">article on arrays and  commas</a> last week, my blog has received quite a lot of Google searches about how to remove the last comma when using an XSLT stylesheet, so it seems only fitting that I should explain this in more detail.
+
+It <em>is</em> possible for an XSLT stylesheet to generate a comma-separated list from a node set. The basic idea is to place a comma <em>before</em> every element, except the first. In essence:
+<blockquote>
+<pre>&lt;xsl:for-each select="..."&gt;
+  &lt;xsl:if test="position() &amp;gt; 1"&gt;, &lt;/xsl:if&gt;
+  ...
+&lt;/xsl:for-each&gt;</pre>
+</blockquote>
+When processing a node set, the position() function indicates the index of the element within that node set. The first element has position 1.
+
+This gets much harder if you have to further filter the elements in the node set before printing them, because the position doesn't let you find out the first <em>displayed</em> element. In XSLT 2.0 you can generate a new list from the old list by filtering, then traverse the new list to turn into a comma-separated output. In XSLT 1.0 you will have to either do all the filtering as part of the XPath selector of your loop, or determine the position of the valid element beforehand.

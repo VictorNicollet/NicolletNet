@@ -1,0 +1,76 @@
+@title Having a Strong Opinion
+@draft
+
+<img class="aligncenter size-full wp-image-2535" title="sunset" src="http://www.nicollet.net/wp-content/uploads/2011/09/sunset.png" alt="" width="675" height="100" />
+
+Many blogs about technical hiring will at one point state something about buzzwords and programmer flexibility. One of the original trendsetters, <a href="http://www.joelonsoftware.com/articles/ThePerilsofJavaSchools.html" target="_blank">Joel Spolsky</a>, said:
+<blockquote>The recruiters-who-use-grep, by the way, are ridiculed here, and for  good reason. I have never met anyone who can do Scheme, Haskell, and C  pointers who can't pick up Java in two days, and create better Java code  than people with five years of experience in Java, but try explaining  that to the average HR drone.</blockquote>
+And this is not only a point about elite languages like Scheme-Haskell-C versus mundane languages like Java-PHP-whatever : flexibility, the ability to switch languages and to adapt to new interfaces and libraries, is almost always presented as a prerequisite to being competent. John can perform miracles with PHP but cannot easily learn Ruby ? Then John is not a competent programmer, he is just a competent <em>PHP</em> programmer.
+
+Maybe there is some truth to this characterization. Maybe there is indeed something about good programmers that lets them shine in a language-independent way, with languages as mere details of their day-to-day miracles. But I am vaguely uncomfortable with that notion. And not for personal reasons — my current language of choice is one of those elite functional languages that would hypothetically place me at the apex of the competence food chain.
+
+I believe the critical element of programming competence is not <em>ability</em> but <em>passion</em>. What makes you a good programmer is how much you care about software development. Does John have a nine-to-five PHP programming job and hardly touch the computer outside of work, or does he do small projects on the side, or contribute to Open Source PHP software, or answer technical PHP questions on Stack Overflow, or perform any other number of PHP-related activities that do not have professional rewards as their main objective? Does he unconsciously try to <em>do the right thing</em> in his code, even though it will be harder than writing a dirty hack to make his boss happy?
+
+I have seen people, many of them high-ranking academics, with the intellectual firepower to outgun me in any programming-related endeavor, but a striking lack of passion that let their applications crippled, hideous and unreliable. And I have no doubts that, had they cared about those things, they could have done better.
+
+I have seen people, many of them students, with a genuine passion for software development, who would spend their free time hacking together video games or dynamic websites or clever hacks, who would notice after a while that their abilities were stagnating and, unable to improve, would give up programming rather than live with the frustration of writing software worthy of their expectations.
+
+And when you care about programming, you tend to have strong opinions about how it should be done.
+
+Some of these opinions are trivial. My hair stands on end whenever I have to read badly formatted code — I don't care about the opening-brace-position flame wars, any convention is fine by me as long as it is consistently followed — and the authors often wonder why I would care about such a silly thing. I have a strong opinion about how code should look like, and I dislike working with people who do not share that opinion.
+
+Yes, I am one of those Scheme-Haskell-C elite programmers, and I can pick up Java in a few days and outperform experienced Java-only programmers. I have done it several times in the past. And every single time I did so, I felt dirty and miserable, because Java goes against several of my opinions about what software development should be like.
+
+In fact, I am not really surprised about the popular success of Python and Ruby on Rails — not in terms of how many projects are written, but in terms of how outspoken the technical advocates are. This is because those two have something that appeals to people who can become passionate about them : a clean core philosophy you can agree or disagree with.
+
+Python zealots flock around the <a href="http://www.python.org/dev/peps/pep-0020/" target="_blank">Zen of Python</a> :
+<blockquote>Beautiful is better than ugly.
+Explicit is better than implicit.
+Simple is better than complex.
+Complex is better than complicated.
+Flat is better than nested.
+Sparse is better than dense.
+Readability counts.
+Special cases aren't special enough to break the rules.
+Although practicality beats purity.
+Errors should never pass silently.
+Unless explicitly silenced.
+In the face of ambiguity, refuse the temptation to guess.
+There should be one-- and preferably only one --obvious way to do it.
+Although that way may not be obvious at first unless you're Dutch.
+Now is better than never.
+Although never is often better than *right* now.
+If the implementation is hard to explain, it's a bad idea.
+If the implementation is easy to explain, it may be a good idea.
+Namespaces are one honking great idea -- let's do more of those!</blockquote>
+Ruby on Rails fanboys have a similar set of core beliefs, the <a href="http://guides.rubyonrails.org/getting_started.html#what-is-rails" target="_blank">Rails Way</a>:
+<blockquote>DRY – “Don’t Repeat Yourself” – suggests that writing the same code over and over again is a bad thing.
+Convention Over Configuration – means that Rails makes assumptions about what you want to do and how you’re going to d o it, rather than requiring you to specify every little thing through endless configuration files.
+REST is the best pattern for web applications – organizing your application around resources and standard HTTP verbs is the fastest way to go.</blockquote>
+So, if you happen to wholeheartedly agree with the Ruby on Rails way, then by using it you are certain to find both a technical environment in which you can feel happy, and a community that shares you strong opinions about software development. It is any wonder, then, that people <em>passionate</em> about the RoR values would flock to RoR and, inevitably, start advocating its use?
+
+Going a little bit further, if you are hiring for your software company, would you rather hire someone with weak opinions on most topics because they are «flexible» or someone with strong opinions that match the strong opinions of your company? Given the choice, I would certainly hire the latter.
+
+I have my own «core philosophy» that I apply to the way I write my own code. These would be, by order of decreasing importance:
+<ol>
+	<li>It is better to <strong>have a correct program with few features</strong>, than a buggy program with many features.
+<small>If possible, take the time to design your code and your interface so that errors cannot happen. If not, explicitly detect and display all errors as they happen. If possible, have a programming language and a programming style that can eliminate by design many errors, rather than a programming language or programming style that improves productivity at the cost of having more errors.
+</small></li>
+	<li>It is better to <strong>prove the correctness of a program</strong>, than to test for the existence of bugs.
+<small>Tests cannot prove that the software is correct, they may only prove the existence of bugs. A proven program contains no bugs, there is no worry about having enough code coverage and enough test cases. This is a special case of "fail early" : better to fail at the compilation stage, than to fail during tests or at runtime.</small></li>
+	<li>It is better to <strong>accept that code will have to be rewritten</strong>, than to future-proof a complex design.
+<small>Future-proof code will likely be larger, and contains more untested pieces, than normal code. This increases the probability of bugs, without completely eliminating the possibility of a completely unforeseen design change that still involves a rewrite. Preparing your code for a rewrite, by splitting it up into clean independent self-documenting modules and creating automated correctness checks for these, is the best way to make it flexible.
+</small></li>
+	<li>It is better to <strong>enforce data constraints through types</strong>, than to enforce it through code.
+<small>Attempting to store data that violates the constraints fails earlier if the type cannot represent that data, especially in a statically typed language. Doing things this way might take longer than just keeping a flexible data type and performing the constraint checks in the code, but the odds of it being correct are higher.
+</small></li>
+	<li>It is better to <strong>have the computer do work for you</strong>, than for you to do that work yourself.
+<small>Why write trivial unit tests when you can harness the type system to perform those checks? Why define or configure things by hand when your framework could define or configure them for you?</small></li>
+	<li>It is better to <strong>rewrite your code using new concepts</strong>, than to insist on using existing but ill-adapted concepts.
+<small>Concepts improve productivity and readability, and by design will prevent some kinds of incorrect usage, but only as long as they match what the software is expected to be doing. Otherwise, at best they will be a useless weight and at worst will have to be tediously worked around to achieve anything. The size of the refactoring is no obstacle: if half the application needs to be adapted to the new concept, then so be it.
+</small></li>
+	<li>It is better to <strong>repeat yourself from time to time</strong>, than to introduce too many concepts.
+<small>Any repetition can be eliminated by adding a new abstraction through refactoring. That abstraction is usually a mere application of an existing pattern or concept, but might sometimes give flesh to a new concept. While that concept arguably already existed in the non-refactored code, it is easier to understand uncommon concepts by looking at their repeated code, than to give them a sufficiently understandable name.</small></li>
+</ol>
+I don't know. Maybe someone might agree with me one day.
+<small>Article image © Timo Newton-Syms — <a href="http://www.flickr.com/photos/timo_w2s/6021716943/in/photostream/">Flickr</a></small>

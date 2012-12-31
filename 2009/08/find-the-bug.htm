@@ -1,0 +1,29 @@
+@title Find the bug!
+@draft
+
+This code summarizes some text by removing anything past 255 characters. It's done before inserting things into a database, so that the brutal cut of a VARCHAR(255) doesn't leave a truncated string but rather three nice dots.
+<pre style="padding-left: 30px;">function summarize($text)
+{
+  assert (is_string($text));
+  if (strlen($text) &lt; 255) return $text;
+  return substr($text,0,253).'...';
+}</pre>
+Yet, however simple it might be, this function contains a bug. One day, your database will return a weird error when an user tries to save the data. If you're lucky, it will happen to a lone user who will complain and move on. If you're unlucky, it will happen during a million-line import and crash everything, or it will display strange things on the screenof every user around.
+
+Can you find why?
+
+<!--more-->The basic assumption made here is that substr is a sane text manipulation function that reads in a valid piece of text and returns a <strong>valid</strong>, albeit shorter, piece of text. This assumption is, of course, incorrect.
+
+Recently, the internet has migrated towards Unicode representation of text in order to take into account the variety of languages with weird letters. I happen to speak one. We have interesting letters like Œ and interesting currencies like €. And don't even get me started on Japanese, Hindi or Korean.
+
+PHP does not support Unicode, it only supports ISO-8859-1 and assumes that every single string in a program is an ISO-8859-1 string. If you wish to store a character like € in PHP, you need to do so using the 256 characters from the ISO-8859-1 character set, which means you will end up using a combination of those characters to represent your single € character.
+
+Could be "EUR". And let the huddled eastern masses use romaji, pinyin and whatever.
+
+Could be "&amp;euro;" or a similar clean HTML-friendly encoding of Unicode text. But that would be using six characters for one.
+
+Or it could be UTF-8, which was designed to let Unicode code points move unhurt through a stringent encoding environment like ISO-8859-1. It still does so by using multiple characters from ISO-8859-1 to represent a single Unicode character (this is a technically incorrect metaphor, but bear with me). So € is represented as three characters: â‚¬.
+
+However, to PHP's substr function, every UTF-8 string remains an ISO-8859-1 string. This means that if the three characters representing the euro end up being straddled across the 255-character limit, the function will slice right through them. And "â‚..." is not a valid UTF-8 code point, so anything that expects a valid UTF-8 encoding is allowed to throw up with an error, which leads to the database refusing the connection and your user wondering what the problem is.
+
+The solution would be, of course, to use PHP's multiple byte encoding functions, such as <code>mb_substr</code>. The latter is UTF-8 aware and therefore never slices up a character in mid-sequence.

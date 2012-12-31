@@ -1,0 +1,93 @@
+@title Two-way bindings
+@draft
+
+Quick : how would you design a function that opens a file handle that auto-closes whenever execution leaves a certain scope, even if an exception happens ?
+
+The C++ solution is quite straightforward : have a <em>destructor</em> that closes the file handle, and create the handle as an auto variable:
+<pre style="padding-left: 30px;">std::ofstream out = std::ofstream("out.txt");
+out &lt;&lt; whatever();
+// file handle is always closed by the language</pre>
+On the other hand, OCaml does not have destructors, but can simulate the RAII spirit <a href="http://thelema.github.com/AAA-batteries/hdoc/BatFile.html#VALwith_file_in" target="_blank">using a closure</a>: you provide a function that will be called with the file handle as its argument, and the file handle will be destroyed when the function returns or raises an exception.
+<pre style="padding-left: 30px;">BatFile.with_file_out "out.txt" begin fun out -&gt;
+  BatIO.nwrite out (whatever ())
+  (* the file handle is always closed by the language *)
+end</pre>
+This is a special case of a more general principle.
+<h4>Two-way binding</h4>
+The standard <code>let</code> keyword performs a one-way binding: bind value to variable <em>then</em> evaluate expression. Two-way binding adds a post-processing step : when you're done with the expression, do something else. Such a behavior has important consequences for writing concise and readable code.
+
+In my OCaml code, two-way binding is performed with keyword let! that is preprocessed as follows :
+<pre style="padding-left: 30px;">let! pattern = value in expression
+(* Is translated to *)
+value (fun pattern -&gt; expression)</pre>
+For instance, the above file manipulation script would be written as:
+<pre style="padding-left: 30px;">let! out = BatFile.with_file_out "out.txt" in
+BatIo.nwrite out (whatever ())</pre>
+This syntax expresses the actual intent of the code better than the anonymous callback syntax did: <em>bind the file handle to this variable, but don't forget the post-processing steps</em>.
+
+Here are a few more examples of situations that may be improved by this syntax :
+<h4>Events and reactive programming</h4>
+Reactive programs can be constructed either using the typical "<em>register this function to be called whenever this value changes or this event happens</em>" semantics, or  by using binding semantics instead:
+<pre style="padding-left: 30px;">let () =
+  let! user = User.on_change (#last_login) in
+  if user # notify_login then
+    Mail.send (user # email)
+      ("Someone has logged in to your account at " ^ datetime (user # last_login))</pre>
+The underlying signature of <code>User.on_change</code> (which registers a listener callback and returns unit) remains the same.
+<h4>Retry semantics</h4>
+CouchDB implements transactions with retry semantics: you read a document, compute some changes and try saving them back, and  if the document was changed by someone else in the mean time, you will have to try again. It makes sense for the code inside the transaction to be 1° idempotent and 2° wrapped away in a function that 3° takes the latest version of the document as an argument :
+<pre style="padding-left: 30px;">let set_title article_id new_title =
+  let! article = Database.transaction article_id in
+  Database.write article_id { article with title = new_title }</pre>
+In such a design, the write function would throw a specific exception if a collision occurs, and the transaction function would intercept that exception and try again until the transaction succeeded or a maximum number of retries happened.
+<h4>Monads</h4>
+Value binding in monads benefits from having a syntax that actually looks like binding.With the option monad, one can turn this :
+<pre style="padding-left: 30px;">match Files.get file_id with None -&gt; None | Some file -&gt;
+  match file # owner with None -&gt; None | Some user_id -&gt;
+    match Users.get user_id with None -&gt; None | Some user -&gt;
+      Some (user # name)</pre>
+Into a more straightforward version :
+<pre style="padding-left: 30px;">let  open BatOption.Monad in
+let! file    = bind $ Files.get file_id in
+let! user_id = bind $ file # owner in
+let! user    = bind $ Users.get user_id in
+return (user # name)</pre>
+Also, one can deal with Lwt threads almost as well as the Lwt-specific syntax extension:
+<pre style="padding-left: 30px;">open Lwt
+open Lwt_io
+
+let process_lines channel process =
+  let loop () =
+    let! line_opt = bind $ read_line_opt channel in
+    match line_opt with
+      | None -&gt; return ()
+      | Some line -&gt; loop () &lt;&amp;&gt; process line
+  in
+  loop ()</pre>
+<h4>Being Silly</h4>
+<pre style="padding-left: 30px;">let fold init list f = List.fold_left (fun acc x -&gt; f (acc,x)) init list
+let map list f       = List.map f list
+
+let probabilities odds =
+  let sum =
+    let! accumulator, odd = fold 0. odds in
+    accumulator +. float_of_int odd
+  in
+  let! odd = map odds in
+  float_of_int odd /. sum</pre>
+<h4>The Syntax Extension</h4>
+In case you don't know how to create it, this is the preprocessor file for this syntax extension :
+<pre style="padding-left: 30px;">open Camlp4.PreCast
+open Syntax
+
+EXTEND Gram
+ GLOBAL: expr;
+
+ expr: LEVEL "top"
+ [
+   [ "let"; "!"; p = patt ; "=" ; e = expr ; "in" ; e' = expr -&gt;
+     &lt;:expr&lt; (($e$) (fun $p$ -&gt; $e'$)) &gt;&gt; ]
+ ] ;
+
+END;</pre>
+By the way, I find that this extension has a significant advantage over the Lwt extension - it is readily compatible with syntax highlighting in most editors.

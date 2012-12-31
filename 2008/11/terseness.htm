@@ -1,0 +1,183 @@
+@title An Exercise in Terseness
+@draft
+
+<blockquote>
+<p align="right"><em><strong>Terse: </strong><span class="sense_content">smoothly elegant, devoid of superfluity</span></em></p>
+</blockquote>
+Programming languages have cultures that revolve around them, which are both a cause and a consequence of the idioms and techniques found in these languages. Some languages, such as Perl or Objective Caml, have small communities around them that lead to a reasonable consistency in their cultural aspect: while both value terseness as a sign of good design, Perl hackers rely on the wild tentacled expressiveness of the language while Objective Caml hackers rely on streamlined mathematical representations that the language expresses concisely.
+
+Other languages are larger, often due to their application in so many situations that a single language-minded community cannot contain them. JavaScript ranges from download-free-script online communities with non-portable low-quality code to elegant functional programming to code generated from Java, while C++ ranges from academic numerical computations inspired from earlier proceedings in the C language to modern reliance on standard library generic and functional programming to large-scale object-oriented development.
+<h2>Tentacled Onion</h2>
+When I say that the Perl language has a wild tentacled expressiveness, it is more of an admiring stance than a negative analysis. Consider, for instance, the "underscore" special variable <span style="font-family: courier new,courier;">$_</span> : in many situations, if no variable is used to assign the result of an expression, then that result is assigned to <span style="font-family: courier new,courier;">$_</span>. For instance:
+<blockquote>
+<pre style="background: #ffffff none repeat scroll 0% 50%; color: #000000;"><span style="color: #000084; font-weight: bold;">while</span>(<span style="color: #000084; font-weight: bold;">defined</span>($_ = <span style="color: #3f3fbf;">&lt;&gt;</span>)) <span style="color: #000084; font-weight: bold;">print</span> $_; 
+
+<span style="color: #808080;"># Equivalent to :</span> 
+
+<span style="color: #000084; font-weight: bold;">while</span>(<span style="color: #3f3fbf;">&lt;&gt;</span>) <span style="color: #000084; font-weight: bold;">print</span>;</pre>
+</blockquote>
+To the average Perl hacker, this concept is an illustration of a fundamental principle (as the standard documentation puts it, <em>"this may seem like an odd thing to you, but you'll use the construct in almost every Perl script you write"</em>). In terms of language semantics, the behavior is pretty simple to explain: a program is a collection of operations which read values and output values, where the output of one operation is the input of another. This is true for almost all programming languages (with the exception of some languages, such as Prolog).
+
+Writing a program is the description of what operations to run, and what data goes from which operation to which operation. Concise languages tend to describe operations by naming them, and make data flows implicit by various means. Perl takes a "don't write what you don't need to specify" that is shared by several other languages from SH to Ruby: when it's obvious that a value has to be assigned to something, there's a default assignment target that will keep the programmer happy most of the time (the <span style="font-family: courier new,courier;">$_</span> special variable). And, in general, if an acceptable default behavior exists, it is used.
+<h2>Go Forth and Multiply</h2>
+Forth makes data flow completely implicit, through slightly different means: instead of being stored in variables, data is pushed onto a stack. Every operation therefore reads the top values from the stack, and its output is pushed back on top of the stack when it ends. As such, a Forth program is a sequence of words, and every word is an operation.
+
+This extends to "function" definitions, which don't have to name their parameters and instead read directly from the stack:
+<blockquote>
+<pre style="background: #ffffff none repeat scroll 0% 50%; color: #000000;"><span style="color: #000084; font-weight: bold;">: </span>abs <span style="color: #000084; font-weight: bold;">dup</span> 0 <span style="color: #000084; font-weight: bold;">&lt;</span> if <span style="color: #000084; font-weight: bold;">negate</span> then ;</pre>
+</blockquote>
+This definition of "abs" duplicates the top element, pushes zero, then pops the two top elements and pushes a boolean determining whether the bottom was smaller than the top, then pops that boolean and, if true, pops the top and pushes its negation.
+
+Of course, terseness and conciseness leads to shorter code for equivalent functionality, and shorter code usually leads to more difficulties in understanding. For instance, long word definitions are frowned upon in Forth because keeping track of the stack is hard (its implicit manipulation is harder to follow than the less concise but more explicit technique of naming values for later use). The same goes for Perl, where the implicit use of a default behavior requires knowledge of what that default behavior is (and even the most war-worn Perl hacker can be surprised by the behavior of an exceptionally devious and elegant piece of code).
+<h2>Paths, Expressions and Domains</h2>
+One area where conciseness does not create difficulties in understanding is domain-specific languages. If a general-purpose language can describe a shopping cart in thirty bytes, there's a high probability that those thirty bytes will be cleverly written and therefore difficult to understand. This is an elementary cookie-based shopping cart implementation in Perl:
+<blockquote>
+<pre style="background: #ffffff none repeat scroll 0% 50%; color: #000000;">@P=<span style="color: #000084; font-weight: bold;">sub</span>{lijs <span style="color: #000084; font-weight: bold;">while</span><span style="color: #3f3fbf;">&lt;CKE&gt;</span>;}ul$&lt;<span style="color: #000084; font-weight: bold;">chomp</span>; <span style="color: #000084; font-weight: bold;">sub</span>{~<span style="color: #0000ff;">"http://.*"</span>;<span style="color: #000084; font-weight: bold;">print</span>}</pre>
+</blockquote>
+Just kidding. On the other hand, a thirty-byte description of a shopping cart in a scripting language designed for creating e-commerce web sites is boringly unsurprising: this is what the language was designed for, and one can expect it to get to the point fast enough. Everyone who uses such a language already knows what a shopping cart is and therefore has no difficulties understanding the code.
+
+XPath is an example of a concise yet understandable language: it has a clean and small domain (identification of nodesets within an XML document) and a syntax that matches. For instance, were I to look for all the 'li' elements of an XML document that are inside a 'div' named "menu":
+<blockquote>
+<pre> /descendant::div[attribute::class="menu"]/descendant::li</pre>
+</blockquote>
+Or, as a shorter version (using the shorthand syntax of XPath):
+<blockquote>
+<pre>//div[class="menu"]//li</pre>
+</blockquote>
+The equivalent search without XPath in any general-purpose language (even with a good library for traversing XML) would be much longer than that. The same happens for regular expressions: a complex language for the small domain of matching patterns within text (and possibly replacing them with something else), that aims to be concise above all.
+<h2>An Exercise in Terseness</h2>
+I have often been frustrated by the verbosity of XSLT as a tree transform language. Looking at the w3schools tutorials, for example, one can see an example such as:
+<blockquote>
+<pre style="background: #ffffff none repeat scroll 0% 50%; color: #000000;"><span style="color: #000084;">&lt;?</span><span style="color: #000084;">xml</span> <span style="color: #000084;">version</span>="1.0" <span style="color: #000084;">encoding</span>=<span style="color: #0000ff;">"ISO-8859-1"</span><span style="color: #000084;">?&gt;</span>
+<span style="color: #7f0055;">&lt;</span><span style="color: #000084; font-weight: bold;">xsl</span>:<span style="color: #000084; font-weight: bold;">stylesheet</span> version=<span style="color: #0000ff;">"</span><span style="color: #0000ff;">1.0</span><span style="color: #0000ff;">"</span> xmlns:xsl=<span style="color: #0000ff;">"</span><span style="color: #0000ff;">http</span><span style="color: #0000ff;">:</span><span style="color: #000084; font-weight: bold;">//</span><span style="color: #3f3fbf;">www.w3.org</span><span style="color: #3f3fbf;">/1999/XSL/Transform</span><span style="color: #0000ff;">"</span><span style="color: #7f0055;">&gt;</span> 
+
+<span style="color: #7f0055;">&lt;</span><span style="color: #000084; font-weight: bold;">xsl</span>:<span style="color: #000084; font-weight: bold;">template</span> match=<span style="color: #0000ff;">"</span><span style="color: #0000ff;">/</span><span style="color: #0000ff;">"</span><span style="color: #7f0055;">&gt;</span>
+  <span style="color: #7f0055;">&lt;</span><span style="color: #7f0055;">html</span><span style="color: #7f0055;">&gt;</span>
+  <span style="color: #7f0055;">&lt;</span><span style="color: #7f0055;">body</span><span style="color: #7f0055;">&gt;</span>
+    <span style="color: #7f0055;">&lt;</span><span style="color: #7f0055;">h2</span><span style="color: #7f0055;">&gt;</span>My CD Collection<span style="color: #7f0055;">&lt;/</span><span style="color: #7f0055;">h2</span><span style="color: #7f0055;">&gt;</span>
+    <span style="color: #7f0055;">&lt;</span><span style="color: #7f0055;">table</span> border=<span style="color: #0000ff;">"</span><span style="color: #0000ff;">1</span><span style="color: #0000ff;">"</span><span style="color: #7f0055;">&gt;</span>
+      <span style="color: #7f0055;">&lt;</span><span style="color: #7f0055;">tr</span> bgcolor=<span style="color: #0000ff;">"</span><span style="color: #0000ff;">#9acd32</span><span style="color: #0000ff;">"</span><span style="color: #7f0055;">&gt;</span>
+        <span style="color: #7f0055;">&lt;</span><span style="color: #7f0055;">th</span><span style="color: #7f0055;">&gt;</span>Title<span style="color: #7f0055;">&lt;/</span><span style="color: #7f0055;">th</span><span style="color: #7f0055;">&gt;</span>
+        <span style="color: #7f0055;">&lt;</span><span style="color: #7f0055;">th</span><span style="color: #7f0055;">&gt;</span>Artist<span style="color: #7f0055;">&lt;/</span><span style="color: #7f0055;">th</span><span style="color: #7f0055;">&gt;</span>
+      <span style="color: #7f0055;">&lt;/</span><span style="color: #7f0055;">tr</span><span style="color: #7f0055;">&gt;</span>
+      <span style="color: #7f0055;">&lt;</span><span style="color: #000084; font-weight: bold;">xsl</span>:<span style="color: #000084; font-weight: bold;">for-each</span> select=<span style="color: #0000ff;">"</span><span style="color: #0000ff;">catalog</span><span style="color: #0000ff;">/</span><span style="color: #0000ff;">cd</span><span style="color: #0000ff;">"</span><span style="color: #7f0055;">&gt;</span>
+      <span style="color: #7f0055;">&lt;</span><span style="color: #7f0055;">tr</span><span style="color: #7f0055;">&gt;</span>
+        <span style="color: #7f0055;">&lt;</span><span style="color: #7f0055;">td</span><span style="color: #7f0055;">&gt;</span><span style="color: #7f0055;">&lt;</span><span style="color: #000084; font-weight: bold;">xsl</span>:<span style="color: #000084; font-weight: bold;">value-of</span> select=<span style="color: #0000ff;">"</span><span style="color: #0000ff;">title</span><span style="color: #0000ff;">"</span><span style="color: #7f0055;">/&gt;</span><span style="color: #7f0055;">&lt;/</span><span style="color: #7f0055;">td</span><span style="color: #7f0055;">&gt;</span>
+        <span style="color: #7f0055;">&lt;</span><span style="color: #7f0055;">td</span><span style="color: #7f0055;">&gt;</span><span style="color: #7f0055;">&lt;</span><span style="color: #000084; font-weight: bold;">xsl</span>:<span style="color: #000084; font-weight: bold;">value-of</span> select=<span style="color: #0000ff;">"</span><span style="color: #0000ff;">artist</span><span style="color: #0000ff;">"</span><span style="color: #7f0055;">/&gt;</span><span style="color: #7f0055;">&lt;/</span><span style="color: #7f0055;">td</span><span style="color: #7f0055;">&gt;</span>
+      <span style="color: #7f0055;">&lt;/</span><span style="color: #7f0055;">tr</span><span style="color: #7f0055;">&gt;</span>
+      <span style="color: #7f0055;">&lt;/</span><span style="color: #000084; font-weight: bold;">xsl</span>:<span style="color: #000084; font-weight: bold;">for-each</span><span style="color: #7f0055;">&gt;</span>
+    <span style="color: #7f0055;">&lt;/</span><span style="color: #7f0055;">table</span><span style="color: #7f0055;">&gt;</span>
+  <span style="color: #7f0055;">&lt;/</span><span style="color: #7f0055;">body</span><span style="color: #7f0055;">&gt;</span>
+  <span style="color: #7f0055;">&lt;/</span><span style="color: #7f0055;">html</span><span style="color: #7f0055;">&gt;</span>
+<span style="color: #7f0055;">&lt;/</span><span style="color: #000084; font-weight: bold;">xsl</span>:<span style="color: #000084; font-weight: bold;">template</span><span style="color: #7f0055;">&gt;</span> 
+
+<span style="color: #7f0055;">&lt;/</span><span style="color: #000084; font-weight: bold;">xsl</span>:<span style="color: #000084; font-weight: bold;">stylesheet</span><span style="color: #7f0055;">&gt;</span></pre>
+</blockquote>
+This is, at least in my opinion, a mighty long piece of code for such a small thing. Using a stack-based approach similar to Forth, one could make the above look like:
+<blockquote>
+<pre>: ~/
+  "My CD Collection" /h2
+    "Title" "Artist" . ( /th ) "#9acd32" @bgcolor /tr
+    ~catalog/cd { $ ~title # ~artist # . ( /td ) /tr } .
+  "1" @border /table
+/body /html ;</pre>
+</blockquote>
+The semantics of this language use two elements: a stack of output node sets and a stack of input node sets. It still works based on words:
+<blockquote>
+<table border="0">
+<tbody>
+<tr>
+<td><strong>Word </strong></td>
+<td><strong>Semantics </strong></td>
+<td><strong>XSLT Equivalent </strong></td>
+</tr>
+<tr>
+<td><span style="font-family: courier new,courier;">"foo"
+</span></td>
+<td>Pushes the text node "foo" on top of the output stack.</td>
+<td>Raw text</td>
+</tr>
+<tr>
+<td><span style="font-family: courier new,courier;">/foo
+</span></td>
+<td>Pops the top of the output stack and replaces it with an element named "foo" containing all the elements that were in the popped node set.</td>
+<td><span style="font-family: courier new,courier;">&lt;foo&gt;&lt;/foo&gt;</span></td>
+</tr>
+<tr>
+<td><span style="font-family: courier new,courier;">@foo
+</span></td>
+<td>Pops the top of the output stack, then adds an attribute named "foo" containing the text representation of all the elements in the popped node set o the new top of the output stack.</td>
+<td><span style="font-family: courier new,courier;">foo=</span></td>
+</tr>
+<tr>
+<td><span style="font-family: courier new,courier;">~foo
+</span></td>
+<td>Pops the top of the input stack and pushes any of its contents that match the XPath "foo".</td>
+<td><span style="font-family: courier new,courier;">select=""</span></td>
+</tr>
+<tr>
+<td><span style="font-family: courier new,courier;">$
+</span></td>
+<td>Duplicate the top of the input stack.</td>
+<td>Automatic</td>
+</tr>
+<tr>
+<td><span style="font-family: courier new,courier;">.
+</span></td>
+<td>Concatenate the top two output node sets into one.</td>
+<td>Automatic</td>
+</tr>
+<tr>
+<td><span style="font-family: courier new,courier;">{ }
+</span></td>
+<td>Pops the top of the input stack, pushes an empty node set onto the output stack. For every node in the popped node set, pushes that node on the input stack and executes the code in brackets, adding an implicit . at the end of that code.</td>
+<td><span style="font-family: courier new,courier;">xsl:for-each</span></td>
+</tr>
+<tr>
+<td><span style="font-family: courier new,courier;">( ) </span></td>
+<td>Same as <span style="font-family: courier new,courier;">{ }</span>, but pops from the output stack instead.</td>
+<td>XSLT 2.0 only.</td>
+</tr>
+<tr>
+<td><span style="font-family: courier new,courier;">#</span></td>
+<td>Pops the top of the input stack and pushes its text value to the top of the output stack.</td>
+<td><span style="font-family: courier new,courier;">xsl:value-of</span></td>
+</tr>
+<tr>
+<td><span style="font-family: courier new,courier;">: ~foo ; </span></td>
+<td>Defines a template that matches the pattern "foo".</td>
+<td><span style="font-family: courier new,courier;">xsl:template</span></td>
+</tr>
+<tr>
+<td><span style="font-family: courier new,courier;">$:</span></td>
+<td>Pops the top of the input stack, pushes an empty node set onto the output stack. Then, pushes every element of the popped node set that matches an existing template onto the input stack and runs that template, then concatenates the top two output node sets.</td>
+<td><span style="font-family: courier new,courier;">xsl:apply-templates</span></td>
+</tr>
+</tbody></table>
+</blockquote>
+This shortens the resulting transform script, while reducing its readability (now, the generated XML is not "obviously present" in the script, but rather implied by the sequence of words that construct it).
+
+If you remember the first example from <a href="http://nicollet.net/blog/php/18-xslt-template">this earlier article</a>, you could rewrite it as such:
+<blockquote>
+<pre>: ~/    $: /ul ;
+: ~file ~@name # /p /li ;
+: ~dir  $ ~@name # /p $: /ul . /li ;</pre>
+</blockquote>
+When you're careful, you can make out the meaning of this. However, it's harder than with the original:
+<blockquote>
+<pre style="background: #ffffff none repeat scroll 0% 50%; color: #000000;"><span style="color: #7f0055;">&lt;</span><span style="color: #000084; font-weight: bold;">xsl</span>:<span style="color: #000084; font-weight: bold;">template</span> match=<span style="color: #0000ff;">"</span><span style="color: #0000ff;">dir</span><span style="color: #0000ff;">"</span><span style="color: #7f0055;">&gt;</span>
+  <span style="color: #7f0055;">&lt;</span><span style="color: #7f0055;">li</span><span style="color: #7f0055;">&gt;</span>
+    <span style="color: #7f0055;">&lt;</span><span style="color: #7f0055;">p</span><span style="color: #7f0055;">&gt;</span><span style="color: #7f0055;">&lt;</span><span style="color: #000084; font-weight: bold;">xsl</span>:<span style="color: #000084; font-weight: bold;">value-of</span> select=<span style="color: #0000ff;">"</span><span style="color: #000084; font-weight: bold;">@</span><span style="color: #0000ff;">name</span><span style="color: #0000ff;">"</span><span style="color: #7f0055;">/&gt;</span><span style="color: #7f0055;">&lt;/</span><span style="color: #7f0055;">p</span><span style="color: #7f0055;">&gt;</span>
+    <span style="color: #7f0055;">&lt;</span><span style="color: #7f0055;">ul</span><span style="color: #7f0055;">&gt;</span><span style="color: #7f0055;">&lt;</span><span style="color: #000084; font-weight: bold;">xsl</span>:<span style="color: #000084; font-weight: bold;">apply-templates</span><span style="color: #7f0055;">/&gt;</span><span style="color: #7f0055;">&lt;/</span><span style="color: #7f0055;">ul</span><span style="color: #7f0055;">&gt;</span>
+  <span style="color: #7f0055;">&lt;/</span><span style="color: #7f0055;">li</span><span style="color: #7f0055;">&gt;</span>
+<span style="color: #7f0055;">&lt;/</span><span style="color: #000084; font-weight: bold;">xsl</span>:<span style="color: #000084; font-weight: bold;">template</span><span style="color: #7f0055;">&gt;</span> 
+
+<span style="color: #7f0055;">&lt;</span><span style="color: #000084; font-weight: bold;">xsl</span>:<span style="color: #000084; font-weight: bold;">template</span> match=<span style="color: #0000ff;">"</span><span style="color: #0000ff;">file</span><span style="color: #0000ff;">"</span><span style="color: #7f0055;">&gt;</span>
+  <span style="color: #7f0055;">&lt;</span><span style="color: #7f0055;">li</span><span style="color: #7f0055;">&gt;</span><span style="color: #7f0055;">&lt;</span><span style="color: #7f0055;">p</span><span style="color: #7f0055;">&gt;</span><span style="color: #7f0055;">&lt;</span><span style="color: #000084; font-weight: bold;">xsl</span>:<span style="color: #000084; font-weight: bold;">value-of</span> select=<span style="color: #0000ff;">"</span><span style="color: #000084; font-weight: bold;">@</span><span style="color: #0000ff;">name</span><span style="color: #0000ff;">"</span><span style="color: #7f0055;">/&gt;</span><span style="color: #7f0055;">&lt;/</span><span style="color: #7f0055;">p</span><span style="color: #7f0055;">&gt;</span><span style="color: #7f0055;">&lt;/</span><span style="color: #7f0055;">li</span><span style="color: #7f0055;">&gt;</span>
+<span style="color: #7f0055;">&lt;/</span><span style="color: #000084; font-weight: bold;">xsl</span>:<span style="color: #000084; font-weight: bold;">template</span><span style="color: #7f0055;">&gt;</span> 
+
+<span style="color: #7f0055;">&lt;</span><span style="color: #000084; font-weight: bold;">xsl</span>:<span style="color: #000084; font-weight: bold;">template</span> match=<span style="color: #0000ff;">"</span><span style="color: #0000ff;">/</span><span style="color: #0000ff;">"</span><span style="color: #7f0055;">&gt;</span>
+  <span style="color: #7f0055;">&lt;</span><span style="color: #7f0055;">ul</span><span style="color: #7f0055;">&gt;</span><span style="color: #7f0055;">&lt;</span><span style="color: #000084; font-weight: bold;">xsl</span>:<span style="color: #000084; font-weight: bold;">apply-templates</span><span style="color: #7f0055;">/&gt;</span><span style="color: #7f0055;">&lt;/</span><span style="color: #7f0055;">ul</span><span style="color: #7f0055;">&gt;</span>
+<span style="color: #7f0055;">&lt;/</span><span style="color: #000084; font-weight: bold;">xsl</span>:<span style="color: #000084; font-weight: bold;">template</span><span style="color: #7f0055;">&gt;</span></pre>
+</blockquote>
+Parsing the language is extremely easy: a word is either a string literal or a sequence of non-whitespace characters, a template is defined as <span style="font-family: courier new,courier;">: ~foo ... ;</span> and a program is a sequence of templates. Of course, extracting the loops and conditionals may require some additional effort, but it remains extremely easy to get done. Writing a virtual machine is equally easy as long as XML extraction and manipulation functions for node sets are available. Even static analysis (of stack depth) is quite simple because of the requirement that every template and loop pushes and pops a fixed number of elements from the stack : a linear-time left-to-right traversal can determine whether the number of elements pushed and popped corresponds to the requirements, and generate code that runs the program. If the program outputs the file directly, an optimization pass can be made with a slightly increased difficulty (involving, mostly, executing the individual templates with slightly different semantics) in order to generate the output file linearly.

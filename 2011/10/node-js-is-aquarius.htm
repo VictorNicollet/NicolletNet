@@ -1,0 +1,31 @@
+@title Node.js is Aquarius
+@draft
+
+<img class="aligncenter size-full wp-image-2549" title="ecluse" src="http://www.nicollet.net/wp-content/uploads/2011/10/ecluse.png" alt="" width="675" height="100" />
+
+@<a href="http://teddziuba.com/2011/10/node-js-is-cancer.html" target="_blank">Ted Dziuba</a> : your article on Node.js being cancer has brought many angry nerds with pitchforks to your door. You do make good points, and the best opinion is not one that everyone blindly agrees with, but one that gets everyone thinking — hopefully before they speak.
+<h3>Scalability</h3>
+I, too, would take issue with a statement like «Node.js is scalable because it is non-blocking» though not the same issue as you took. Being <em>non-blocking</em> does not help with <em>scalability</em> at all. Scalability is about how easily your system administrator can add a new machine to your web farm to soak up a heavier load than usual, and it's all about two things:
+<ul>
+	<li><strong>Can you run multiple copies of your software in parallel</strong>? In-application sharing of data makes this harder. Some Java servers store the entire relevant state in application memory, so scaling is impossible. PHP stores session files on the disk by default, so scaling is only possible with server affinity (the same user always gets sent to the same server). A clean server with no in-application data sharing is easily duplicated, regardless of the language.</li>
+	<li><strong>Is there a shared resource with sequential access</strong>? If you run a hundred thousand web servers, but all of them have to read-write the same physical drive, then your application will be no faster than that read-write speed. If you access a database that involves heavy locking, then your application will be no faster than the locking sequence can allow.</li>
+</ul>
+None of these are in any way improved or even affected by non-blocking semantics.
+
+Node.js improves <em>performance</em> when serving multiple concurrent requests. It makes it no easier to scale, but it helps delay the point where scaling becomes necessary.
+
+The typical explanation of how this happens is that if serving a request uses 10ms of processing things on the server («Work») and 10ms of waiting for database requests to complete («Wait»), then the ideal web server should be able to serve two concurrent requests in 10ms each by overlapping the processing time of one request with the database wait time of another. This is a pretty nice and simple idea, which is why everyone has been doing it for ages. The main difference is how it is done.
+
+What the traditional UNIX world did is pop enough processes — that is the Unix answer to every problem, <a href="http://en.wikipedia.org/wiki/Fork_bomb#Defusing" target="_blank">including having too many processes around</a>. If your Work-time is 10ms and your Wait-time is 40ms, then by allowing up to four processes you are effectively recycling all the wait-time in a high concurrent load situation. This is why every CGI- or FastCGI-enabled web server in existence provides a configuration entry for the number of concurrent child processes.
+
+Node.js does the same. With that same Wait/Work ratio of 40/10, Node.js will be serving four concurrent requests at the same time, because it cannot create processing time out of thin air.
+
+What Node.js brings to the table is an architecture that performs, at the server level, what the traditional UNIX world did at the kernel level: scheduling. Whether this approach is significantly faster than a properly configured FastCGI setup is still a matter of debate, and I believe the answer here is simply that, as long as the Wait/Work time ratio does not push the number of concurrent processes higher than what the available memory allows, there will be no significant difference between FastCGI and Node.js in terms of blocking.
+<h4>The UNIX Way</h4>
+I once agreed with your stated opinion on the matter, but I got better. Here's the thing: today, being an HTTP server is no more of a «responsibility» than reading from STDIN and writing to STDOUT. Make no mistake: being a production, internet-facing HTTP server <em>is</em> a responsibility, but that is not what Node.js is (or should be) trying to achieve.
+
+Consider this: the production, internet-facing HTTP server must communicate with the actual application using one protocol or another. CGI is one such protocol, FastCGI is another, and HTTP is yet another — the fact that the same protocol is used for serving requests over the internet is not  a problem, it is actually a benefit because communicating through HTTP is a solved problem with a clean API in almost every single language out there.
+
+There is now something I would jokingly call «The REST Way» which follows in the tracks of the UNIX Way in a cloudy fashion : small applications performing one task — dispatching internet requests, constructing responses, persistent storage, caching — running on any number of servers in any number of locations, and connected to each other through HTTP requests. In an nginx-Node.js-CouchDB stack, nginx is the dispatcher, Node.js constructs responses, and CouchDB provides persistent storage, and everyone «speaks» HTTP in the same way that Unix processes «speak» STDIN/STDOUT.
+
+<small>Article image &copy; Patrick Janicek &mdash; <a href="http://www.flickr.com/photos/marsupilami92/5943144941/">Flickr</a></small>

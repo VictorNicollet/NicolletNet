@@ -1,0 +1,20 @@
+@title DOM removal and events
+@draft
+
+Let's try something... go to a page with jQuery enabled (<a href="http://nicollet.net/files/articles/jstut/" target="_blank">such as this one</a>), and run the following code in your Javascript debugger console (such as Firebug):
+<pre style="padding-left: 30px;"><span>var button =
+  $('&lt;button&gt;Click me&lt;/button&gt;')
+  .click(function(){alert('Clicked!')})
+  .appendTo('body')</span></pre>
+In case you were wondering, this creates a brand new button, causes it to display a "Clicked!" message box when it's clicked, and appends it to the document you are viewing.
+
+Click on the button that just appeared : the message box appears. Not very surprising.
+
+Now, run the following code on the same page :
+<pre style="padding-left: 30px;"><span>$('body').html('');
+button.appendTo('body')</span></pre>
+As expected, everything on the page, including the button, disappears. However, the button is still referenced by the <code>button</code> variable, so it sticks around and we can append it back to the document. And indeed, it does appear on the page.
+
+Click on the button again. This time, no message box appears.
+
+I honestly have no idea <strong>why</strong>.

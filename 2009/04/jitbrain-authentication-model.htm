@@ -1,0 +1,33 @@
+@title JITBrain - Authentication Model
+@draft
+
+Posted a new article: <a href="http://www.nicollet.net/jitbrain/authentication-model/" target="_blank">Authentication Model</a>. Also made some retroactive modifications to take into account new details about <strong>DomainConfig::Url</strong>.
+
+The next steps are:
+<ul>
+	<li>Handling the interruption in the user action created by the login requirements, so that the user activity is resumed after the process.</li>
+	<li>Resetting the user password.</li>
+	<li>Applying some lipstick to the login page to make it look better, and include some JavaScript.</li>
+</ul>
+JITBrain contains 843 lines of PHP so far.
+<blockquote>
+<pre>   20 config/db.php
+   48 config/domain.php
+   17 config/error.php
+   45 controllers/do-login.php
+   66 controllers/do-signup.php
+    3 controllers/index.php
+   14 controllers/login.php
+   70 models/authentication.php
+   77 objects/lazy.php
+  115 utils/db.php
+   67 utils/error.php
+   52 utils/pervasive.php
+   27 utils/redirect.php
+   40 utils/request.php
+   40 utils/session.php
+   67 views/loginpage.php
+   17 views/plainpage.php
+   58 views/twocolform.php
+  843 total</pre>
+</blockquote>

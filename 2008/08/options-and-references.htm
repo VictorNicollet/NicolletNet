@@ -1,0 +1,68 @@
+@title Options and References
+@draft
+
+<h2>The problem</h2>
+Option semantics and reseatable reference semantics are orthogonal. C++ does not implement all combinations:
+<table border="0">
+<tbody>
+<tr>
+<td></td>
+<td align="center"><em>Reseatable</em></td>
+<td align="center"><em>Not reseatable </em></td>
+</tr>
+<tr>
+<td align="center"><em>Optional </em></td>
+<td align="center">The reference can be changed to something else, including nothing.
+
+C++ :<span style="color: #999999;"> </span><span style="font-family: courier new,courier;"><span style="color: #999999;">T*</span> or <span style="color: #999999;">boost::optional&lt;T&amp;&gt;</span></span>
+Objective Caml : <span style="font-family: courier new,courier; color: #999999;">'a option ref </span></td>
+<td>The reference cannot be changed, but it may reference nothing.
+<p align="center">C++ :<span style="font-family: courier new,courier;"> <span style="color: #999999;">T* const</span> or <span style="color: #999999;">const boost::optional&lt;T&amp;&gt;</span></span>
+Objective Caml :<span style="color: #999999;"> </span><span style="font-family: courier new,courier; color: #999999;">'a option </span></p></td>
+</tr>
+<tr>
+<td align="center"><em> Not Optional
+</em></td>
+<td align="center">The reference can be changed to something else, but not nothing.
+
+C++ : <strong>not implemented.</strong>
+Objective Caml : <span style="color: #999999;">'a ref </span></td>
+<td align="center">The reference cannot change, and always references something.
+
+C++ :<span style="color: #999999;"> T&amp;</span>
+Objective Caml : <span style="color: #999999;">'a </span></td>
+</tr>
+</tbody></table>
+A common issue in C family languages is that option semantics are usually intermingled with reseatable reference semantics (be it pointers in C and C++, or typical references in Java and C#).
+<strong></strong>
+<h2><strong>The solution</strong></h2>
+C++ provides a simple compile-time way of ensuring that a given referenced object exists: reference types have no option semantics and can therefore be used to guarantee that the manipulated value is fixed. Therefore, it's possible to propose an optional type based on pointers, which verifies that the manipulated object is never null.
+<blockquote>
+<pre style="background: #ffffff none repeat scroll 0% 50%; color: #000000;"><span style="color: #000084; font-weight: bold;">template</span> &lt;<span style="color: #000084; font-weight: bold;">typename</span> T&gt; <span style="color: #000084; font-weight: bold;">class</span> safe_ptr
+{
+    T* data;
+<span style="color: #000084; font-weight: bold;">public</span>:
+    <span style="color: #000084; font-weight: bold;">explicit</span> safe_ptr(T&amp; i) : data(&amp;i) {}
+    safe_ptr &amp;<span style="color: #000084; font-weight: bold;">operator</span> =(T&amp; i) { data = i; } 
+
+    <span style="color: #808080;">// Default copy and assignment semantics are correct</span> 
+
+    T&amp; <span style="color: #000084; font-weight: bold;">operator</span> *() <span style="color: #000084; font-weight: bold;">const</span> { <span style="color: #000084; font-weight: bold;">return</span> *data; }
+    T* <span style="color: #000084; font-weight: bold;">operator</span>-&gt;() <span style="color: #000084; font-weight: bold;">const</span> { <span style="color: #000084; font-weight: bold;">return</span>  data; } 
+
+    <span style="color: #000084; font-weight: bold;">bool</span> <span style="color: #000084; font-weight: bold;">operator</span> == (<span style="color: #000084; font-weight: bold;">const</span> safe_ptr&amp; other) <span style="color: #000084; font-weight: bold;">const</span> { <span style="color: #000084; font-weight: bold;">return</span> data == other.data; }
+    <span style="color: #000084; font-weight: bold;">bool</span> <span style="color: #000084; font-weight: bold;">operator</span> != (<span style="color: #000084; font-weight: bold;">const</span> safe_ptr&amp; other) <span style="color: #000084; font-weight: bold;">const</span> { <span style="color: #000084; font-weight: bold;">return</span> data != other.data; }
+};</pre>
+</blockquote>
+Example usage:
+<blockquote>
+<pre style="background: #ffffff none repeat scroll 0% 50%; color: #000000;">std::<span style="color: #000084; font-weight: bold;">string</span> a = <span style="color: #0000ff;">"</span><span style="color: #0000ff;">A</span><span style="color: #0000ff;">"</span>, b = <span style="color: #0000ff;">"</span><span style="color: #0000ff;">B</span><span style="color: #0000ff;">"</span>; 
+
+safe_ptr&lt;std::<span style="color: #000084; font-weight: bold;">string</span>&gt; p = a;
+std::<span style="color: #000084; font-weight: bold;">cout</span> &lt;&lt; *p; <span style="color: #808080;">// Outputs 'A'</span> 
+
+p = b;
+std::<span style="color: #000084; font-weight: bold;">cout</span> &lt;&lt; *p; <span style="color: #808080;">// Outputs 'B'</span></pre>
+</blockquote>
+<h2>The issues</h2>
+This solution is not perfect. First, it fails to interact correctly with inheritance, so a safe pointer to a derived class cannot be implicitly converted to a safe pointer to a base class, and the conversion has to be done manually and explicitly using <span style="font-family: courier new,courier;">safe_ptr&lt;Base&gt;( *ptr_to_derived )</span>. Second, it also fails to provide iterator semantics, although that would be expected of a mutable pointer type. And third, it relies on the user's ability not to dereference null pointers to pass them to the class' constructor.

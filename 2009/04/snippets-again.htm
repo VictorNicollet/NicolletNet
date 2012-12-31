@@ -1,0 +1,14 @@
+@title Snippets Again!
+@draft
+
+Jeff Atwood has <a href="http://www.codinghorror.com/blog/archives/001257.html" target="_blank">expressed on his blog</a> what he feels are the advantages and disadvantages of copying code from the web, which sound a bit like <a href="http://www.nicollet.net/2009/03/snippet-sites/" target="_blank">my old rant on snippet sites</a>.
+
+I wish he had discussed the advantages and disadvantages of <em>pasting</em> code to the web, but he only tangentially noted it:
+<blockquote>The programmer's ego may drive her to only publish code that she believes is of sufficient quality.</blockquote>
+And again, my old idea on snippet-oriented design would apply: if you strive to write your code so that it can be published on the web, your ego will drive you to write code of sufficient quality. Ego works both ways, even if not with the same magnitude.
+
+Aside from that, using a GUID could be an interesting idea for finding modified versions of a certain bit of code.
+
+Another, which would involve a less distributed approach, would be to use an existing web mechanism: trackbacks. If you post a code snippet on your website, and your site software supports trackbacks, you can merely include a link to a common snippet sharing server (say, <a href="http://www.snpts.com/">http://www.snpts.com/</a>). The trackback would ping the snippet server, who would crawl the pinging post in response, extract the code, and store a link. That server could then use search algorithms to determine similar code, so you could literally paste a snippet you found on the web onto a search form, and get a list of blog entries that entered similar code. While globally harder than merely adding a GUID (that server has to be built), it's easier on the people posting the code because they can just add a link to the snippet site (and how long before "post to snpts.com" becomes a standard button among "digg" and "twitter" ones?)
+
+But the real question is, does snippet re-post happen often enough to warrant such an approach? How often does a copy-paster upload the corrected version of his code, or even correct it at all? Would anyone bother with the GUID if most of the time there is only one copy, perhaps two or three?

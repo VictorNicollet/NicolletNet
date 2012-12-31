@@ -1,0 +1,31 @@
+@title The joys of JavaScript Scoping
+@draft
+
+The identifier strategy of Objective Caml is fairly simple: to find out what a given identifier references, one simply has to climb back up in the syntax tree until they encounter a binding expression that binds that identifier. There are many binding expressions, but all of them are explicit.
+
+For types:
+<pre style="padding-left: 30px;">type identifier = ...
+class type identifier = object ... end
+class identifier = object ... end</pre>
+For classes:
+<pre style="padding-left: 30px;">class identifier = object ... end</pre>
+For modules:
+<pre style="padding-left: 30px;">module Identifier
+functor(Identifier) = ...</pre>
+For constructors:
+<pre style="padding-left: 30px;">type ... = Identifier of ... | ...</pre>
+For values:
+<pre style="padding-left: 30px;">let <em>pattern</em>(identifier) = ...
+object (identifier) ... end
+object ... inherit ... as identifier ... end
+match ... with <em>pattern</em>(identifier) -&gt; ...
+function <em>pattern</em>(identifier) -&gt; ...</pre>
+The scope of a binding expression is either "everything below" or "everything within a sub-expression" depending on the rule, both of which are usually implemented so that an identifier is only used after it's defined (in terms of left-right, top-bottom reading of the source code) with the notable exception of mutually recursive constructs and inheritance.
+
+JavaScript, being a dynamic language, takes a more dynamic approach to identifiers. Scopes are represented at runtime as objects, with variables being properties of the scope objects. Every line of code, when executed, has access to a stack of scope objects where it can look for a given identifier.
+
+In practice, the scope rules are designed in a somewhat similar way to those of ML: when you define a variable with 'var', that variable is in scope until the end of the current lexical scope, and when a function is defined it carries with it a copy of the scope it was defined in (that is, a classic lexical closure). Two unusual things do happen:
+
+First, the 'this' variable behaves in an unusual manner: unlike Objective Caml where 'self' (or whatever name you use) is just a normal identifier, 'this' is an implicit argument of every function. This can be unsettling at first glance, because functions will appear not to include 'this' in their lexical closure, but quite easy to understand once you see it as an additional, implicit argument. In essence, when you write "obj.func(arg)", the function automatically gains the value of 'obj' as the value of "this". When you write "new func(arg)", the function automatically gains a brand new object as the value of "this". In other situations, 'this' is the global scope object (whatever that means in a particular implementation).
+
+Second, the global scope has unusual behavior: instead of being included as-is inside functions lexical closures, it is included as a reference. This means that if you add an identifier to the global scope, then any functions will see that idenfier, including those functions that were defined before it. The purpose of this is to implement mutually recursive functions (the other way to do so is to use object member functions).

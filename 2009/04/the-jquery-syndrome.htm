@@ -1,0 +1,50 @@
+@title The jQuery Syndrome
+@draft
+
+<a href="http://jquery.com/" target="_blank">jQuery</a> is a JavaScript library that makes the portable manipulation of the DOM easier. It provides primitives for selecting DOM elements using a simple CSS-similar syntax (courtesy of the <a href="http://sizzlejs.com/" target="_blank">Sizzle selector library</a>), and functions for applying effects to the selected elements.
+
+A few typical examples:
+<blockquote>
+<pre><span style="color: #008000;">// Show all paragraphs on the page, even hidden ones.</span>
+$('p').show();
+
+<span style="color: #008000;">// Select all cells with class "important" within table "results"
+// and make their background red</span>
+$('table#results td.important').css({background:'red'});
+
+<span style="color: #008000;">// Wait until page has loaded, then find all spans with class "mail", 
+// replace any '[nospam]' in their contents by '@' and add 'mailto' links
+</span>$(function(){
+  $('span.mail').each(function(){
+    var mail = $(this).html().replace('[nospam]', '@');
+    $(this).html('&lt;a href="mailto:'+mail+'"&gt;'+mail+'&lt;/a&gt;');
+  });
+});</pre>
+</blockquote>
+This ability to add dynamic behavior to elements at will by a select-and-apply process is extremely useful. For the HTML writer, adding behavior becomes as easy as adding a class to an element (using the above code, all you need to turn a piece of text into a mail is to put a <em>span class="mail"</em> around it, no additional JavaScript required).
+
+Yet, this approach does not scale well. Attempting to approach any non-trivial problem with a select-and-apply architecture inevitably leads to a heap of annoying problems.
+
+The jQuery paradigm is $(target).operation(configuration); which implies that the dynamic data is within the target. This is what happens, for instance, in the mail rewriting example above: the address to be rewritten appears in the <em>DOM</em>, not in the JavaScript. This is one of the reasons why jQuery is so concise: most of the data is not specified as part of JavaScript code.
+
+The problem appears when the data structures you manipulate are complex, because accessing data within the DOM is orders of magnitude harder than manipulating JavaScript data even with jQuery (and is utterly unacceptable with raw JavaScript). As long as your data is just a piece of visible text, or  the DOM structure itself, you will be fine. But as soon as you need additional data and invisible fields, you will start storing that data in attributes (<em>&lt;a name="your data here"&gt;&lt;/a&gt;</em>) and the overhead of accessing it will kill both your productivity and your page's performance.
+
+It also appears when the behavior involves several interacting pieces on the page. Independent manipulation of pieces poses no problem in the jQuery paradigm, but what happens if two parts of a script attempt concurrent manipulation of a single piece?
+
+Consider a very simple example that contains an image with a "hide" button that hides the image, a "show" button that shows the image, and a "delete" button that deletes the image. We want the hide and show effects to involve some animation. No button should be pressed while an animation is playing, so it is necessary to have all buttons be disabled whenever an animation starts, and then enable only the acceptable buttons when the animation ends. This gets increasingly complex as time passes, unless you simply use a lock: set the lock variable to true when the animation starts, set the lock variable to false when the animation ends, and have all buttons do nothing if the lock variable is set to true.
+
+<strong>What I call the jQuery syndrome is the naive approach to making a page dynamic by using the select-apply operation on every item that is meant to be dynamic, and noticing a few days later that the data is so hard to extract, or the interactions so hard to synchronize, that you will need to refactor everything into a more scalable architecture.</strong>
+
+My preferred approach to jQuery-based architecture, as detailed in an upcoming JITBrain article, is to have a central JavaScript object that controls the data for what is being displayed (usually one for every independent piece of your page). This object has a <em>print()</em> function that constructs or updates the corresponding DOM elements on the page and binds their events to its own member functions.
+
+So, a typical event (onCreate, onClick...) happens as follows:
+<blockquote>
+<pre>function onShowButtonClick()
+  update data
+  this.print() 
+
+function print()
+  update DOM from data
+  bind show button click to this.onShowButtonClick</pre>
+</blockquote>
+Of course, in practice there will be a lot more binding going on, since every button has to be bound to an action. Then, depending on how much time you are ready to spend on the matter, you can implement your print function as a "delete everything, replace with new values" or as an incremental update of the DOM areas that do not match the internal data.

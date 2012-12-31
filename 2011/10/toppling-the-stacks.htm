@@ -1,0 +1,40 @@
+@title Toppling the Stacks
+@draft
+
+<img class="aligncenter size-full wp-image-2554" title="buoy" src="http://www.nicollet.net/wp-content/uploads/2011/10/buoy.png" alt="" width="675" height="100" />
+
+Everyone agrees that CSS is an overly verbose stream of boiling pain, but not everyone agrees on how it should be solved. <a href="http://sass-lang.com/" target="_blank">Sass</a> is one such solution — a language extension that supports standard CSS code natively, but provides several tricks that make the maintenance of stylesheets easier, not least of which being the ability to nest selectors:
+<pre style="padding-left: 30px;">.profile {
+  color: black;
+  .name { font-weight: bold; }
+}</pre>
+A compiler turns the above into standard CSS:
+<pre style="padding-left: 30px;">.profile { color: black; }
+.profile .name { font-weight: bold; }</pre>
+Typical usage of Sass is to write the former by hand, run the compiler, and move the resulting CSS file to wherever the browser can see it.
+
+I successfully set up Sass on my development machine and uploaded the generated CSS to source control. This worked correctly for a few weeks.
+
+Then came the time when I had to set up Sass on the deployment server, because not everyone on the team had the time or the operating system to set up Sass on their computer. It burst into flames almost immediately with an arcane stack trace:
+<pre style="padding-left: 30px;">.../rubygems/defaults.rb:40:in `exist?': Insecure operation - exist? (SecurityError)
+    from .../rubygems/defaults.rb:40:in `default_path'
+    from .../rubygems.rb:752:in `path'
+    from .../rubygems/source_index.rb:59:in `installed_spec_directories'
+    from .../rubygems.rb:1051:in `source_index'
+    from .../rubygems.rb:243:in `activate_dep'
+    from .../rubygems.rb:236:in `activate'
+    from .../rubygems.rb:1307:in `gem'
+    from /usr/local/bin/sass:18</pre>
+I posted an issue to the GitHub issues tracker for Sass. <a href="https://github.com/nex3/sass/issues/184">The answer was underwhelming</a> :
+<blockquote>This looks like a Rubygems issue, not a Sass issue.</blockquote>
+And the issue was closed.
+
+Let me set things straight here: when a Sass user cannot use Sass, <strong>it is a Sass issue</strong>. Yes, the underlying <em>technical cause</em> of the issue is probably somewhere inside that «Rubygems» thing I sincerely know nothing about, or maybe it lies in the Debian package for it, or maybe I'm just setting up my environment variables badly and just need a clean diagnosis to fix that up, but <strong>Sass is not working</strong>. Even if you have absolutely no personal responsibility for the issue, pointers such as «ask about this on channel X or mailing list Y» are most welcome.
+
+Now, I don't expect <a href="https://github.com/nex3" target="_blank">nex3</a> to provide me with free support. This is an open source project, and there's nothing unusual or wrong with having no technical support on open source projects. In fact, given the size of the technology stack sitting under Sass, this was probably the best thing to do in terms of project strategy — <em>only cater to users who can get the underlying stack working on their own</em>.
+
+This is not a matter of fairness or ethics, but one of incentives. I have no need to keep debugging Sass &mdash; the path of least resistance is precisely to replace Sass with an equivalent working tool. Rewriting a handful of Sass rules over to <a href="http://lesscss.org/">Less CSS</a> is easier for me than tracking down bugs in the Debian packaging of «Rubygems». And the deployment server runs Less without a hitch.
+
+I shudder to think what would have happened had I locked myself into more esoteric Sass language features.
+
+<small>Article image &copy; yimmy149 &mdash; <a href="http://www.flickr.com/photos/yimmy149/418164438/">Flickr</a></small>

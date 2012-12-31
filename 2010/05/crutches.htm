@@ -1,0 +1,35 @@
+@title Crutches
+@draft
+
+My <a href="http://www.nicollet.net/2010/03/why-i-gave-up-on-the-zend-framework/" target="_blank">Zend Framework article</a> from last month brought in several quite interesting comments. One of them in particular caught my attention:
+<blockquote>It sounds like the issue is you have a problem developing without a crutch, your IDE. I’m not a CLI-purist/anti-IDE nazi, but until I see Visual Studio for PHP that runs on Linux and OSX I’ll stick to using vim and Textmate. I have amazing productivity and so does my team; none of use crutches.</blockquote>
+What I find personally interesting about this comment is that it matches the way I used to think about this matter less than a year ago.
+
+My programming career actually started when I discovered Objective Caml back in 2003. It was a fine language, but the closest it had to an IDE at the time was Tuareg, an emacs mode. So I started using emacs a lot. And I used a terminal, because I was on a windows computer and used PuTTY to access a Solaris server, which meant I never touched the mouse while developing. Auto-completion was not important: I named my functions so that I could easily find out what function I wanted to call, and I could always refer to the HTML documentation if I needed a standard library function. No debugger was necessary: whatever bugs the static type system would not detect were usually fairly self-explanatory so it was a simple matter of opening the right file, staring at the right function for a minute, and the issue became obvious.
+
+Then, I started PHP as an afterthought in 2006, and many of my old habits carried over. I was using an emacs mode for editing PHP, uploading my modifications to a test FTP server («compiling») every hour to check. Even though PHP has a dynamic type system, I remained anal about variable types, and three years of Objective Caml meant I could handle lots of code without type errors. In short:
+<ul>
+	<li>No auto-completion (I had to remember function names),</li>
+	<li>No local apache server to test my modifications in real-time (even though it was <em>quite</em> fast, I still had to manually upload the files through FTP),</li>
+	<li>No debugger (I had to rely on code-staring and <em>var_dump</em>ing),</li>
+	<li>No swirly red underlining for syntax errors</li>
+</ul>
+Now, all of these managed to get me a lot of nerd cred. Imagine people who are used to testing their code every time they write a new line, meeting someone who can write a thousand lines, weed out a few syntax errors and misspellings, and have a working program ready for use. Or someone who can find an obscure SQL bug by looking at the error message <em>and you didn't even have time to start the debugger</em>.
+
+Working in a harsh environment to improve your skills is fine; it's just like those old Kung Fu movies where the student has to punch a large rock until his fists bleed, and his <em>sifu</em> makes him feel like a failure, until the student knocks out his opponent in a single nonchalant blow because he is not aware of his power.
+
+But there's a time for improving skills and a time for putting those skills to good use. <strong>For me, it was time to move on</strong><em>. </em>And that happened only quite recently: I started using an IDE for PHP in september 2009.
+
+Lack of auto-completion meant I would spend a few minutes correcting typos in my code every time I finished a module. These are not « wrote <em>setFoo</em> instead of <em>changeFoo</em> » mistakes that are corrected by a sane naming convention, but rather « wrote <em>steFoo</em> instead of <em>setFoo </em>» mistakes that are purely unintentional. On average, for an hour of writing code, I spent five minutes correcting these small one-letter mistakes because of the time it took to complete the « run code; notice mistake; open editor; go to error; fix error » loop. It gets even worse when you take into account uppercase letters in file names, that work differently on different platforms. Now that I use auto-completion, this time has been reduced to almost zero.
+
+Lack of auto-completion meant I had to look at the online documentation to determine whether str_foobar was a haystack-needle function or a needle-haystack function. Now I just write the function name and Eclipse tells me.
+
+Command-clicking on a function or class to go to its definition is definitely not necessary. After all, if I'm looking at a call to <em>App_User::register()</em>, I can certainly open up <em>App/User.php</em> by myself and scroll down to the definition of the <em>register</em> function by myself. In fact, in Objective Caml, the code was usually short enough that you could <em>remember </em>where the definitions for all the functions were. But no matter how fast one can do the class-to-filename transform and the look-for-function scrolling, it would be quite surprising if command-clicking wasn't an order of magnitude faster.
+
+Back to the crutch comment: am I really using my IDE as a crutch?
+
+Yes. Definitely. I utterly suck at typing class and function names, so I need a crutch to help me with that. I utterly suck at going to the definition of a class or function by hand—I just can't seem to be clicking fast enough—so I need a crutch to help me with that. I can hop along without my crutches, of course, but it's just not the same.
+
+Or, to phrase it another way:
+<blockquote>It sounds like the issue is you have a problem delivering Pizza without a crutch, your vehicle. I’m not a running-purist/anti-vehicle nazi, but until I see a Toyota that runs in tight downtown streets, I’ll stick to using Nike and Adidas. I have amazing delivery times and so does my team; none of us use crutches.</blockquote>
+I'm happy for your amazing productivty. Think how much more amazing it would be if you squeezed out even more of these non-productive moments in your work day; maybe with crutches.

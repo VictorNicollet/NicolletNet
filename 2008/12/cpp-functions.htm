@@ -1,0 +1,181 @@
+@title Member and Non-Member Functions
+@draft
+
+The C++ language provides two flavors of functions: member functions and non-member functions. A function is something which is used like this:
+<blockquote>
+<pre>result = function(arguments);</pre>
+</blockquote>
+By contrast, a member function is used like this:
+<blockquote>
+<pre>result = object.function(arguments);</pre>
+</blockquote>
+Because of this, it's impossible to use member functions and non-member functions in the same way: where a non-member function can be called on its own (provided that you have the arguments for it), a member function also requires an object on which it is called.
+<h3>The Window Procedure Problem</h3>
+This can be quite confusing to beginners, for instance when defining the window procedure in the Win32 API: this requires defining a non-member function with a certain set of arguments, and then providing a function pointer (referencing that function) to the API for registering it with a window. This usually looks like this:
+<blockquote>
+<pre style="background: #ffffff none repeat scroll 0% 50%; color: #000000;"><span style="color: #000084; font-weight: bold;">LRESULT</span> <span style="color: #000084; font-weight: bold;">CALLBACK</span> MyWndProc(<span style="color: #000084; font-weight: bold;">HWND</span>, <span style="color: #000084; font-weight: bold;">UINT</span>, <span style="color: #000084; font-weight: bold;">WPARAM</span>, <span style="color: #000084; font-weight: bold;">LPARAM</span>)
+{
+  <span style="color: #808080;">// Implementation</span>
+}  
+
+<span style="color: #000084; font-weight: bold;">int</span> APIENTRY <span style="color: #000084; font-weight: bold;">WinMain</span>(<span style="color: #000084; font-weight: bold;">HINSTANCE</span>, <span style="color: #000084; font-weight: bold;">HINSTANCE</span>, <span style="color: #000084; font-weight: bold;">LPSTR</span>, <span style="color: #000084; font-weight: bold;">int</span>)
+{
+    <span style="color: #000084; font-weight: bold;">WNDCLASS</span> wc;  
+
+    wc.lpfnWndProc = (<span style="color: #000084; font-weight: bold;">WNDPROC</span>) MyWndProc;  
+
+    <span style="color: #808080;">// Register the other WNDCLASS properties</span> 
+
+    <span style="color: #000084; font-weight: bold;">RegisterClass</span>(&amp;wc);
+}</pre>
+</blockquote>
+A question that is often asked on beginner forums is, <em>how do I use a member function of my Window C++ class as a window procedure?</em>
+
+This is, of course, impossible. The main reason why it's impossible is that it doesn't make any sense: a window procedure, in the Win32 API, is a procedure that will be called on every window of that window class. By contrast, a user-defined Window C++ class tends to have a "one instance = one window" approach to things, so that even if the same function is called for every window, the object on which it is to be called is different, leading to the question of <em>how those objects are specified to the Win32 API</em>.
+<h3>A New Hope</h3>
+Of course, the user could add the constraint "one window = one Win32 window class", which means that a given window procedure will only ever be called for a single window (the question of whether using a window class to create a single window is an abuse of window classes is best left alone). Then, common sense would imply that a member function could be used as a non-member function as long as the object on which it is called is provided:
+<blockquote>
+<pre style="background: #ffffff none repeat scroll 0% 50%; color: #000000;"><span style="color: #000084; font-weight: bold;">class</span> MyWindowClass
+{
+<span style="color: #000084; font-weight: bold;">public</span>:
+  <span style="color: #000084; font-weight: bold;">LRESULT</span> <span style="color: #000084; font-weight: bold;">CALLBACK</span> WndProc(<span style="color: #000084; font-weight: bold;">HWND</span>, <span style="color: #000084; font-weight: bold;">UINT</span>, <span style="color: #000084; font-weight: bold;">WPARAM</span>, <span style="color: #000084; font-weight: bold;">LPARAM</span>)
+  {
+    <span style="color: #808080;">// Implementation</span>
+  }
+}; 
+
+<span style="color: #000084; font-weight: bold;">int</span> APIENTRY <span style="color: #000084; font-weight: bold;">WinMain</span>(<span style="color: #000084; font-weight: bold;">HINSTANCE</span>, <span style="color: #000084; font-weight: bold;">HINSTANCE</span>, <span style="color: #000084; font-weight: bold;">LPSTR</span>, <span style="color: #000084; font-weight: bold;">int</span>)
+{
+    MyWindowClass windowInstance;
+    <span style="color: #000084; font-weight: bold;">WNDCLASS</span> wc;  
+
+    wc.lpfnWndProc = (<span style="color: #000084; font-weight: bold;">WNDPROC</span>) windowInstance.WndProc;  
+
+    <span style="color: #808080;">// Register the other WNDCLASS properties</span> 
+
+    <span style="color: #000084; font-weight: bold;">RegisterClass</span>(&amp;wc);
+}</pre>
+</blockquote>
+The hope here is that C++ will somehow detect that "object.function" can be used in the form "result = object.function(arguments)" and therefore behaves just like a normal function. Of course, this doesn't work: C++ doesn't support closures.
+<h3>Closures</h3>
+By default, a C++ function pointer (the data type used to manipulate functions beyond simply calling them right away) is just a pointer to a function. This means that it can only point at a finite set of values, which happens to be the set of all available non-member functions (of the appropriate type) within your application. It does not carry any other values.
+
+The problem is that "object.function" is not a non-member function defined within the application: it's a member function being applied to an object. There is no way for the compiler to detect and define this function at compile-time automatically: you could have any number of objects created and destroyed within your application at runtime, and "object.function" will do a different thing for every one of these objects (because this is how member functions work, after all: behave differently on every object).
+
+In short, there's no workaround for the fact that "object.function" is the association of a member function ("function") and a piece of data ("object"), and that no built-in C++ type can store both a function and a piece of data (this is commonly known as a closure, and C++ does not support these).
+
+Of course, since closures are a fairly useful tools, a set of replacement tools have been provided: you still can't use a normal function pointer (or member function pointer) to represent them, but you can use another variable, or another type.
+
+The most elementary example was known from C. C APIs that let you define callbacks usually let you define callback data as well (unless they are brain-dead, which sometimes happens with C APIs). Callback data is the "data" part of the closure, while the callback itself is the "function" part of the closure. It all starts with a callback function that takes an additional "data" argument:
+<blockquote>
+<pre style="background: #ffffff none repeat scroll 0% 50%; color: #000000;"><span style="color: #000084; font-weight: bold;">void</span> myCallback(<span style="color: #000084; font-weight: bold;">void</span> *callbackData)
+{
+  MyObjectType &amp;object = *<span style="color: #000084; font-weight: bold;">reinterpret_cast</span>&lt;MyObjectType*&gt;(callbackData);
+  object.function();
+} 
+
+MyObjectType bobby;
+hypotheticalAPI(myCallback,&amp;bobby); 
+
+MyObjectType timmy;
+hypotheticalAPI(myCallback,&amp;timmy);</pre>
+</blockquote>
+Here, the 'hypotheticalAPI' function stores the callback and data together, then calls the callback function with the associated data as its first argument. This means that the "myCallback" function will call either "bobby.function()" or "timmy.function()" depending on which callback is activated.
+
+This is actually the way the Win32 API is intended to work. The difference here is that you don't pass another argument this way, but instead associate the callback data to the <em>handle of the window</em>. This works more or less like this:
+<blockquote>
+<pre style="background: #ffffff none repeat scroll 0% 50%; color: #000000;"><span style="color: #000084; font-weight: bold;">class</span> MyWindowClass
+{
+<span style="color: #000084; font-weight: bold;">public</span>:
+  <span style="color: #000084; font-weight: bold;">LRESULT</span> <span style="color: #000084; font-weight: bold;">CALLBACK</span> WndProc(<span style="color: #000084; font-weight: bold;">HWND</span>, <span style="color: #000084; font-weight: bold;">UINT</span>, <span style="color: #000084; font-weight: bold;">WPARAM</span>, <span style="color: #000084; font-weight: bold;">LPARAM</span>)
+  {
+    <span style="color: #808080;">// Implementation </span>
+  }
+};  
+
+<span style="color: #000084; font-weight: bold;">LRESULT</span> <span style="color: #000084; font-weight: bold;">CALLBACK</span> MyWindowClassWndProc(<span style="color: #000084; font-weight: bold;">HWND</span> h, <span style="color: #000084; font-weight: bold;">UINT</span> i, <span style="color: #000084; font-weight: bold;">WPARAM</span> w, <span style="color: #000084; font-weight: bold;">LPARAM</span> l)
+{
+  MyWindowClass &amp;object =
+    *<span style="color: #000084; font-weight: bold;">reinterpret_cast</span>&lt;MyWindowClass*&gt;
+      (GetWindowLongPtr(h, DWLP_USER)); 
+
+  <span style="color: #000084; font-weight: bold;">return </span>object.WndProc(h,i,w,l);
+}  
+
+<span style="color: #000084; font-weight: bold;">int</span> APIENTRY <span style="color: #000084; font-weight: bold;">WinMain</span>(<span style="color: #000084; font-weight: bold;">HINSTANCE</span>, <span style="color: #000084; font-weight: bold;">HINSTANCE</span>, <span style="color: #000084; font-weight: bold;">LPSTR</span>, <span style="color: #000084; font-weight: bold;">int</span>)
+{
+    MyWindowClass windowInstance;
+    <span style="color: #000084; font-weight: bold;">WNDCLASS</span> wc;   
+
+    wc.lpfnWndProc = (<span style="color: #000084; font-weight: bold;">WNDPROC</span>) MyWindowClassWndProc;   
+
+    <span style="color: #808080;">// Register the other WNDCLASS properties </span> 
+
+    <span style="color: #000084; font-weight: bold;">RegisterClass</span>(&amp;wc);  
+
+    <span style="color: #000084; font-weight: bold;">HWND</span> h = <span style="color: #000084; font-weight: bold;">CreateWindow</span>( <span style="color: #808080;">/* args */</span> ); 
+
+    SetWindowLongPtr(h, DWLP_USER, <span style="color: #000084; font-weight: bold;">reinterpret_cast</span>&lt;LONG_PTR&gt;(&amp;windowInstance));
+}</pre>
+</blockquote>
+The <a href="http://msdn.microsoft.com/en-us/library/ms644898%28VS.85%29.aspx" target="_blank">SetWindowLongPtr</a> function is used to associate the address of our windowInstance object to the window handle. The window procedure we register then uses the <a href="http://msdn.microsoft.com/en-us/library/ms633585%28VS.85%29.aspx" target="_blank">GetWindowLongPtr</a> function to retrieve the windowInstance object, and calls its member function with the correct arguments.
+<h3>Functors</h3>
+Aside from the old C trick, C++ also provides the user with the ability to overload "operator()", which means the ability to have any object behave like a function. And since objects can carry arbitrary amounts of data, having them behave like closures is a very simple task. The most naive implementation of this happens in the standard library itself: instead of having the various algorithm functions (transform, accumulate etc) take function pointers, these functions take an arbitrary type as the operation to be applied. This way, any object with a correctly implemented "operator()" can be used:
+<blockquote>
+<pre style="background: #ffffff none repeat scroll 0% 50%; color: #000000;"><span style="color: #000084; font-weight: bold;">struct</span> multiplyBy
+{
+  <span style="color: #000084; font-weight: bold;">int</span> lhs;
+  <span style="color: #000084; font-weight: bold;">int</span> <span style="color: #000084; font-weight: bold;">operator</span>(<span style="color: #000084; font-weight: bold;">int</span> rhs) <span style="color: #000084; font-weight: bold;">const</span> { <span style="color: #000084; font-weight: bold;">return</span> lhs * rhs; }
+  multiplyBy(<span style="color: #000084; font-weight: bold;">int</span> lhs) : lhs(lhs);
+}; 
+
+std::<span style="color: #000084; font-weight: bold;">transform</span>(std::<span style="color: #000084; font-weight: bold;">istream_iterator</span>&lt;<span style="color: #000084; font-weight: bold;">int</span>&gt;(std::<span style="color: #000084; font-weight: bold;">cin</span>),
+               std::<span style="color: #000084; font-weight: bold;">istream_iterator</span>&lt;<span style="color: #000084; font-weight: bold;">int</span>&gt;(),
+               multiplyBy(10),
+               std::<span style="color: #000084; font-weight: bold;">ostream_iterator</span>&lt;<span style="color: #000084; font-weight: bold;">int</span>&gt;(std::<span style="color: #000084; font-weight: bold;">cout</span>,<span style="color: #0000ff;">"</span><span style="color: #0000ff;">\n</span><span style="color: #0000ff;">"</span>));</pre>
+</blockquote>
+The implementation is quite simple: instead of defining a function pointer argument, use an arbitrary type parameter:
+<blockquote>
+<pre style="background: #ffffff none repeat scroll 0% 50%; color: #000000;"><span style="color: #000084; font-weight: bold;">template</span>&lt;<span style="color: #000084; font-weight: bold;">typename</span> F&gt;
+<span style="color: #000084; font-weight: bold;">int</span> apply_twice(<span style="color: #000084; font-weight: bold;">int</span> value, F f)
+{
+  <span style="color: #000084; font-weight: bold;">return</span> f( f(value) );
+} 
+
+apply_twice(5, multiplyBy(2));
+<span style="color: #808080;">// Output : 20</span></pre>
+</blockquote>
+However, this requires compile-time resolving of the function: since the type of the functor is a template argument, the same function template cannot be made to accept, at runtime, both a normal "int (*)(int)" function and a "multiplyBy" instance.
+<h3>Boost.Function</h3>
+The obvious solution, then, would be to use runtime polymorphism provided by virtual functions: make a base "function" class where "operator()" is virtual, then create a derived class template which, given a functor (or normal function pointer) wraps around that functor so that it can be used wherever the base class can. The boost library actually goes a little bit further in this respect: it provides a clean way of specifying the type of the wrapped function, and handles the memory allocation of the underlying base class, so that the functions become value types:
+<blockquote>
+<pre style="background: #ffffff none repeat scroll 0% 50%; color: #000000;"><span style="color: #000084; font-weight: bold;">int</span> apply_twice(<span style="color: #000084; font-weight: bold;">int</span> value, boost::function&lt;<span style="color: #000084; font-weight: bold;">int</span>(<span style="color: #000084; font-weight: bold;">int</span>)&gt; f)
+{
+  <span style="color: #000084; font-weight: bold;">return</span> f( f(value) );
+} 
+
+boost::function&lt;<span style="color: #000084; font-weight: bold;">int</span>(<span style="color: #000084; font-weight: bold;">int</span>)&gt; multiplyBy(<span style="color: #000084; font-weight: bold;">int</span> i)
+{
+  <span style="color: #000084; font-weight: bold;">return</span> boost::<span style="color: #000084; font-weight: bold;">bind</span>(std::multiplies&lt;<span style="color: #000084; font-weight: bold;">int</span>&gt;, i);
+} 
+
+apply_twice(5, multiplyBy(2));</pre>
+</blockquote>
+Boost.Function also handles member functions out of the box:
+<blockquote>
+<pre style="background: #ffffff none repeat scroll 0% 50%; color: #000000;"><span style="color: #000084; font-weight: bold;">struct</span> integer
+{
+  <span style="color: #000084; font-weight: bold;">int</span> value;
+  integer(<span style="color: #000084; font-weight: bold;">int</span> value) : value(value) {}
+  <span style="color: #000084; font-weight: bold;">int</span> add(<span style="color: #000084; font-weight: bold;">int</span> other) { <span style="color: #000084; font-weight: bold;">return</span> value + other; }
+}; 
+
+integer i = 3;
+boost::function&lt;<span style="color: #000084; font-weight: bold;">int</span>(<span style="color: #000084; font-weight: bold;">int</span>)&gt; add3 = boost::<span style="color: #000084; font-weight: bold;">bind</span>(&amp;integer::add, i); 
+
+apply_twice(5, add3);</pre>
+</blockquote>
+The documentation for version 1.37.0 is available here :
+<blockquote><a href="http://nicollet.net/%20http://www.boost.org/doc/libs/1_37_0/doc/html/function.html" target="_blank">http://www.boost.org/doc/libs/1_37_0/doc/html/function.html</a>
+<a href="http://www.boost.org/doc/libs/1_37_0/libs/bind/bind.html" target="_blank">http://www.boost.org/doc/libs/1_37_0/libs/bind/bind.html</a></blockquote>
+<strong>Was this information useful?</strong> Feel free to leave a comment below, or <a href="http://www.nicollet.net/feed/">subscribe to my RSS feed</a>!

@@ -1,0 +1,41 @@
+@title OCaml, Ocsigen, Eliom, Ohm and Frameworks
+@draft
+
+18 months ago, I was looking at possible technical architectures for my start-up. In the end, I settled on a homebrew OCaml web framework that sits behind Apache-FastCGI and persists data to CouchDB. I have already explained why <a href="http://www.nicollet.net/2011/02/objective-caml-web-programming/">I used OCaml instead of PHP</a>. This article should give you a good idea of : 
+<ol>
+	<li>Why I <a href="https://github.com/VictorNicollet/Ohm" target="_blank">wrote my own framework</a>, instead of using the popular OCaml web framework <a href="http://ocsigen.org/" target="_blank">Ocsigen/Eliom</a>.</li>
+	<li>What my opinion on Ocsigen/Eliom is.</li>
+</ol>
+Based on the preliminary feature lists, I expected the project code to become quite large. I was correct : the project grew to over 120,000 lines of code, 400 controller actions and 485 HTML templates. At the time, I had zero experience of how to build such a large project in OCaml &mdash; my largest OCaml project so far had been a 5,000-line toy compiler for a compiler course &mdash; but I had a fairly good idea of how a million-line web application was written in PHP. So, RunOrg started out as a <a href="http://framework.zend.com/" target="_blank">Zend Framework 1.0</a> architecture implemented in OCaml.  
+
+At the same time, in october of 2010, Ocsigen/Eliom was only a shadow of what it is today. The schnazzy project website, reference documentation and OCaml-to-javascript compilation would become available mid-2011, which means the only features I found interesting back then were the cooperative threading library Lwt, the Eliom coservice system, and a few clever ideas about how strong type inference could help web development. 
+
+Eliom also turned out to be incompatible with several high-level decisions about the project architecture. I consider these to be fundamental principles when writing scalable software, and Ohm implements all of them. 
+<ul><li><b>Data persistence is a job for a database server.</b> If you were to nuke your entire production environment, your database backups should be enough to restore full service without users ever knowing about it.</li>
+<li><b>Application code should never be a bottleneck.</b> If your project experiences performance problems and the application is the bottleneck, running more application processes (possibly on separate physical servers) should always be an effective temporary solution. Optimizing application code performance should be about cost reduction (using fewer servers), not about ensuring continuous service.</li>
+<li><b>Serialization should be explicit.</b> Whether it uses flat files, JSON, XML or SQL database rows, the application code should explicitly spell out how that storage happens, in order to elegantly handle database structure migrations.</li></ul>    
+These requirements caused the entire Eliom coservice and reference system to break down, and the work involved in getting them to run again significantly reduced their practicality. 
+
+So that is why, in october of 2010, I decided to build my own framework instead of using Ocsigen/Eliom. 
+
+What about now ?
+
+<strong>Eliom is still a weak and incomplete web framework.</strong> 
+
+Before you bring out the torches and pitchforks and burn my castle down, let me explain. I judge the quality of a web framework by asking three questions : <ol><li>How much time do I save on common development tasks by using the framework ?</li><li>How well does the framework help me keep my code manageable as it grows ?</li><li>How easy is it to take third party code written using the framework and add it to my project ?</li></ol>
+I have used Eliom several times, and the answer to question 1 is positive : there is very little boilerplate code involved in creating a new service or coservice, accessing a database or generating HTML. The initial project rush &mdash; that time when you are mostly writing new code or refactoring code you wrote only days ago &mdash; feels extremely productive, more so than my experience on Zend Framework, Symfony and even Ruby on Rails, and the static type inference changes <em>everything</em>. OCaml is a great web development language, and <strong>Eliom is a great web development library.</strong> 
+
+The strength of a web framework is about having strong opinions. It should name concepts and describe in obsessive detail where they come into the big picture of a web application. Let's consider a common example, which is HTML generation.
+
+A bad web framework will say : you can generate HTML code however you want. 
+
+An average web framework will say : HTML code is generated from HTML templates that should be stored as <code>.htm</code> files in the <code>/asset</code> project directory. 
+
+A good framework will explain the difference between master page layouts, block templates, view helpers, HTML mail templates and decorators, define how each of these should be written, stored and used, and specify what their relationship to CSS and JavaScript should be. 
+
+One benefit of using a framework that has a strong opinion about architecture is that you get an architecture for your project. It took me six years of full-time web development to reach a point where I can build a 120,000-line project that is not a complete mess, and it involves avoiding some very specific errors that only become obvious once you run into them. It is extremely helpful to have an existing architecture specification tell you &laquo;That's not a one-off special case, that's a Form Field Decorator, and this is how it is used...&raquo;
+
+The other benefit of a strong framework is the ecosystem : using third party resources is easier if the third party agrees with you on what the basic concepts of a web application are. For instance, there can be no LESS CSS compilation drop-in plugin for Eliom, because Eliom has no concept of an asset pipeline, so the plugin author has no way to guess where your LESS CSS files are stored, where the resulting CSS file should be placed, or where in your OCaml code the cache-refresh timestamp should be provided. 
+
+Until Eliom grows a strong opinion on where and how HTML, CSS, JavaScript, database access, asynchronous processing, services and configuration should be defined, creating good plug-ins and good tools for the Ocsigen/Eliom ecosystem will be nearly impossible. 
+

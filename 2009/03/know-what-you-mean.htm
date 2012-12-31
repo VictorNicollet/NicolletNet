@@ -1,0 +1,38 @@
+@title Know what you mean
+@draft
+
+Bugs appear from one of two possible sources: either you mistakenly wrote something you didn't mean to write, or you didn't fully understand the consequences of what you meant to write.
+<blockquote>Typical example, first situation:
+<pre style="padding-left: 30px;">double degrees_to_radians(double angle)
+{
+  return angle * 180.0 / PI;
+}</pre>
+The function actually performs a radian-to-degree conversion.</blockquote>
+<blockquote>Typical example, second situation:
+<pre style="padding-left: 30px;">Posted on &lt;?=date("F j, Y",$post -&gt; date);?&gt;</pre>
+Although the programmer did mean to print the current date, he did not notice that printing the current date in the server's time zone might be confusing to users.</blockquote>
+<h3>Errors of the first kind</h3>
+These errors are often easy to detect. If a programmer uses the wrong identifier or mistakenly swaps two function arguments, there's a high probability that the type system will detect the error.
+
+Even if it does not (as in the degrees-to-radians example above) the programmer can specify the expected behavior twice by using a unit test—the probability of an error of the first kind remaining undetected by a unit test with good coverage is slim indeed.
+
+Besides it's also possible to use the type system to construct error-proof interfaces at the cost of having to write explicit data type conversions manually in some cases.
+
+Errors caused by forgetting to perform a required operation can be easily solved in many languages: a "you forgot to do A before B" error is prevented by having B require the return value of A  (and enforcing that with the type system)—you can't fwrite() until you get a FILE* from fopen(); a "you forgot to do B after A" error is prevented by using RAII (in C++), using() directives in C#, and creating a function that calls a callback in-between operations A and B.
+<h3>Errors of the second kind</h3>
+These errors are much harder to detect, because by definition the programmer does not know and has no way of knowing that his design decisions will cause havoc down the road. You can always force the program to do what you mean by explaining enough times what you mean in excruciating detail, but you can never be sure that what you mean to do doesn't have hidden flaws that will become glaring later on.
+
+One way of defending against this is to write easily refactored code split up into units that each do one thing (and do it well). This way, when you do notice an error later on, you can reuse most of the smaller units to implement a new solution. Most people think in terms of "<em>If things go wrong, I'll rewrite the incorrect parts</em>", but the correct way to think about it is "<em>If things go wrong, I'll write a new solution using as many parts from the old solution as possible.</em>"
+
+Another way of defending against this is to use libraries written by people who have experience with the domain. These people have often encountered many errors of the second kind while working on their projects.
+<ul>
+	<li>Perhaps they thought they could make the database a singleton, only to discover two months later that many businesses do need you to accomodate two databases in your system.</li>
+	<li>Perhaps they thought all online stores share the same inventory, only to discover later on that B2B and B2C stores often have different inventory policies.</li>
+	<li>Perhaps they didn't know there was a difference between a billing address and a delivery address.</li>
+	<li>Perhaps they learned the hard way that some languages are written right-to-left, or that some languages need UTF-8 to be rendered.</li>
+	<li>Perhaps they saw in the spec that XML uses namespaces, and thus XPath-based traversal needs namespace recognition context to work.</li>
+	<li>Perhaps they had to encounter performance problems before they thought about database master/slave configurations.</li>
+</ul>
+These libraries are exceedingly useful, and exceedingly unnerving to the programmer because they forcefully prevent him from making errors of the second type. The consequence is that the programmer first hates the library from preventing him from doing something exceedingly simple (<em>Why the hell can't I create a string from a byte array?</em>) , then undergoes a painful paradigm shift that forces him to rethink his design before he even writes a single line of code (<em>Oh, I see, I need to specify an encoding. But wait, what's the input encoding in this function?</em>).
+
+The problem is that excellent libraries tend to make simple things very complicated, which gets them labeled as "enterprise-ish" and hated by the average programmer. Even though the problem they are solving is complicated, and they provide the simplest interface one could think of to that problem.

@@ -1,0 +1,20 @@
+@title JavaScript (Un)Maintenance Trick
+@draft
+
+You're hunting your codebase for bugs, and doing some refactoring and cleanup along the way. You stumble across a classic WTF, <code>if (x == true)</code>, and decide to replace it with the shorter <code>if (x)</code>.
+
+The trouble is that you're playing with JavaScript here, and the two are not the same.
+<h4>This is the story of why <code>[] == ![]</code> is true.</h4>
+First, the logical-not operator «!» is defined quite simply by <a href="http://www.ecma-international.org/publications/standards/Ecma-262.htm" target="_blank">the ECMA standard</a> (§11.4.9) as evaluating its argument, converting it to a boolean, and returning true if it was false, and false otherwise. Converting the argument to a boolean is defined (§9.2) as returning <code>true</code> for objects. Since arrays are objects, it makes sense that <code>![]</code> evaluates to <code>false</code>.
+
+Second, the comparison operator «==» is defined by the standard (§11.9.3) in a rather complex way: first, if its two operands are not of the same type, some type conversion occurs. The first step is that, if an operand is a boolean, it is turned into a number. So, <code>![]</code> becomes <code>0</code>.
+
+The next step is, if one operand is a number and the other is an object, to turn the object into a primitive. This conversion is defined (§9.1) as calling the [[DefaultValue]] internal method, which in turn is defined (§8.12.8) as calling methods <code>valueOf()</code> and <code>toString()</code> until one of them returns a number or string. In the case of an array, the former returns the array itself (§15.2.4.4) and the latter calls join() (§15.4.4.2), which will concatenate all values inside the array, separated by commas (§15.4.4.5).
+
+In the case of an empty array, this yields the empty string.
+
+The third and final step is, if an operand is a number and the other is a string, to turn the string into a number (through a lengthy process described in §9.3.1) and compare the two. An empty string becomes zero, so the comparison is true.
+
+Does your brain hurt, yet?
+
+Back to the original question: <code>if([] == true)</code> does not run, but <code>if([])</code> does.

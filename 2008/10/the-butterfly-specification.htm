@@ -1,0 +1,52 @@
+@title The Butterfly Specification
+@draft
+
+<h2>Butterflies and Hurricanes</h2>
+<a href="http://en.wikipedia.org/wiki/Butterflies_and_Hurricanes">Butterflies and Hurricanes</a> is a track by the band Muse, and a quick reference to the butterfly effect of chaos theory. The gentle wing flaps of a butterfly create small disturbances in the air flow, and these disturbances propagate chaotically and may well cause a hurricane a few months later a thousand miles from there. And they make great music, too.
+
+When a client comes bringing new feature ideas and specifications for the development team to add to a project that's under pressure, the project manager's duty to put a stop to <a href="http://en.wikipedia.org/wiki/Scope_creep">feature creep</a>. However, sometimes, the client reminds everyone that a small line in the fine print of a technical specification from a few months earlier dictates a small change in functionality which corresponds to a massive change in implementation. And since it's not a new feature, but an existing requirement, throwing it away is much harder.
+
+Such specifications, deceivingly small, easy and innocent, reveal themselves to be a real pain once their actual implications are understood. This is the <em>Butterfly Specification</em>: a small, ten-word wing flap in a requirements document creates a hurricane in the code months later, despite nobody being able to see it coming until it's too late.
+<h2>A single drop cannot drown you</h2>
+When a butterfly specification is discovered and the usual name-calling and fist-shaking moments are over, one usually notices that the specification or requirement was nothing really special. <em>That sentence</em>, you'd say, <em>is pretty clear about what had to be done, yet it hasn't, so there must be poor planning afoot</em>. This is true.
+
+In improvisational theater (think <a href="http://en.wikipedia.org/wiki/Whose_Line_Is_It_Anyway%3F">Whose Line Is It Anyway?</a>) good actors know how to create out of thin air a character (complete with tics, accent, tone, ideas and habits) and a story (complete with objectives, obstacles and an ending) while speaking loudly enough to be understood and interacting with other actors. When they forget one of these elements, the performance is lacking and the audience (though uninitiated) can grasp that the quality was lower than expected. As such, the ability of an actor to keep in mind all these elements at the same time is as important as his ability to implement them correctly. An actor with an outstanding accent and tone but without a coherent story will appear worse than an actor who has an acceptable story and a pretty nifty Canadian speech to talk <em>aboot</em> it.
+
+If any of you ever did any improvisational theater, you were probably told about these things on the very first day. Then, you spent the rest of your training that year actually managing to get two at the same time, or three if you were gifted. People who start improvisational theater all begin the same: <em>I can come up with a story, I can keep an accent for a dozen sentences, I can understand what the others are doing, so I should be able to play pretty well</em>! Then they start to play with a moving and deep irish accent, only to notice after twenty seconds of idle and boring blathering that they still don't have a story going on. So they panickedly start introducing one in a perfectly non-irish voice like a Bostonian with a hangover on the day after St Patrick's. And the entire public is still wondering why they haven't noticed their teammate, who had been begging for their attention all along.
+
+The (obvious) bottom line is that people can't concentrate on several things at the same time without a great amount of talent or experience, and even the most skilled software architects can't think of everything at every point in time, nor can they convey that huge amount of information to the developers without losing a lot of detail along the way. And a butterfly specification is one of those razor-sharp lost details that a developer steps on bare-footed a few months later.
+
+By looking at every piece of functionality, it's easy to think that implementing that piece will be easy. Even worse, sometimes the piece of functionality is so obvious (or even common sense) that it's forgotten as soon as it was read. The real difficulty is remembering all the pieces to be implemented at a given point in the program, which is an order of magnitude harder.
+
+A real-life example I encountered lately was that of a comment system on a web site. The system behaved as expected: the user wrote a comment, and other users could read that comment. Of course, there was a flaw: comments that were too long were clipped to a fixed length without notifying the user (nor would the user naturally read again the comment he just posted), leading to a lot of clipped comments everywhere. Yet, it was common sense that this should not happen in an user interface.
+
+However, the programmer who performed the clipping did not think in terms of users and comments and being notified of the clipping: he thought in terms of storing a string in a database, because that was the low-level action he was implementing. Then, the procedure he wrote for that purpose was used by another programmer, who did think in terms of users and comments, but did not notice that the procedure would clip the string before storing it. Since neither developer had the entire picture in mind, the functionality was incomplete.
+<div>
+<blockquote><em>The competent programmer is fully aware of the strictly limited size of his own skull; therefore he approaches the programming task in full humility, and among other things he avoids clever tricks like the plague.</em>
+
+- E.W. Dijkstra</blockquote>
+</div>
+<h2>Bridging the Gap</h2>
+There are two main approaches to reducing the impact of butterfly specifications: detect them earlier, or decrease the effort required to implement them.
+<h3>Let the machines do it for you</h3>
+<blockquote>Since the problem mostly comes from the ability of a human to manipulate a large array of concepts at the same time, and since computers are notoriously good at doing so, a simple idea is to let the computer take care of such trivial verifications.
+
+If you every climb on board of the A340, you might feel reassured that the automatic pilot software was proven to be error-free by <a href="http://www.astree.ens.fr/">Astrée</a>, a static analysis tool. I wouldn't trust 130kLOC of C code with my life unless it was written, reviewed and thoroughly tested by tens of thousands of people (and even then, my Ubuntu plays tricks on me often enough), but the fact that it was proven to adhere to the requirements is good enough for me.
+
+Before you reach that level, however, there are many other ways in which software can be used to verify your program. One example is the use of the type system to ensure that no operations are performed which are physically possible but nonsensical (such as adding together a shoe size and a success percentage), or to use classes and functions which encapsulate behavior that is easy to think of but also easy to forget (for instance, using <span style="font-family: courier new,courier; color: #333333;">std::string</span> instead of the cstring functions). "Don't have memory leaks" and "don't perform nonsensical operations" are two common sense specifications, but other domain-specific type constraints can also be implemented in terms of type systems (for instance, encoding information taint in the type of values to avoid printing out secret data, or sending unquoted input to the database).
+
+Last but not least, <a href="http://www.nicollet.net/blog/php/26-unit-testing">unit testing</a> is a way of expressing a certain set of constraints (such as behavior requirements) that are then automatically verified every time something is done.</blockquote>
+<h3>Use thought processes</h3>
+<blockquote>In French Improvisational Theater, a coach is responsible for giving a character and story to every player on his team when a new round begins in a match. In order to remember what character elements to provide, coaches usually have a sentence that they use, with holes they fill in. That sentence (in english) is:
+
+<strong>"You are</strong> [character], <strong>you want to</strong> [objective] <strong>because</strong> [reason], <strong>you think</strong> [ideas] <strong>and you</strong> [tic]."
+
+For instance:
+
+<strong>"You are</strong> the lead guitarist of a german metal band, <strong>you want to</strong> buy new strings for your guitar <strong>because </strong>you have a concert tonight, <strong>you think</strong> drug addicts are fun when they walk <strong>and you</strong> blink violently at people you meet."
+
+By using this sentence, the coach is certain that no element of the character was forgotten, so that the coached player can run onto the ice rink and play his role without having to spend additional time building a character from scratch.  Even better, by keeping in mind the words in bold, the sentence actually gains momentum and energy as it is being spelled while leaving free thinking time.
+
+When developing, such processes bear the same benefits: while too complex (or too low-level) to be abstracted away as patterns or factored out as functions or classes, processes are automatic enough to avoid forgetting about them, yet thorough enough to avoid forgetting the things they care about.
+
+As a programmer, I keep a permanent analysis process when writing (or reading) code. Every variable that is used is mentally checked, to see if it's an argument or other piece of input data, or if it was carefully checked and tested before being used. Every database is looked upon with a deeply suspicious eye. Every resource allocated manually in an exception-supporting program is followed to determine if it leaks. Where many programmers think of programming style in terms of putting braces on a certain line and indenting by a certain amount of spaces, the war-worn veterans think of programming style as a paranoid and manic concern for using casts or pointers, side-effects which are not tested for success, or for any code that is not purely idiomatic.</blockquote>

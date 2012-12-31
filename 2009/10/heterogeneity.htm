@@ -1,0 +1,41 @@
+@title Heterogeneity
+@draft
+
+John is a fairly adept PHP developer. He is familiar with object-oriented features from PHP 5, has experimented with some PHP 6 features, and is quite skilled at bending the Zend or Symphony frameworks to his will.
+
+But John is not really an SQL expert—sure, he might have written some simple queries and he can fight his way around a normalized database, but he'd rather use a mapping layer on the PHP side. He is no fan of JavaScript either, although he can sometimes hack together a quick solution based on his limited knowledge and online tutorials. And John is in trouble, because web development is ultimately a <strong>heterogeneous</strong> environment where you have to know three languages to get things going.
+
+There have been many efforts to help out programmers like John by eliminating as many languages as possible from the process. <a href="http://cakephp.org/" target="_blank">Database mapping tools</a> provide a protective layer that shields SQL-averse programmers from the unfathomable Lovecraftian horror of <code>INNER JOIN</code>. <a href="http://www.devexpress.com/" target="_blank">Ready-made components</a> encapsulate clever JavaScript so that server-side developers don't have to muck in the demeaning task of keeping browsers in line.
+
+I've had the pleasure of working on both sides of the fence. Some of my projects were beautifully streamlined 98% PHP - 1% JS - 1% SQL works of art where the various pieces of non-PHP code were carefully hidden away from the prying eyes and trembling hands of PHP developers. Others had a complete architecture designed for each of the three languages, with team members that specialized in certain areas only, and strong conventions on how data had to cross the borders. These were not toy projects, but rather large websites that had to support the brunt of thousands of visits.
+<p style="text-align: left;">The bottom line is that when you're running a website with the intent to get money out of it, you want as many daily hits as possible, and so the software must be able to handle all of them smoothly. If you are writing your own web software, the burden of optimizing that software is yours as well. This involves identifying bottlenecks and reimplementing them to do less work, so that you will eventually need:</p>
+
+<ol>
+	<li>Developers that are familiar enough with the software <em>and any third party elements involved</em>.</li>
+	<li>Profiling tools that help identify what parts of the software take the most time.</li>
+	<li>A software model that is flexible enough to allow reimplementing critical pieces.</li>
+</ol>
+It is generally observed that <sup>[<a href="http://en.wikipedia.org/wiki/Wikipedia:Avoid_weasel_words">weasel words</a>]</sup> the layers of PHP/C#/Java code stacked to hide away the SQL/JS/CSS/HTML underneath will decrease the performance of the software, because databases are queried with SQL and web pages are presented in JS/CSS/HTML regardless of what one-language programmers would like to believe, so the layers end up generating that code themselves, often with hilarious results.
+
+A classic example would be server-side code for displaying a list of objects (displayed here as PHP):
+<blockquote>
+<pre>$user_id = Controller::getCurrentUser();
+$user    = UserFactory::getById($user_id);
+$friends = $user -&gt; getFriendsList();
+
+foreach ($friends as $friend_id) {
+  $friend = UserFactory::getById($friend_id);
+  View::renderUser($friend);
+}</pre>
+</blockquote>
+This is an actual excerpt from a piece of code I wrote, with only slight rewording of certain components. A naive implementation would result in a first query reading from the database the data for the current user (with a list of 200 friends), then 200 more queries reading the individual users from the friend list. This results in a slow-loading page, a dead database and an unhappy customer (believe me, I've tried). The PHP-only programmer answers with a blank stare, because the code is properly written and well-encapsulated.
+
+Now, here's the million dollar question: can your mapping layer be configured so that the above code can get all the data in one, two or three queries?
+
+The project I that code is coming from relied on Zend_Db for database work, which could hardly be called anything but <em>naive</em>. The optimization approach was to place a caching layer between the user factory and the database, and configure that layer with rules such as<em> "if the developer calls getFriendsList, the next time UserFactory::getById is called, precache the data for all the users returned in the list of friends"</em>. This meant that only two queries were made, which happened to save the day on that particular project.
+
+Still, my point is not whether your favourite ORM can achieve the same performance as hand-written SQL code. Some of them certainly can.
+
+My point is that to write software that has database interaction as a bottleneck, you need programmers that understand the database interaction layer thoroughly. Whether that layer is a PHP/C#/Java ORM or plain old SQL requests is irrelevant—without knowledge of how data is pulled from the database, there will be no way to prevent or eliminate bottlenecks reliably.
+
+The ORM system <strong>Foo</strong> can eliminate the need for <strong>SQL</strong> experts, but it creates the need for <strong>Foo</strong> experts instead. What is important, then, is whether it's easier to find <strong>Foo</strong> experts or <strong>SQL</strong> experts.

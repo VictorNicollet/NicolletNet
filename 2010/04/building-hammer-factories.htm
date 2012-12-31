@@ -1,0 +1,24 @@
+@title Building Hammer Factories
+@draft
+
+I recently acted as a technical advisor to a small start-up company that was having difficulties getting their product out the door. The situation there reminded me of <a href="http://discuss.joelonsoftware.com/default.asp?joel.3.219431" target="_blank">this "Hammer Factory" post</a> by BenjiSmith:
+<blockquote>"So this week, we're introducing a general-purpose tool-building factory factory factory, so that all of your different tool factory factories can be produced by a single, unified factory. The factory factory factory will produce only the tool factory factories that you actually need, and each of those factory factories will produce a single factory based on your custom tool specifications. The final set of tools that emerge from this process will be the ideal tools for your particular project. You'll have *exactly* the hammer you need, and exactly the right tape measure for your task, all at the press of a button (though you may also have to deploy a few *configuration files* to make it all work according to your expectations)."</blockquote>
+That start-up company wanted to provide various groups of customers with online services. Those customers would have similar high-level needs (buying and keeping track of sports accessories*), but different segments would have different specific needs (football teams need to keep track of numbered shirts with appropriate sizes and only buy a dozen each year, while rock climbing groups need to purchase rope and chalk on a weekly basis*). The business plan called for starting with the basic functionality, and being able to quickly provide each segment with a specifically tailored version of the online service within months of the initial launch.
+<p style="padding-left: 30px;">(*: the business plan has been anonymized to protect the innocent.)</p>
+
+Obviously, if you write the basic application without paying attention to what the tailored versions will need to provide, you will end up in trouble for the <em>quickly</em> part. The smart people at that start-up realized that and <strong>went all the way to the other extreme</strong>: the basic version would actually be a fully configurable application, so that the development of segment-specific versions would be as simple as ticking a few checkboxes.
+
+Needless to say, this kind of decision <a href="http://www.nicollet.net/2009/12/diy/" target="_blank">increases by a large factor</a> the cost of initial development:
+<blockquote>Even writing your own reusable code is orders of magnitude harder than just jotting down a quick one-shot solution to whatever problem you have. An excessive tendency to build generic code from the very beginning makes your development process look like Dragon Ball Z : you have to power up for fifteen episodes before you can show a splash screen.</blockquote>
+The long road from «everything must be done by writing new code» to «everything can be done by ticking checkboxes» is a form of optimization that tries to reduce the time and skill required to perform certain tasks. Like any other optimization process:
+<ul>
+	<li>Doing it ahead of time without access to profiling data can often result in unnecessary or insufficient modifications. While humans are better at estimating their own time than they can estimate computer processing time, they're not perfect, and it's not easy to determine how often a given task will have to be performed.</li>
+	<li>If a given task represents only 1% of the time spent by humans using the application, then even a 1000% improvement will not improve the application by more than 1%.</li>
+</ul>
+Back when I worked as a freelancer, I worked with a client that wanted a poll system for their website. I offered them a choice between a complete poll system (to be designed and implemented in around four days)  that would let them create new polls at will, or a simple system (designed and implemented in half a day) that would require a couple of hours for a moderately skilled developer every time a new poll was needed.
+
+They asked me for the four-day package.
+
+In six years, they have changed the poll three times. Every time, the change was performed by their in-house developer. One of these times actually required the developer to add support for a new feature.
+
+Was it worth it?

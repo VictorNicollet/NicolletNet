@@ -1,0 +1,43 @@
+@title Do You Care?
+@draft
+
+As I mentioned earlier, I use different e-mail addresses for every website that asks me for one. These look like victor-{website}@nicollet.net and are all redirected to the same inbox until I decide I get too much spam from them. In other news, I recently gave one such address to <em>The Motley Fool</em> (a financial information website) and it predictably ended up being the number one source of spam in my inbox. Get cancer and die, Fool.
+
+Non-technical people have asked me whether such an address (namely, one that contains a hyphen) is valid. The answer is that of course, a dash is a valid character in an address (just like _, + and $ for instance) and therefore every sane MTA around the globe should be able to deliver things to my address.
+
+Apparently, Yahoo! does not agree:
+
+[caption id="attachment_1070" align="aligncenter" width="390" caption="Darn you, Yahoo!, now I have to reconfigure the internet."]<a href="http://www.nicollet.net/wp-content/uploads/2009/07/yahoo.png"><img class="size-full wp-image-1070" title="yahoo" src="http://www.nicollet.net/wp-content/uploads/2009/07/yahoo.png" alt="Darn, you, Yahoo!, now I have to reconfigure the internet." width="390" height="47" /></a>[/caption]
+
+So, what just happened here? Yahoo! does not want me to enter an invalid alternate e-mail and therefore sets up an invalid e-mail detector. And a false positive happens.
+
+I hate false positives. Being allergic to some kinds of pollen, I have experienced the devastating effects of false positives in my own immune system. Someone (or something) is trying to be smart, but they are not, and it happens in a way that is obvious and frustrating. That this verification is <em>utterly useless</em> only adds more to the frustration.
+
+What is Yahoo! trying to do here? I can see three possible explanations :
+<h3>Trying to be smart</h3>
+Maybe a pointy-haired boss thought "everyone validates fields" and asked for all fields to be validated even when it wasn't necessary. Maybe a developer thought "validating all fields is a clever challenge". Maybe the underlying libraries include a "mail verification" password that was programmed by an intern. Either way, the bottom line when you have an opportunity to be smart is,<em> you better be really smart, </em>or you'll end up hurting yourself. There is no such thing as "pretty clever" when your code has to serve millions of people.
+<h3>Making sure every account has a valid e-mail</h3>
+Nobody trusts free e-mail in the business world. Posting anything even remotely related to business from a hotmail or yahoo address screams "amateur" unless you're in an industry where merely having an address is unusual. The exception here would be gmail, which merely screams "my company can't afford a domain", but then again all our base is belong to google.
+
+So it should be no surprise that providers of free e-mail would require at least some reassurance that the person creating the account is real. For instance, if it already has an e-mail address (never mind the possibility of confirming account A with account B and vice versa, leaving no trace of my actual identity).
+
+But a mere syntactic verification is useless. I could write mickey1@mouse.com and then increment the "1" until I ended up with a unique address that the system would accept. All you have done is delay the evil scammer for a few minutes,  but  the scammer doesn't care because that's just what his job is. But in the mean time, you got the syntax check wrong and hindered legitimate users that have other things to do with their time than changing their e-mail address so that they can get a Yahoo! account.
+
+To weed out scammers and invalid addresses, <strong>it is necessary to send an e-mail to that address and have the user click on a confirm link</strong>. That is the one and only way to tell if an e-mail address is valid.
+
+But once you start doing this level of verification, it suddenly becomes quite useless to do any other verification: you already have 0% false positives and 0% false negatives, <strong>adding another test can only increase the probability of a false positive</strong>, with no other benefit. Just accept the address as-is and start the verification workflow.
+<h3>Making sure the user did not mistype their e-mail</h3>
+I tend to read lists of e-mail addresses as part of my job, and the typical foobar@qux;com is a staple of French keyboards ('.' is 'shift' + ';'). Needless to say, if an user mistypes their password recovery e-mail, they're in for a world of pain.
+
+However, the correct approach to this issue is to provide a helpful warning, not an error message. Not only do you eliminate the risk of false positives in your regular expressions ever negatively affecting an user's experience (like mine) but you can afford voluntarily introducing false positives that correspond to common mistakes but are not necessarily mistakes, thus making the feature even more helpful.
+
+Instead of a nasty "Invalid E-Mail Address" message that begs the question "Who are you to decide that <em>my </em>e-mail address, hosted on <em>my </em>e-mail server and <em>my </em>domain, is invalid?", a simple "You may have mistyped your address" warning that does not prevent submitting the form would be most welcome.
+
+I can still remember the good old days when my computer asked me "Are You Sure?" whenever I tried to do something smart. Now, it just tells me "You Can't Do That", without the HAL 9000 voice.
+Don't believe me? Think how many lines of code you need to kill the operating system now, versus how many you needed in the good old days—the worst I managed was outside-allocated-memory access with CUDA.
+
+I would argue that enterprise workflow systems push the "You Can't Do That" logic to its final conclusion: anything out of the ordinary needs moderator intervention (if it is possible at all). This is both harder to program (as you have to clearly express what is ordinary) and harder to use in a cinch where something unusual <strong>must </strong>be done for the greater good. By contrast, a few permissive systems do exist : if what you're trying to do can be undone then you are always allowed to do it, and a moderator is then notified about it and may choose to reverse your operation. Of course, some things cannot be undone (viewing or showing restricted information to someone, sending an e-mail to someone, and son on) and therefore require <em>ex ante</em> approval, but most tasks in a computer system are reversible.
+
+Once you taste the pleasure of a "do first, be moderated later" system, it's hard to go back to "your post will be online once it's moderated". Think about what Wikipedia would look like if it applied <em>ex ante</em> moderation...
+
+So, unless you're facing a critical situation, always give your users the benefit of doubt and perhaps a warning...
