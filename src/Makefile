@@ -1,2 +1,0 @@
-all: 
-	ocamlbuild blog.byte
