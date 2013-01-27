@@ -11,7 +11,17 @@ let article path page =
     <link rel=\"stylesheet\" href=\"/old-blog.css\"/>
   </head>
   <body>
-" ^ page.Page.content ^ " 
+    <h1>Nicollet.net</h1>
+    <h2>" ^ BatOption.default "Untitled" page.Page.title ^ "
+      <div class=date>" ^(match page.Page.date with None -> "" | Some d ->
+        Page.(Printf.sprintf "%d / %02d / %02d" d.y d.m d.d) ) ^ "</div>
+    </h2>
+    <div class=content>
+      " ^ (if page.Page.draft then "	  
+        <div class=draft>This page has been automatically recovered from my old blog. As such, the layout may be a little off. I am incrementally converting all pages to the new system, so it will eventually look much better.</div>
+      " else "") ^ "
+      " ^ page.Page.content ^ "
+    </div> 
   </body>
 </html>"
   end
