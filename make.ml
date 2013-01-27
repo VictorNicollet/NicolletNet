@@ -10,3 +10,6 @@ let () = List.iter begin fun path ->
   with exn -> 
     Printf.printf "%s : exception %s\n" path (Printexc.to_string exn) 
 end all 
+
+let () = 
+  Write.raw "old-blog.css" (Read.file "old-blog.css")

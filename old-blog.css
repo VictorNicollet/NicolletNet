@@ -1,0 +1,9 @@
+body {
+  padding: 40px;
+  margin: 0;
+  background: url("http://subtlepatterns.subtlepatterns.netdna-cdn.com/patterns/debut_dark.png") repeat scroll 0 0 #333;
+  color: #EEE;
+  text-shadow: 0 -1px 0 #111;
+  font-size: 20px;
+  font-family: 'Open Sans', sans-serif;
+}
