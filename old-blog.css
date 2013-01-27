@@ -7,15 +7,21 @@ body {
   font-family: 'Open Sans', sans-serif;
 }
 
-h1, h2 {
-  margin-left: 30px;
-  margin-right: 30px;
-}
-
 h2 .date {
   color: #CCC;
   font-size: 0.8em;
   float: right;
+}
+
+.main {
+  margin: 30px 300px 30px 30px;
+}
+
+.side {
+  float: right; 
+  margin: 70px 30px;
+  width: 240px;
+  font-size: 13px;
 }
 
 .content .draft {
@@ -29,10 +35,18 @@ h2 .date {
   background: #EEE;
   color: #111;
   font-size: 16px;
-  margin: 30px;
+  margin: 30px 0;
   border: 1px solid #111;
   text-shadow: none; 
   box-shadow: 0 0 3px #111;
   padding: 30px;
   line-height: 1.5em;
+}
+
+#victor {
+  width: 238px;
+  height: 314px;
+  background: url("/public/pics/victor-240.jpg") center center no-repeat; 
+  border: 1px solid #111;
+  box-shadow: 0 0 3px #111;
 }
