@@ -7,10 +7,33 @@ body {
   font-family: 'Open Sans', sans-serif;
 }
 
+a { 
+  text-decoration: none; 
+  color: #9AF;
+}
+
+a:visited {
+  color: #F9A;
+}
+
+a:hover {
+  color: #ABF;
+}
+
+h2 {
+  line-height: 40px;
+  height: 40px;
+  overflow: hidden; 
+  text-overflow: ellipsis; 
+  white-space: nowrap;
+}
+
 h2 .date {
   color: #CCC;
   font-size: 0.8em;
   float: right;
+  margin-left: 40px;
+  line-height: 40px;
 }
 
 .main {
@@ -24,11 +47,37 @@ h2 .date {
   font-size: 13px;
 }
 
+.side ul {
+  margin: 10px 0; 
+  padding: 0 0 0 16px; 
+  list-style-type: none;
+}
+
 .content .draft {
   margin: -30px -30px 30px -30px;
   background-color: #111;
   color: #EEE;
   padding: 15px 30px;
+}
+
+.content p {
+  margin-top: 0px;
+}
+
+.content p + p {
+  margin-top: 2em;
+}
+
+.content a {
+  color: #34B;
+}
+
+.content a:hover {
+  color: #45C;
+}
+
+.content a:visited {
+  color: #C45;
 }
 
 .content {
@@ -40,7 +89,7 @@ h2 .date {
   text-shadow: none; 
   box-shadow: 0 0 3px #111;
   padding: 30px;
-  line-height: 1.5em;
+  line-height: 1.85em;
 }
 
 #victor {

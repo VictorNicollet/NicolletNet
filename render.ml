@@ -1,5 +1,16 @@
 open Common 
 
+let bestof = 
+  let list = 
+    Hashtbl.fold (fun _ page list -> if page.Page.bestof then page :: list else list) 
+      Page.all []
+  in
+  String.concat "" (List.map (fun page -> 
+    "<li><a href='/" ^ page.Page.path ^ "'>" 
+    ^ BatOption.default "Untitled" page.Page.title 
+    ^ "</a></li>"
+  ) list)
+
 let article path page = 
   Write.html path begin
     "<!DOCTYPE html>
@@ -13,7 +24,18 @@ let article path page =
   <body>
     <div class=side>
       <div id=victor></div>
-      <P>Hi. I'm Victor Nicollet, and this is my blog. Welcome !</p>
+      <p>
+        Hi. My name is Victor Nicollet. <br/>
+        I built <a href='http://runorg.com'>RunOrg</a> and 
+        <a href='http://ohm-framework.com'>Ohm</a>.<br/>
+      </p>
+      <p>
+        More articles from me ? Try these: 
+      </p>
+      <ul>" ^ bestof ^ "</ul>
+      <p>
+        Or visit the <a href='/archives'>archives</a>. 
+      </p>
     </div>
     <div class=main>
       <h2>" ^ BatOption.default "Untitled" page.Page.title ^ "
