@@ -6,7 +6,7 @@ let bestof =
       Page.all []
   in
   String.concat "" (List.map (fun page -> 
-    "<li><a href='/" ^ page.Page.path ^ "'>" 
+    "<li><a href='" ^ page.Page.url ^ "'>" 
     ^ BatOption.default "Untitled" page.Page.title 
     ^ "</a></li>"
   ) list)
@@ -19,6 +19,7 @@ let article path page =
     <meta http-equiv=\"Content-Type\" content=\"text/html; charset=utf-8\">
     <title>" ^ BatOption.default "" page.Page.title ^ "</title>
     <link href='http://fonts.googleapis.com/css?family=Open+Sans:400,400italic' rel='stylesheet' type='text/css'>
+    <link href='http://fonts.googleapis.com/css?family=Fjalla+One&subset=latin,latin-ext' rel='stylesheet' type='text/css'>
     <link rel=\"stylesheet\" href=\"/old-blog.css\"/>
   </head>
   <body>
@@ -38,9 +39,12 @@ let article path page =
       </p>
     </div>
     <div class=main>
-      <h2>" ^ BatOption.default "Untitled" page.Page.title ^ "
-        <div class=date>" ^(match page.Page.date with None -> "" | Some d ->
-          Page.(Printf.sprintf "%d / %02d / %02d" d.y d.m d.d) ) ^ "</div>
+      <h2>
+        <div class=date>
+          " ^ (match page.Page.date with None -> "" | Some d ->
+            Page.(Printf.sprintf "%d / %02d / %02d" d.y d.m d.d) ) ^ "
+        </div>
+        <span>" ^ BatOption.default "Untitled" page.Page.title ^ "</span>
       </h2>
       <div class=content>
       " ^ (if page.Page.draft then "	  

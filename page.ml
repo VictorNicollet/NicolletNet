@@ -13,6 +13,7 @@ let explode str sep =
 
 type t = {
   path    : string ; 
+  url     : string ; 
   bestof  : bool ; 
   title   : string option ; 
   date    : date option ;
@@ -36,7 +37,11 @@ let draft _ t =
 let bestof _ t = 
   { t with bestof = true }
 
-let load path str = 
+let load path str =
+  let url =
+    "http://nicollet.net/" 
+    ^ (String.sub path 0 (String.length path - String.length ".htm"))
+  in
   let rec read str = 
     if String.length str = 0 || str.[0] <> '@' then 
       { title   = None ;
@@ -44,6 +49,7 @@ let load path str =
 	tags    = [] ;
 	bestof  = false ; 
 	path    ; 
+	url     ; 
 	draft   = false ;
 	content = str }
     else 
